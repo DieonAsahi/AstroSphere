@@ -1,0 +1,95 @@
+[
+  {
+    "id": "mars-olympus-mons",
+    "bodyId": "mars",
+    "slug": "olympus-mons",
+    "name": "Olympus Mons",
+    "type": "gunung",
+    "lat": 18.65,
+    "lon": 226.2,
+    "historyText": "Olympus Mons adalah gunung berapi perisai raksasa di Mars yang merupakan gunung tertinggi di Tata Surya. Terbentuk dari ribuan aliran lava basaltik selama ratusan juta tahun di kerak Mars yang stasioner tanpa lempeng tektonik aktif.",
+    "dimensions": [
+      {
+        "label": "Tinggi dari datum",
+        "nilai": 21.9,
+        "satuan": "km",
+        "sumber": "NASA Mars Orbiter Laser Altimeter (MOLA)"
+      },
+      {
+        "label": "Diameter dasar",
+        "nilai": 600,
+        "satuan": "km",
+        "sumber": "USGS Astrogeology Science Center"
+      },
+      {
+        "label": "Kedalaman kaldera",
+        "nilai": 3.2,
+        "satuan": "km",
+        "sumber": "ESA Mars Express HRSC"
+      },
+      {
+        "label": "Tinggi tebing pembatas",
+        "nilai": 8,
+        "satuan": "km",
+        "sumber": "NASA MRO HiRISE"
+      }
+    ],
+    "terrainAsset": "/assets/terrain/mars-olympus-mons.json",
+    "sources": [
+      "https://astrogeology.usgs.gov/search/map/Mars/Topography/OlympusMons_MOLA",
+      "NASA Mars Exploration Program (Olympus Mons Profile)",
+      "Smith et al. (2001) Mars Orbiter Laser Altimeter Experiment Results"
+    ]
+  },
+  {
+    "id": "jupiter-great-red-spot",
+    "bodyId": "jupiter",
+    "slug": "great-red-spot",
+    "name": "Badai Merah Raksasa",
+    "type": "badai",
+    "lat": -22,
+    "lon": 270,
+    "historyText": "Badai Merah Raksasa adalah pusaran antisiklonik bertekanan tinggi yang berputar berlawanan arah jarum jam di belahan selatan Jupiter. Telah diamati terus-menerus selama lebih dari 150 tahun dan didukung oleh dinamika atmosfer fluida tanpa hambatan gesekan permukaan padat.",
+    "dimensions": [
+      {
+        "label": "Panjang Timur-Barat",
+        "nilai": 16350,
+        "satuan": "km",
+        "sumber": "NASA Juno Mission Science Team (2021)"
+      },
+      {
+        "label": "Lebar Utara-Selatan",
+        "nilai": 10000,
+        "satuan": "km",
+        "sumber": "Hubble Space Telescope OPAL Program"
+      },
+      {
+        "label": "Kecepatan angin tepi",
+        "nilai": 432,
+        "satuan": "km/jam",
+        "sumber": "NASA Juno Microwave Radiometer (MWR)"
+      },
+      {
+        "label": "Kedalaman akar badai",
+        "nilai": 300,
+        "satuan": "km",
+        "sumber": "Juno Gravity & MWR Joint Measurement (NASA 2021)"
+      }
+    ],
+    "particleConfig": {
+      "type": "badai_antisiklonik",
+      "count": 40000,
+      "speed": 1.2,
+      "vortexRadius": 0.32,
+      "color": "#d9381e",
+      "secondaryColor": "#e67332",
+      "coreColor": "#f6e2c3",
+      "direction": "counterclockwise"
+    },
+    "sources": [
+      "https://science.nasa.gov/mission/juno/great-red-spot/",
+      "Bolton et al. (2021) Science: Microwave Observations of Jupiter’s Atmosphere and Great Red Spot",
+      "NASA JPL Solar System Dynamics"
+    ]
+  }
+]
