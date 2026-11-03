@@ -1,0 +1,1 @@
+# Tekstur kualitas tinggi

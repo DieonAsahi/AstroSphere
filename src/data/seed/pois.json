@@ -1,0 +1,37 @@
+[
+  {
+    "id": "mars-olympus-mons",
+    "bodyId": "mars",
+    "slug": "olympus-mons",
+    "name": "Olympus Mons",
+    "type": "gunung",
+    "lat": 18.65,
+    "lon": 226.2,
+    "historyText": "Gunung berapi perisai besar di permukaan Mars.",
+    "dimensions": [],
+    "terrainAsset": "/assets/terrain/mars-olympus-mons.json",
+    "sources": ["https://science.nasa.gov/mars/", "Perlu verifikasi"]
+  },
+  {
+    "id": "jupiter-great-red-spot",
+    "bodyId": "jupiter",
+    "slug": "great-red-spot",
+    "name": "Badai Merah Raksasa",
+    "type": "badai",
+    "lat": -22,
+    "lon": 270,
+    "historyText": "Badai antisiklon berumur panjang dalam atmosfer Jupiter.",
+    "dimensions": [],
+    "particleConfig": {
+      "type": "badai_antisiklonik",
+      "count": 40000,
+      "speed": 1.2,
+      "vortexRadius": 0.32,
+      "color": "#d9381e",
+      "secondaryColor": "#e67332",
+      "coreColor": "#f6e2c3",
+      "direction": "counterclockwise"
+    },
+    "sources": ["https://science.nasa.gov/jupiter/", "Perlu verifikasi"]
+  }
+]
