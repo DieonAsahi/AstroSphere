@@ -25,4 +25,10 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['src/app/**/*.{ts,tsx}', 'src/middleware.ts'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 );

@@ -41,6 +41,10 @@ dist-ssr
 ehthumbs.db
 Thumbs.db
 
+# Next.js build output
+.next/
+out/
+
 # Test outputs & caches
 coverage/
 playwright-report/
