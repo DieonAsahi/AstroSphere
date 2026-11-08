@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Globe,
   Rocket,
@@ -15,22 +15,8 @@ import {
 import { useSceneStore } from '@/store/useSceneStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 
-// Code-splitting WebGL Canvas dengan dynamic import (ssr: false) agar SSR Vercel aman
-const AstroCanvas = dynamic(() => import('@/components/canvas/AstroCanvas'), {
-  ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-400">
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-4" />
-      <div className="flex items-center gap-2 text-xs font-semibold text-cyan-300">
-        <Sparkles className="h-4 w-4 animate-pulse text-cyan-400" />
-        <span>Memuat Core 3D WebGL Engine AstroSphere...</span>
-      </div>
-      <p className="mt-1 text-[11px] text-slate-500 font-mono">
-        Shader Atmosfer &bull; Prosedural Tata Surya &bull; Fisika 3D
-      </p>
-    </div>
-  ),
-});
+// Code-splitting WebGL Canvas dengan React.lazy murni ekosistem Vite
+const AstroCanvas = lazy(() => import('@/components/canvas/AstroCanvas'));
 
 // Import HUD 2D
 import { TopNavigation } from '@/components/hud/TopNavigation';
@@ -44,8 +30,10 @@ import { HangarModal } from '@/components/hud/HangarModal';
 import { CloudSaveModal } from '@/components/hud/CloudSaveModal';
 
 export default function PlayerHomePage() {
+  const { planetSlug } = useParams<{ planetSlug?: string; poiSlug?: string }>();
   const mode = useSceneStore((state) => state.mode);
   const switchMode = useSceneStore((state) => state.switchMode);
+  const setActivePlanetId = useSceneStore((state) => state.setActivePlanetId);
   const initializePlayer = usePlayerStore((state) => state.initializePlayer);
   const cloudUsername = usePlayerStore((state) => state.cloudUsername);
 
@@ -58,10 +46,32 @@ export default function PlayerHomePage() {
     initializePlayer();
   }, [initializePlayer]);
 
+  // Sinkronisasi rute parameter URL (/planet/:planetSlug) ke store
+  useEffect(() => {
+    if (planetSlug) {
+      setActivePlanetId(planetSlug);
+    }
+  }, [planetSlug, setActivePlanetId]);
+
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-slate-950 select-none">
       {/* 1. Core 3D WebGL Engine (Three.js / React Three Fiber) */}
-      <AstroCanvas />
+      <Suspense
+        fallback={
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-400">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-4" />
+            <div className="flex items-center gap-2 text-xs font-semibold text-cyan-300">
+              <Sparkles className="h-4 w-4 animate-pulse text-cyan-400" />
+              <span>Memuat Core 3D WebGL Engine AstroSphere...</span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500 font-mono">
+              Shader Atmosfer &bull; Prosedural Tata Surya &bull; Fisika 3D
+            </p>
+          </div>
+        }
+      >
+        <AstroCanvas />
+      </Suspense>
 
       {/* 2. Top Navigation Bar (Planet Switcher, Points, Hangar, Cloud Save Button) */}
       <TopNavigation

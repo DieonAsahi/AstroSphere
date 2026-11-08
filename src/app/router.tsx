@@ -3,9 +3,8 @@ import { createBrowserRouter } from 'react-router-dom';
 import { RoleGuard } from '../features/classes/RoleGuard';
 import { RouteLoadingFallback } from '../ui/RouteLoadingFallback';
 import { AppLayout } from './AppLayout';
-import { HomePage } from './pages/HomePage';
-
 // Pemisahan kode berbasis rute (Route Code-Splitting) untuk efisiensi muat awal
+const PlayerHomePage = lazy(() => import('./(player)/page'));
 const AuthPage = lazy(() =>
   import('../features/classes/AuthPage').then((m) => ({ default: m.AuthPage })),
 );
@@ -34,6 +33,16 @@ const AdminCmsPage = lazy(() =>
     default: m.AdminCmsPage,
   })),
 );
+// Admin Mission Control & CMS Sub-Modules
+const AdminLoginPage = lazy(() => import('./admin/login/page'));
+const AdminDashboardLayout = lazy(() => import('./admin/(dashboard)/layout'));
+const AdminDashboardPage = lazy(() => import('./admin/(dashboard)/page'));
+const AdminPlanetsPage = lazy(() => import('./admin/(dashboard)/planets/page'));
+const AdminHistoryPage = lazy(() => import('./admin/(dashboard)/history/page'));
+const AdminPhenomenaPage = lazy(() => import('./admin/(dashboard)/phenomena/page'));
+const AdminQuizzesPage = lazy(() => import('./admin/(dashboard)/quizzes/page'));
+const AdminShipsPage = lazy(() => import('./admin/(dashboard)/ships/page'));
+const AdminPlayersPage = lazy(() => import('./admin/(dashboard)/players/page'));
 const AboutPage = lazy(() =>
   import('../features/about/AboutPage').then((m) => ({
     default: m.AboutPage,
@@ -60,11 +69,29 @@ export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
-      { path: '/', element: <HomePage /> },
-      { path: '/planet/:planetSlug', element: <HomePage /> },
+      {
+        path: '/',
+        element: (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <PlayerHomePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/planet/:planetSlug',
+        element: (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <PlayerHomePage />
+          </Suspense>
+        ),
+      },
       {
         path: '/planet/:planetSlug/:poiSlug',
-        element: <HomePage />,
+        element: (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <PlayerHomePage />
+          </Suspense>
+        ),
       },
       // Autentikasi
       {
@@ -111,27 +138,97 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      // Metrik KPI 30 FPS Admin (FR-12)
+      // Autentikasi Khusus Admin (Tanpa Registrasi Publik)
       {
-        path: '/admin/metrik',
+        path: '/admin/login',
         element: (
-          <RoleGuard allowedRoles={['admin']}>
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <AdminMetricsPage />
-            </Suspense>
-          </RoleGuard>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <AdminLoginPage />
+          </Suspense>
         ),
       },
-      // CMS Admin Observatorium (FR-11)
+      // CMS Admin & Mission Control (Dilindungi Whitelist public.admin_users)
       {
         path: '/admin',
         element: (
-          <RoleGuard allowedRoles={['admin']}>
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <AdminCmsPage />
-            </Suspense>
-          </RoleGuard>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <AdminDashboardLayout />
+          </Suspense>
         ),
+        children: [
+          {
+            index: true,
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminDashboardPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'planets',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminPlanetsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'history',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminHistoryPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'phenomena',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminPhenomenaPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'quizzes',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminQuizzesPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'ships',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminShipsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'players',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminPlayersPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'metrik',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminMetricsPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'cms-observatorium',
+            element: (
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <AdminCmsPage />
+              </Suspense>
+            ),
+          },
+        ],
       },
       // Kebijakan Privasi & Kepatuhan UU PDP
       {

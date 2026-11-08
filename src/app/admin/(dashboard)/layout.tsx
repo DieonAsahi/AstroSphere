@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Globe,
@@ -40,10 +39,11 @@ const NAV_ITEMS: NavItem[] = [
 export default function AdminDashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export default function AdminDashboardLayout({
         } = await supabase.auth.getUser();
 
         if (authError || !user) {
-          router.replace('/admin/login');
+          navigate('/admin/login', { replace: true });
           return;
         }
 
@@ -73,7 +73,7 @@ export default function AdminDashboardLayout({
 
         if (dbError || !adminRecord) {
           await supabase.auth.signOut();
-          router.replace('/admin/login?error=unauthorized');
+          navigate('/admin/login?error=unauthorized', { replace: true });
           return;
         }
 
@@ -83,7 +83,7 @@ export default function AdminDashboardLayout({
         }
       } catch (err) {
         console.error('Gagal memverifikasi admin:', err);
-        router.replace('/admin/login');
+        navigate('/admin/login', { replace: true });
       }
     }
 
@@ -92,15 +92,15 @@ export default function AdminDashboardLayout({
     return () => {
       isMounted = false;
     };
-  }, [pathname, router]);
+  }, [pathname, navigate]);
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      router.replace('/admin/login');
+      navigate('/admin/login', { replace: true });
     } catch (err) {
       console.error('Logout error:', err);
-      router.replace('/admin/login');
+      navigate('/admin/login', { replace: true });
     }
   };
 
@@ -145,7 +145,7 @@ export default function AdminDashboardLayout({
         {/* Brand Header */}
         <div className="flex h-16 items-center justify-between border-b border-slate-800/80 px-6">
           <Link
-            href="/admin"
+            to="/admin"
             className="flex items-center gap-3 transition-opacity hover:opacity-90"
             onClick={() => setMobileMenuOpen(false)}
           >
@@ -191,7 +191,7 @@ export default function AdminDashboardLayout({
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
                     isActive
@@ -321,7 +321,7 @@ export default function AdminDashboardLayout({
 
         {/* Scrollable Viewport */}
         <main className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-6 scrollbar-thin scrollbar-thumb-slate-800">
-          <div className="mx-auto max-w-7xl">{children}</div>
+          <div className="mx-auto max-w-7xl">{children ?? <Outlet />}</div>
         </main>
       </div>
     </div>

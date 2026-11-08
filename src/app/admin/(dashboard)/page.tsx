@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import {
   Globe,
   MapPin,
@@ -196,7 +196,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Planet */}
         <Link
-          href="/admin/planets"
+          to="/admin/planets"
           className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 p-5 backdrop-blur-sm transition-all hover:border-cyan-500/40 hover:bg-slate-900 hover:shadow-lg hover:shadow-cyan-500/10"
         >
           <div className="flex items-center justify-between">
@@ -219,7 +219,7 @@ export default function AdminDashboardPage() {
 
         {/* Card 2: History Events */}
         <Link
-          href="/admin/history"
+          to="/admin/history"
           className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 p-5 backdrop-blur-sm transition-all hover:border-indigo-500/40 hover:bg-slate-900 hover:shadow-lg hover:shadow-indigo-500/10"
         >
           <div className="flex items-center justify-between">
@@ -242,7 +242,7 @@ export default function AdminDashboardPage() {
 
         {/* Card 3: Phenomena */}
         <Link
-          href="/admin/phenomena"
+          to="/admin/phenomena"
           className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 p-5 backdrop-blur-sm transition-all hover:border-amber-500/40 hover:bg-slate-900 hover:shadow-lg hover:shadow-amber-500/10"
         >
           <div className="flex items-center justify-between">
@@ -265,7 +265,7 @@ export default function AdminDashboardPage() {
 
         {/* Card 4: Quizzes */}
         <Link
-          href="/admin/quizzes"
+          to="/admin/quizzes"
           className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 p-5 backdrop-blur-sm transition-all hover:border-emerald-500/40 hover:bg-slate-900 hover:shadow-lg hover:shadow-emerald-500/10"
         >
           <div className="flex items-center justify-between">
@@ -347,7 +347,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <Link
-              href="/admin/ships"
+              to="/admin/ships"
               className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:text-white transition-colors"
             >
               <Rocket className="h-3.5 w-3.5 text-cyan-400" />
@@ -496,7 +496,7 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <Link
-                          href="/admin/planets"
+                          to="/admin/planets"
                           className="inline-flex items-center gap-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-300 hover:text-white transition-colors"
                         >
                           <span>Kelola</span>

@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Globe, Lock, Mail, AlertTriangle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../../lib/supabase/client';
 
 function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +69,7 @@ function LoginForm() {
       }
 
       // 3. Admin terverifikasi
-      router.push('/admin');
+      navigate('/admin');
     } catch (err: unknown) {
       console.error('Login error:', err);
       setErrorMessage('Terjadi kesalahan pada sistem. Silakan coba beberapa saat lagi.');
