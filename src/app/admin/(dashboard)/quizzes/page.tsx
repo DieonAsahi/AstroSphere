@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  HelpCircle,
   Plus,
   Pencil,
   Trash2,
@@ -12,23 +11,22 @@ import {
   CheckCircle2,
   X,
   Save,
-  Award,
-  Eye,
-  BookOpen,
-  RotateCcw,
+  Check,
+  ShieldCheck,
+  HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
 import type { Question, PlanetSlug } from '../../../../types/database';
 
-const PLANET_OPTIONS: { id: PlanetSlug; label: string }[] = [
-  { id: 'mercury', label: 'Merkurius' },
-  { id: 'venus', label: 'Venus' },
-  { id: 'earth', label: 'Bumi' },
-  { id: 'mars', label: 'Mars' },
-  { id: 'jupiter', label: 'Jupiter' },
-  { id: 'saturn', label: 'Saturnus' },
-  { id: 'uranus', label: 'Uranus' },
-  { id: 'neptune', label: 'Neptunus' },
+const PLANET_OPTIONS: { id: PlanetSlug; label: string; dotColor: string; badgeBg: string }[] = [
+  { id: 'mercury', label: 'Merkurius', dotColor: 'bg-slate-400', badgeBg: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { id: 'venus', label: 'Venus', dotColor: 'bg-amber-500', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { id: 'earth', label: 'Bumi', dotColor: 'bg-blue-500', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { id: 'mars', label: 'Mars', dotColor: 'bg-red-500', badgeBg: 'bg-red-50 text-red-700 border-red-200' },
+  { id: 'jupiter', label: 'Jupiter', dotColor: 'bg-purple-500', badgeBg: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { id: 'saturn', label: 'Saturnus', dotColor: 'bg-yellow-500', badgeBg: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  { id: 'uranus', label: 'Uranus', dotColor: 'bg-teal-500', badgeBg: 'bg-teal-50 text-teal-700 border-teal-200' },
+  { id: 'neptune', label: 'Neptunus', dotColor: 'bg-indigo-500', badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 ];
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
@@ -62,10 +60,6 @@ export default function AdminQuizzesPage() {
     bobot_poin: 50,
   });
 
-  // Preview Modal State (PRD R10)
-  const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
-  const [previewSelectedOption, setPreviewSelectedOption] = useState<number | null>(null);
-
   const [deletingQuestion, setDeletingQuestion] = useState<Question | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -80,7 +74,7 @@ export default function AdminQuizzesPage() {
       const { data, error } = await supabase
         .from('questions')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       setQuestions((data || []) as Question[]);
@@ -112,11 +106,6 @@ export default function AdminQuizzesPage() {
       return true;
     });
   }, [questions, selectedPlanet, searchQuery]);
-
-  // Total Poin pada planet yang difilter
-  const selectedPlanetTotalPoints = useMemo(() => {
-    return filteredQuestions.reduce((sum, q) => sum + (Number(q.bobot_poin) || 50), 0);
-  }, [filteredQuestions]);
 
   const handleOpenAdd = () => {
     setIsEditing(false);
@@ -151,11 +140,6 @@ export default function AdminQuizzesPage() {
     setModalOpen(true);
   };
 
-  const handleOpenPreview = (q: Question) => {
-    setPreviewQuestion(q);
-    setPreviewSelectedOption(null);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.soal.trim() || !formData.pembahasan_edukatif.trim()) return;
@@ -163,7 +147,7 @@ export default function AdminQuizzesPage() {
     if (formData.opsi.some((opt) => !opt.trim())) {
       setNotification({
         type: 'error',
-        message: 'Keempat pilihan jawaban (A, B, C, D) wajib diisi.',
+        message: 'Keempat opsi jawaban (A, B, C, D) wajib diisi.',
       });
       return;
     }
@@ -196,7 +180,7 @@ export default function AdminQuizzesPage() {
         );
         setNotification({
           type: 'success',
-          message: 'Soal kuis berhasil diperbarui.',
+          message: 'Soal kuis berhasil diperbarui di Supabase.',
         });
       } else {
         const { data, error } = await supabase
@@ -207,10 +191,10 @@ export default function AdminQuizzesPage() {
 
         if (error) throw error;
 
-        setQuestions((prev) => [data as Question, ...prev]);
+        setQuestions((prev) => [...prev, data as Question]);
         setNotification({
           type: 'success',
-          message: `Soal kuis baru berhasil ditambahkan ke ${payload.planet_id}.`,
+          message: `Soal kuis baru berhasil ditambahkan untuk ${payload.planet_id}.`,
         });
       }
 
@@ -219,7 +203,7 @@ export default function AdminQuizzesPage() {
       console.error('Error saving question:', err);
       setNotification({
         type: 'error',
-        message: 'Gagal menyimpan soal kuis. Pastikan form terisi dengan benar.',
+        message: 'Gagal menyimpan soal kuis. Pastikan semua field telah diisi.',
       });
     } finally {
       setSaving(false);
@@ -248,7 +232,7 @@ export default function AdminQuizzesPage() {
       console.error('Error deleting question:', err);
       setNotification({
         type: 'error',
-        message: 'Gagal menghapus soal kuis.',
+        message: 'Gagal menghapus soal kuis dari Supabase.',
       });
     } finally {
       setSaving(false);
@@ -257,258 +241,264 @@ export default function AdminQuizzesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
+      {/* Toast Notification */}
+      {notification && (
+        <div
+          className={`p-4 rounded-xl flex items-center justify-between shadow-sm border ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+            )}
+            <p className="text-sm font-medium">{notification.message}</p>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Header Section (Matching Mockup A05) */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-              Manajemen Bank Soal & Simulator Kartu Kuis
-            </h1>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/30">
-              PRD R10 & Bagian 9
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-400">
-            Kelola soal formatif, 4 opsi pilihan berganda, bobot poin, dan uji langsung tampilan feedback bebas tekanan.
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Kuis</h1>
+          <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+            Kelola pertanyaan edukatif berbasis planet untuk evaluasi pemahaman siswa di AstroSphere.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <button
-            type="button"
             onClick={() => {
               setRefreshing(true);
               fetchQuestions();
             }}
             disabled={refreshing}
-            className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/90 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:opacity-50"
+            className="p-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+            title="Muat ulang bank soal"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
-            <span>{refreshing ? 'Memperbarui...' : 'Segarkan Data'}</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
           <button
-            type="button"
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors shadow-sm"
           >
-            <Plus className="h-4 w-4" />
-            <span>Tambah Soal Baru</span>
+            <Plus className="w-4 h-4" />
+            <span>Tambah Soal</span>
           </button>
         </div>
       </div>
 
-      {/* Notification Toast */}
-      {notification && (
-        <div
-          className={`flex items-center justify-between gap-3 rounded-lg border p-4 text-xs ${
-            notification.type === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-              : 'border-red-500/30 bg-red-500/10 text-red-300'
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-            ) : (
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-            )}
-            <span>{notification.message}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setNotification(null)}
-            className="rounded p-1 text-slate-400 hover:text-white"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Filter Bar with Planet Points Summary */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4.5 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <label className="text-xs font-medium text-slate-400 shrink-0">Filter Planet:</label>
+      {/* Filter Card (Matching Mockup A05) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold text-slate-500">Filter Planet:</span>
           <select
             value={selectedPlanet}
             onChange={(e) => setSelectedPlanet(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none"
+            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
           >
-            <option value="all">Semua Planet ({questions.length} Soal)</option>
-            {PLANET_OPTIONS.map((p) => {
-              const count = questions.filter((q) => q.planet_id === p.id).length;
-              return (
-                <option key={p.id} value={p.id}>
-                  {p.label} ({count} Soal)
-                </option>
-              );
-            })}
+            <option value="all">Semua Planet</option>
+            {PLANET_OPTIONS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
           </select>
-        </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          {/* Badge Total Poin Terfilter */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-300">
-            <Award className="h-4 w-4 text-amber-400" />
-            <span className="font-bold">{selectedPlanetTotalPoints} Poin</span>
-            <span className="text-[10px] text-amber-400/80">
-              ({selectedPlanet === 'all' ? 'Tata Surya' : selectedPlanet})
-            </span>
-          </div>
-
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+          {/* Quick Search */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              placeholder="Cari materi soal..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari pertanyaan / materi..."
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none"
+              className="pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-44 sm:w-56"
             />
           </div>
         </div>
+
+        {/* Total Questions Badge */}
+        <div className="shrink-0 flex items-center justify-end">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+            Menampilkan {filteredQuestions.length} Soal
+          </span>
+        </div>
       </div>
 
-      {/* Table of Questions */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
-              <tr>
-                <th className="px-5 py-3 font-semibold">Planet</th>
-                <th className="px-5 py-3 font-semibold">Soal Pertanyaan</th>
-                <th className="px-5 py-3 font-semibold text-center">Kunci Jawaban</th>
-                <th className="px-5 py-3 font-semibold text-center">Bobot</th>
-                <th className="px-5 py-3 font-semibold">Pembahasan Edukatif</th>
-                <th className="px-5 py-3 font-semibold text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-200">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-400">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-                      <span>Memuat bank soal...</span>
-                    </div>
-                  </td>
+      {/* Questions Table (Matching Mockup A05) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-12 text-center text-slate-400">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-600" />
+            <p className="text-sm font-medium">Memuat bank soal kuis...</p>
+          </div>
+        ) : filteredQuestions.length === 0 ? (
+          <div className="p-12 text-center">
+            <HelpCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-slate-800">Tidak ada soal ditemukan</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Belum ada soal pada filter ini. Klik tombol Tambah Soal untuk membuat pertanyaan baru.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-6">Pertanyaan</th>
+                  <th className="py-3 px-6">Planet</th>
+                  <th className="py-3 px-6 text-right">Aksi</th>
                 </tr>
-              ) : filteredQuestions.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
-                    Tidak ada soal kuis yang ditemukan.
-                  </td>
-                </tr>
-              ) : (
-                filteredQuestions.map((q) => {
-                  const opts = Array.isArray(q.opsi) ? q.opsi : [];
-                  const correctOptionText = opts[q.kunci_jawaban] || '-';
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {filteredQuestions.map((q) => {
+                  const planetInfo = PLANET_OPTIONS.find((p) => p.id === q.planet_id) || {
+                    id: q.planet_id,
+                    label: q.planet_id,
+                    dotColor: 'bg-slate-400',
+                    badgeBg: 'bg-slate-100 text-slate-700 border-slate-200',
+                  };
+
+                  const optionsList = Array.isArray(q.opsi) ? q.opsi : [];
+                  const correctOptionText =
+                    optionsList[q.kunci_jawaban] !== undefined
+                      ? optionsList[q.kunci_jawaban]
+                      : `Opsi ${OPTION_LABELS[q.kunci_jawaban] || q.kunci_jawaban}`;
 
                   return (
-                    <tr key={q.question_id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="px-5 py-3.5 capitalize font-medium text-slate-300">
-                        <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] border border-slate-700">
-                          {q.planet_id}
+                    <tr
+                      key={q.question_id}
+                      className="hover:bg-slate-50/70 transition-colors group"
+                    >
+                      {/* Pertanyaan */}
+                      <td className="py-4 px-6 max-w-xl">
+                        <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          {q.soal}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                            <Check className="w-3.5 h-3.5" />
+                            {optionsList.length} Opsi Jawaban
+                          </span>
+                          <span>•</span>
+                          <span>
+                            Kunci Benar:{' '}
+                            <strong className="text-slate-800 font-semibold">
+                              {correctOptionText}
+                            </strong>
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Planet Badge with Dot */}
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${planetInfo.badgeBg}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${planetInfo.dotColor}`} />
+                          {planetInfo.label}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-semibold text-white max-w-xs">
-                        <div className="line-clamp-2">{q.soal}</div>
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-mono">
-                        <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-300 font-bold border border-emerald-500/30">
-                          {OPTION_LABELS[q.kunci_jawaban]}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5 truncate max-w-[120px]">
-                          {correctOptionText}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-center font-mono text-amber-300 font-bold">
-                        +{q.bobot_poin || 50}
-                      </td>
-                      <td className="px-5 py-3.5 text-slate-300 max-w-sm">
-                        <p className="line-clamp-2 text-[11px] text-slate-400">
-                          {q.pembahasan_edukatif}
-                        </p>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Tombol Preview Kartu Kuis (PRD R10) */}
+
+                      {/* Aksi */}
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2 justify-end">
                           <button
-                            type="button"
-                            onClick={() => handleOpenPreview(q)}
-                            className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 p-1.5 text-cyan-300 transition-colors"
-                            title="Simulasi / Preview Kartu Kuis Siswa"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => handleOpenEdit(q)}
-                            className="rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 p-1.5 text-slate-300 hover:text-white transition-colors"
-                            title="Edit Soal"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-sm hover:text-blue-600"
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Ubah Soal</span>
                           </button>
                           <button
-                            type="button"
                             onClick={() => setDeletingQuestion(q)}
-                            className="rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 p-1.5 text-red-400 hover:text-red-300 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Hapus Soal"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Format Pedagogis Suportif Banner (Exact Match to Mockup A05) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0 mt-0.5">
+          <ShieldCheck className="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+            Format Pedagogis Suportif AstroSphere
+          </h4>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Seluruh soal kuis disusun tanpa pengurangan poin yang menekan. Saat siswa memilih opsi yang
+            belum tepat, sistem otomatis menampilkan{' '}
+            <strong className="text-slate-900 font-semibold">Pembahasan Edukatif</strong> untuk
+            memperkuat wawasan astronomi secara berkelanjutan.
+          </p>
         </div>
       </div>
 
-      {/* Modal Tambah & Edit Soal */}
+      {/* Add / Edit Question Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <HelpCircle className="h-5 w-5" />
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                  <HelpCircle className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">
-                    {isEditing ? 'Edit Soal Kuis Formatif' : 'Tambah Soal Kuis Baru'}
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Sistem evaluasi kurikulum berbasis formative assessment bebas stres
+                  <h3 className="text-base font-bold text-slate-900">
+                    {isEditing ? 'Ubah Pertanyaan Kuis' : 'Tambah Pertanyaan Kuis Baru'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Konfigurasi soal pilihan ganda, kunci jawaban, dan pembahasan edukatif.
                   </p>
                 </div>
               </div>
               <button
-                type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Planet */}
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Planet Selector */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                     Planet Terkait
                   </label>
                   <select
                     value={formData.planet_id}
                     onChange={(e) => setFormData({ ...formData, planet_id: e.target.value })}
-                    required
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
                   >
                     {PLANET_OPTIONS.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.label} ({p.id})
+                        {p.label}
                       </option>
                     ))}
                   </select>
@@ -516,132 +506,129 @@ export default function AdminQuizzesPage() {
 
                 {/* Bobot Poin */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Bobot Poin (Standar PRD: 50 Poin)
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Bobot Hadiah Poin
                   </label>
                   <input
                     type="number"
-                    required
-                    min="10"
-                    max="100"
+                    min={10}
+                    max={200}
+                    step={10}
                     value={formData.bobot_poin}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        bobot_poin: parseInt(e.target.value) || 50,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none font-mono"
+                    onChange={(e) => setFormData({ ...formData, bobot_poin: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
-              {/* Teks Pertanyaan */}
+              {/* Soal Text */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Teks Pertanyaan Soal
-                </label>
-                <textarea
-                  rows={2}
-                  required
-                  value={formData.soal}
-                  onChange={(e) => setFormData({ ...formData, soal: e.target.value })}
-                  placeholder="Ketik pertanyaan ilmiah..."
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-xs text-white focus:border-cyan-500 focus:outline-none leading-relaxed"
-                />
-              </div>
-
-              {/* 4 Pilihan Jawaban (A, B, C, D) */}
-              <div className="space-y-2.5">
-                <label className="block text-xs font-medium text-slate-300">
-                  4 Pilihan Jawaban & Penentu Kunci (Klik radio button untuk kunci):
-                </label>
-
-                {OPTION_LABELS.map((label, idx) => {
-                  const isKey = formData.kunci_jawaban === idx;
-                  return (
-                    <div
-                      key={label}
-                      className={`flex items-center gap-2 rounded-xl border p-2.5 transition-all ${
-                        isKey
-                          ? 'border-emerald-500/60 bg-emerald-950/20'
-                          : 'border-slate-800 bg-slate-950/50'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, kunci_jawaban: idx })}
-                        className={`flex h-6 w-6 items-center justify-center rounded-lg font-mono text-xs font-bold transition-all ${
-                          isKey
-                            ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30'
-                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-                        }`}
-                        title="Jadikan Kunci Jawaban Benar"
-                      >
-                        {label}
-                      </button>
-
-                      <input
-                        type="text"
-                        required
-                        value={formData.opsi[idx]}
-                        onChange={(e) => {
-                          const newOpts = [...formData.opsi] as [string, string, string, string];
-                          newOpts[idx] = e.target.value;
-                          setFormData({ ...formData, opsi: newOpts });
-                        }}
-                        placeholder={`Teks pilihan jawaban ${label}...`}
-                        className="flex-1 bg-transparent border-0 px-2 py-1 text-xs text-white focus:outline-none"
-                      />
-
-                      {isKey && (
-                        <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/30 shrink-0">
-                          KUNCI BENAR
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pembahasan Edukatif (PRD R10) */}
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Pembahasan Edukatif (Tampil otomatis saat siswa menjawab untuk pembelajaran bebas stres)
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Teks Pertanyaan <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   rows={3}
                   required
-                  value={formData.pembahasan_edukatif}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pembahasan_edukatif: e.target.value })
-                  }
-                  placeholder="Jelaskan alasan ilmiah mengapa jawaban ini benar..."
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-xs text-white focus:border-cyan-500 focus:outline-none leading-relaxed"
+                  placeholder="Tuliskan pertanyaan astronomi yang memancing rasa ingin tahu siswa..."
+                  value={formData.soal}
+                  onChange={(e) => setFormData({ ...formData, soal: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+              {/* 4 Opsi Jawaban with Correct Key Radio */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                    Pilihan Jawaban (A, B, C, D) & Kunci Benar
+                  </label>
+                  <span className="text-xs text-slate-400">Pilih radio untuk menentukan kunci</span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {formData.opsi.map((opt, idx) => {
+                    const isKey = formData.kunci_jawaban === idx;
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
+                          isKey
+                            ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-400'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                          <input
+                            type="radio"
+                            name="kunci_jawaban"
+                            checked={isKey}
+                            onChange={() => setFormData({ ...formData, kunci_jawaban: idx })}
+                            className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                          />
+                          <span
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                              isKey
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {OPTION_LABELS[idx]}
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder={`Jawaban opsi ${OPTION_LABELS[idx]}...`}
+                          value={opt}
+                          onChange={(e) => {
+                            const newOptions = [...formData.opsi] as [string, string, string, string];
+                            newOptions[idx] = e.target.value;
+                            setFormData({ ...formData, opsi: newOptions });
+                          }}
+                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        {isKey && (
+                          <span className="text-xs font-semibold text-blue-700 px-2 py-0.5 rounded bg-blue-100/70 shrink-0">
+                            Kunci Jawaban
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pembahasan Edukatif */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Pembahasan Edukatif (Feedback Saat Salah) <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Jelaskan fakta ilmiah mengapa kunci tersebut benar sehingga siswa tetap mendapat pelajaran bermakna..."
+                  value={formData.pembahasan_edukatif}
+                  onChange={(e) => setFormData({ ...formData, pembahasan_edukatif: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  disabled={saving}
-                  className="rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white transition-colors"
+                  className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
                 >
-                  {saving ? (
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
-                  )}
-                  <span>{saving ? 'Menyimpan...' : 'Simpan Soal'}</span>
+                  <Save className="w-4 h-4" />
+                  <span>{saving ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Buat Soal'}</span>
                 </button>
               </div>
             </form>
@@ -649,158 +636,41 @@ export default function AdminQuizzesPage() {
         </div>
       )}
 
-      {/* MODAL SIMULASI / PREVIEW KARTU KUIS SISWA (PRD R10) */}
-      {previewQuestion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                  <Eye className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">
-                    Simulasi Kartu Kuis Siswa (PRD R10)
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Planet: <span className="font-semibold capitalize text-cyan-300">{previewQuestion.planet_id}</span> &bull; {previewQuestion.bobot_poin} Poin
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewQuestion(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              {/* Soal */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-4">
-                <p className="text-xs font-semibold text-white leading-relaxed">
-                  {previewQuestion.soal}
-                </p>
-              </div>
-
-              {/* 4 Opsi Interaktif */}
-              <div className="space-y-2">
-                {(Array.isArray(previewQuestion.opsi) ? previewQuestion.opsi : []).map(
-                  (opt, idx) => {
-                    const isSelected = previewSelectedOption === idx;
-                    const isKey = previewQuestion.kunci_jawaban === idx;
-                    const hasAnswered = previewSelectedOption !== null;
-
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setPreviewSelectedOption(idx)}
-                        className={`w-full flex items-center justify-between rounded-xl border p-3 text-left text-xs transition-all ${
-                          hasAnswered && isKey
-                            ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200'
-                            : hasAnswered && isSelected && !isKey
-                            ? 'border-rose-500/60 bg-rose-500/10 text-rose-200'
-                            : isSelected
-                            ? 'border-cyan-500 bg-cyan-500/10 text-white font-semibold'
-                            : 'border-slate-800 bg-slate-950/50 text-slate-300 hover:border-slate-700 hover:bg-slate-950'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-800 font-mono text-[10px] text-slate-400">
-                            {OPTION_LABELS[idx]}
-                          </span>
-                          <span>{opt}</span>
-                        </div>
-
-                        {hasAnswered && isKey && (
-                          <span className="text-[10px] font-bold text-emerald-400">BENAR</span>
-                        )}
-                        {hasAnswered && isSelected && !isKey && (
-                          <span className="text-[10px] font-bold text-rose-400">SALAH</span>
-                        )}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-
-              {/* Pembahasan Edukatif Otomatis Muncul */}
-              {previewSelectedOption !== null && (
-                <div
-                  className={`rounded-xl border p-4 text-xs leading-relaxed animate-in fade-in duration-200 ${
-                    previewSelectedOption === previewQuestion.kunci_jawaban
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                      : 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 font-bold mb-1">
-                    <BookOpen className="h-4 w-4" />
-                    <span>
-                      {previewSelectedOption === previewQuestion.kunci_jawaban
-                        ? 'Tepat Sekali!'
-                        : 'Umpan Balik Bebas Stres:'}
-                    </span>
-                  </div>
-                  <p>{previewQuestion.pembahasan_edukatif}</p>
-                </div>
-              )}
-
-              {/* Reset Uji Coba */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setPreviewSelectedOption(null)}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Ulangi Simulasi Jawaban</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewQuestion(null)}
-                  className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200"
-                >
-                  Tutup Simulator
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete Confirmation Modal */}
       {deletingQuestion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-slate-900 p-6 shadow-2xl">
-            <div className="flex items-center gap-3 text-red-400 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
-                <Trash2 className="h-5 w-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Hapus Soal Kuis</h3>
-                <p className="text-xs text-slate-400">Tindakan ini tidak dapat dibatalkan</p>
+                <h3 className="text-base font-bold text-slate-900">Hapus Soal Kuis?</h3>
+                <p className="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
               </div>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Apakah Anda yakin ingin menghapus soal ini dari planet {deletingQuestion.planet_id}?
+
+            <p className="text-sm text-slate-600">
+              Apakah Anda yakin ingin menghapus pertanyaan ini dari bank soal{' '}
+              <strong className="text-slate-900 font-semibold">{deletingQuestion.planet_id}</strong>?
             </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
+            <p className="text-xs text-slate-500 italic bg-slate-50 p-2.5 rounded-lg border border-slate-200 line-clamp-2">
+              "{deletingQuestion.soal}"
+            </p>
+
+            <div className="pt-2 flex items-center justify-end gap-3">
               <button
-                type="button"
                 onClick={() => setDeletingQuestion(null)}
-                className="rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white"
+                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
               >
                 Batal
               </button>
               <button
-                type="button"
                 onClick={handleDeleteConfirm}
                 disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-red-600 hover:bg-red-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-red-600/20"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
               >
-                {saving ? 'Menghapus...' : 'Ya, Hapus Soal'}
+                {saving ? 'Menghapus...' : 'Ya, Hapus'}
               </button>
             </div>
           </div>

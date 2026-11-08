@@ -60,9 +60,9 @@ export type VisualConfig = {
 };
 
 export type AdminUser = {
-  user_id: string;
   email: string;
-  created_at: string;
+  user_id?: string | null;
+  created_at?: string;
 };
 
 export type Planet = {

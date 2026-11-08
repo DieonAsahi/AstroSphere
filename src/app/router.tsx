@@ -23,16 +23,6 @@ const MyExplorationsPage = lazy(() =>
     default: m.MyExplorationsPage,
   })),
 );
-const AdminMetricsPage = lazy(() =>
-  import('../features/metrics/AdminMetricsPage').then((m) => ({
-    default: m.AdminMetricsPage,
-  })),
-);
-const AdminCmsPage = lazy(() =>
-  import('../features/cms/AdminCmsPage').then((m) => ({
-    default: m.AdminCmsPage,
-  })),
-);
 // Admin Mission Control & CMS Sub-Modules
 const AdminLoginPage = lazy(() => import('./admin/login/page'));
 const AdminDashboardLayout = lazy(() => import('./admin/(dashboard)/layout'));
@@ -41,8 +31,6 @@ const AdminPlanetsPage = lazy(() => import('./admin/(dashboard)/planets/page'));
 const AdminHistoryPage = lazy(() => import('./admin/(dashboard)/history/page'));
 const AdminPhenomenaPage = lazy(() => import('./admin/(dashboard)/phenomena/page'));
 const AdminQuizzesPage = lazy(() => import('./admin/(dashboard)/quizzes/page'));
-const AdminShipsPage = lazy(() => import('./admin/(dashboard)/ships/page'));
-const AdminPlayersPage = lazy(() => import('./admin/(dashboard)/players/page'));
 const AboutPage = lazy(() =>
   import('../features/about/AboutPage').then((m) => ({
     default: m.AboutPage,
@@ -193,38 +181,6 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<RouteLoadingFallback />}>
                 <AdminQuizzesPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: 'ships',
-            element: (
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <AdminShipsPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: 'players',
-            element: (
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <AdminPlayersPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: 'metrik',
-            element: (
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <AdminMetricsPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: 'cms-observatorium',
-            element: (
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <AdminCmsPage />
               </Suspense>
             ),
           },

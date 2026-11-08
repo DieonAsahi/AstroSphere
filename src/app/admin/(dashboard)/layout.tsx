@@ -1,21 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Globe,
-  MapPin,
+  Compass,
   Sparkles,
   HelpCircle,
-  Rocket,
-  Users,
   LogOut,
-  ShieldCheck,
-  ExternalLink,
-  ChevronRight,
+  Search,
   Menu,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase/client';
 
@@ -23,17 +20,15 @@ interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
 }
 
+// 5 Menu Resmi Sesuai Desain A01 - A05
 const NAV_ITEMS: NavItem[] = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Data Planet', href: '/admin/planets', icon: Globe, badge: '8' },
-  { name: 'Sejarah & POI', href: '/admin/history', icon: MapPin },
-  { name: 'Fenomena Astronomi', href: '/admin/phenomena', icon: Sparkles },
-  { name: 'Bank Soal Kuis', href: '/admin/quizzes', icon: HelpCircle },
-  { name: 'Hanggar Pesawat', href: '/admin/ships', icon: Rocket, badge: '3' },
-  { name: 'Progres Pemain', href: '/admin/players', icon: Users, badge: 'Cloud' },
+  { name: 'Planet', href: '/admin/planets', icon: Globe },
+  { name: 'Sejarah & POI', href: '/admin/history', icon: Compass },
+  { name: 'Fenomena', href: '/admin/phenomena', icon: Sparkles },
+  { name: 'Kuis', href: '/admin/quizzes', icon: HelpCircle },
 ];
 
 export default function AdminDashboardLayout({
@@ -48,7 +43,9 @@ export default function AdminDashboardLayout({
   const [loading, setLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // Validasi sesi admin dengan Supabase Auth + RPC public.is_admin() / admin_users
   useEffect(() => {
     let isMounted = true;
 
@@ -64,21 +61,33 @@ export default function AdminDashboardLayout({
           return;
         }
 
-        // Verifikasi ke whitelist public.admin_users
-        const { data: adminRecord, error: dbError } = await supabase
-          .from('admin_users')
-          .select('email')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        let isAuthorized = false;
+        try {
+          const { data: rpcAdmin } = await supabase.rpc('is_admin');
+          if (rpcAdmin === true) isAuthorized = true;
+        } catch {
+          // Lanjutkan cek manual
+        }
 
-        if (dbError || !adminRecord) {
+        if (!isAuthorized) {
+          const userEmail = user.email || '';
+          const { data: adminRecord } = await supabase
+            .from('admin_users')
+            .select('email')
+            .or(`user_id.eq.${user.id},email.ilike.${userEmail}`)
+            .maybeSingle();
+
+          if (adminRecord) isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
           await supabase.auth.signOut();
           navigate('/admin/login?error=unauthorized', { replace: true });
           return;
         }
 
         if (isMounted) {
-          setAdminEmail(adminRecord.email || user.email || 'Admin');
+          setAdminEmail(user.email || 'Admin AstroSphere');
           setLoading(false);
         }
       } catch (err) {
@@ -104,22 +113,33 @@ export default function AdminDashboardLayout({
     }
   };
 
+  // Breadcrumb dinamis
+  const breadcrumbTitle = useMemo(() => {
+    if (pathname === '/admin') return 'Dashboard';
+    if (pathname.startsWith('/admin/planets')) return 'Data Planet';
+    if (pathname.startsWith('/admin/history')) return 'Sejarah & POI';
+    if (pathname.startsWith('/admin/phenomena')) return 'Fenomena Astronomi';
+    if (pathname.startsWith('/admin/quizzes')) return 'Kuis';
+    return 'Console';
+  }, [pathname]);
+
+  // Initials admin avatar
+  const initials = useMemo(() => {
+    if (!adminEmail) return 'AA';
+    const clean = adminEmail.split('@')[0].toUpperCase();
+    return clean.slice(0, 2);
+  }, [adminEmail]);
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="relative flex h-14 w-14 items-center justify-center">
-            <div className="absolute inset-0 animate-ping rounded-full bg-cyan-500/20" />
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
-            <Globe className="absolute h-5 w-5 text-cyan-400" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 animate-pulse">
+            <Globe className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-slate-100">
-              AstroSphere Mission Control
-            </h2>
-            <p className="text-xs text-slate-400">
-              Memvalidasi akses administrator...
-            </p>
+            <h2 className="text-sm font-bold text-slate-900">AstroSphere CMS Console</h2>
+            <p className="text-xs text-slate-500">Memvalidasi akses administrator...</p>
           </div>
         </div>
       </div>
@@ -127,200 +147,189 @@ export default function AdminDashboardLayout({
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
-      {/* Sidebar Mobile Overlay */}
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
+      {/* Mobile Drawer Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar Desktop & Mobile */}
+      {/* =========================================================================
+          1. SIDEBAR NAVIGASI (LIGHT THEME — HANYA 5 MENU SESUAI DESAIN A01 - A05)
+          ========================================================================= */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-800 bg-slate-950/95 backdrop-blur-md transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between border-b border-slate-800/80 px-6">
+        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
           <Link
             to="/admin"
             className="flex items-center gap-3 transition-opacity hover:opacity-90"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 p-0.5 shadow-lg shadow-indigo-500/20">
-              <div className="flex h-full w-full items-center justify-center rounded-[7px] bg-slate-950">
-                <Globe className="h-5 w-5 text-cyan-400" />
-              </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/25">
+              <Globe className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold tracking-tight text-white">AstroSphere</span>
-                <span className="rounded bg-indigo-500/20 px-1 py-0.5 text-[9px] font-semibold text-indigo-300 border border-indigo-500/30">
-                  CMS
-                </span>
-              </div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
-                Mission Control
-              </p>
+              <span className="font-bold tracking-tight text-slate-900 text-base leading-tight block">
+                AstroSphere
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                CMS Console
+              </span>
             </div>
           </Link>
           <button
             type="button"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-900 hover:text-white lg:hidden"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Navigation Section */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 scrollbar-thin scrollbar-thumb-slate-800">
-          <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-            Modul Edukasi
-          </div>
-          <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                item.href === '/admin'
-                  ? pathname === '/admin'
-                  : pathname.startsWith(item.href);
+        {/* 5 Menu Utama */}
+        <div className="flex-1 overflow-y-auto px-3.5 py-5 space-y-1">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              item.href === '/admin'
+                ? pathname === '/admin'
+                : pathname.startsWith(item.href);
 
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-600/30 to-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
-                      : 'text-slate-300 hover:bg-slate-900/80 hover:text-white border border-transparent'
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Icon
+                  className={`h-4 w-4 shrink-0 transition-colors ${
+                    isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'
                   }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`h-4 w-4 transition-colors ${
-                        isActive
-                          ? 'text-cyan-400'
-                          : 'text-slate-400 group-hover:text-slate-200'
-                      }`}
-                    />
-                    <span>{item.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {item.badge && (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          isActive
-                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                    {isActive && (
-                      <ChevronRight className="h-3 w-3 text-cyan-400/70" />
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Quick Player Mode Link in Sidebar */}
-          <div className="mt-6 border-t border-slate-800/80 pt-4 px-1">
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-300 hover:border-slate-700 hover:bg-slate-900 hover:text-white transition-all"
-            >
-              <div className="flex items-center gap-2">
-                <Rocket className="h-4 w-4 text-cyan-400" />
-                <span>Lihat Halaman Utama (/)</span>
-              </div>
-              <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-            </a>
-          </div>
+                />
+                <span className="truncate">{item.name}</span>
+              </Link>
+            );
+          })}
         </div>
 
-        {/* User Identity & Logout */}
-        <div className="border-t border-slate-800/80 bg-slate-950/70 p-4">
-          <div className="mb-3 flex items-center gap-3 rounded-lg bg-slate-900/80 p-2.5 border border-slate-800">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <ShieldCheck className="h-4 w-4" />
+        {/* Sidebar Footer */}
+        <div className="border-t border-slate-100 p-4 space-y-3">
+          {/* Status Online */}
+          <div className="flex items-center justify-between px-1 text-xs text-slate-500 font-medium">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+              <span>Sistem Online</span>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="truncate text-xs font-medium text-slate-200">
-                  {adminEmail || 'Administrator'}
-                </span>
-              </div>
-              <p className="truncate text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                Admin Whitelist
-              </p>
-            </div>
+            <span className="text-[11px] text-slate-400 font-mono">v3.8</span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            <span>Keluar (Logout)</span>
-          </button>
+          {/* Admin Profile & Logout */}
+          <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-slate-50/80 p-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-xs shrink-0">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-slate-800 leading-tight">
+                  Dr. Eleanor Vance
+                </p>
+                <p className="truncate text-[10px] text-slate-500">
+                  {adminEmail || 'admin@astrosphere.edu'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
+              title="Keluar dari panel admin"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* =========================================================================
+          2. MAIN CONTENT AREA + TOP HEADER BAR
+          ========================================================================= */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top Navbar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-800/80 bg-slate-950/80 px-6 backdrop-blur-md">
-          <div className="flex items-center gap-4">
+        {/* Top Header Bar */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className="rounded-lg p-2 text-slate-400 hover:bg-slate-900 hover:text-white lg:hidden"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
               onClick={() => setMobileMenuOpen(true)}
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-slate-400">Admin</span>
-              <span className="text-slate-600">/</span>
-              <span className="font-semibold text-slate-200 capitalize">
-                {pathname === '/admin'
-                  ? 'Ringkasan Dashboard'
-                  : pathname.replace('/admin/', '').replace('-', ' ')}
-              </span>
+
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+              <Link to="/admin" className="hover:text-slate-900 transition-colors">
+                CMS
+              </Link>
+              <span className="text-slate-300">/</span>
+              <span className="font-semibold text-slate-900">{breadcrumbTitle}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Supabase DB Connected</span>
+          {/* Search Bar & Profile Badge */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Quick Search */}
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari konten..."
+                className="w-44 lg:w-60 rounded-xl border border-slate-200 bg-slate-50/60 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none transition-all"
+              />
             </div>
 
+            {/* Link ke Jelajah Game 3D */}
             <a
               href="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-700 hover:bg-slate-800 hover:text-white transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 transition-colors"
+              title="Buka kanvas 3D pemain"
             >
-              <Rocket className="h-3.5 w-3.5 text-cyan-400" />
-              <span>Lihat Halaman Utama (/)</span>
-              <ExternalLink className="h-3 w-3 text-slate-400" />
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>Lihat Kanvas 3D</span>
             </a>
+
+            {/* Top User Badge */}
+            <div className="flex items-center gap-2.5 border-l border-slate-200 pl-3 sm:pl-4">
+              <div className="text-right hidden sm:block">
+                <span className="block text-xs font-bold text-slate-900 leading-tight">
+                  Dr. Eleanor Vance
+                </span>
+                <span className="block text-[10px] text-slate-400">Admin AstroSphere</span>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-xs shadow-sm">
+                {initials}
+              </div>
+            </div>
           </div>
         </header>
 
-        {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-6 scrollbar-thin scrollbar-thumb-slate-800">
+        {/* Scrollable Main Viewport */}
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-6 sm:p-8">
           <div className="mx-auto max-w-7xl">{children ?? <Outlet />}</div>
         </main>
       </div>

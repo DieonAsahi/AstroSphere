@@ -55,3 +55,4 @@ playwright/.cache/
 
 # Raw large unoptimized assets (optional fallback)
 # raw-assets/
+/agent

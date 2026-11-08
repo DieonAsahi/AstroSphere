@@ -1,102 +1,116 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  MapPin,
+  Compass,
   Plus,
   Pencil,
-  Trash2,
   RefreshCw,
-  Search,
   AlertCircle,
   CheckCircle2,
   X,
   Save,
-  Filter,
-  Compass,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
-import type { HistoryEvent, PlanetSlug, PoiCategory } from '../../../../types/database';
+import type { HistoryEvent, PoiCategory } from '../../../../types/database';
 
-const PLANET_OPTIONS: { id: PlanetSlug; label: string }[] = [
-  { id: 'mercury', label: 'Merkurius' },
-  { id: 'venus', label: 'Venus' },
-  { id: 'earth', label: 'Bumi' },
-  { id: 'mars', label: 'Mars' },
-  { id: 'jupiter', label: 'Jupiter' },
-  { id: 'saturn', label: 'Saturnus' },
-  { id: 'uranus', label: 'Uranus' },
-  { id: 'neptune', label: 'Neptunus' },
+const PLANET_OPTIONS = [
+  { id: 'earth', name: 'Bumi' },
+  { id: 'mars', name: 'Mars' },
+  { id: 'venus', name: 'Venus' },
+  { id: 'mercury', name: 'Merkurius' },
+  { id: 'jupiter', name: 'Jupiter' },
+  { id: 'saturn', name: 'Saturnus' },
+  { id: 'uranus', name: 'Uranus' },
+  { id: 'neptune', name: 'Neptunus' },
 ];
 
-const POI_CATEGORIES: { id: PoiCategory; label: string; desc: string }[] = [
-  {
-    id: 'SURFACE_LANDING',
-    label: 'Pendaratan Permukaan (Surface Landing)',
-    desc: 'Wahana/rover mendarat di permukaan planet kebumian (Bumi, Mars, Venus).',
-  },
-  {
-    id: 'ORBITAL_FLYBY',
-    label: 'Lintas Wahana / Flyby (Orbital Flyby)',
-    desc: 'Wahana melintas di dekat planet untuk gravitasi/pemotretan.',
-  },
-  {
-    id: 'OBSERVATION',
-    label: 'Observasi & Eksperimen (Observation)',
-    desc: 'Stasiun luar angkasa, wahana pengorbit, atau observasi atmosfer.',
-  },
-];
-
-// Helper kalkulasi vektor 3D Kartesius dari koordinat bola (Lat/Lng)
-function calculateVector3(lat: number, lng: number, radius = 5.0) {
-  const phi = ((90 - lat) * Math.PI) / 180;
-  const theta = ((lng + 180) * Math.PI) / 180;
-
-  const x = -radius * Math.sin(phi) * Math.cos(theta);
-  const y = radius * Math.cos(phi);
-  const z = radius * Math.sin(phi) * Math.sin(theta);
-
-  return {
-    x: Number(x.toFixed(3)),
-    y: Number(y.toFixed(3)),
-    z: Number(z.toFixed(3)),
-  };
+function getPlanetBadgeStyle(planetId: string) {
+  switch (planetId) {
+    case 'mars':
+      return {
+        bg: 'bg-red-50 text-red-700 border-red-200',
+        dot: 'bg-red-500',
+        label: 'Mars',
+      };
+    case 'venus':
+      return {
+        bg: 'bg-amber-50 text-amber-700 border-amber-200',
+        dot: 'bg-amber-500',
+        label: 'Venus',
+      };
+    case 'jupiter':
+      return {
+        bg: 'bg-orange-50 text-orange-700 border-orange-200',
+        dot: 'bg-orange-500',
+        label: 'Jupiter',
+      };
+    case 'earth':
+      return {
+        bg: 'bg-blue-50 text-blue-700 border-blue-200',
+        dot: 'bg-blue-500',
+        label: 'Bumi',
+      };
+    case 'mercury':
+      return {
+        bg: 'bg-slate-100 text-slate-700 border-slate-300',
+        dot: 'bg-slate-500',
+        label: 'Merkurius',
+      };
+    case 'saturn':
+      return {
+        bg: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+        dot: 'bg-yellow-500',
+        label: 'Saturnus',
+      };
+    case 'uranus':
+      return {
+        bg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        dot: 'bg-cyan-500',
+        label: 'Uranus',
+      };
+    case 'neptune':
+      return {
+        bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        dot: 'bg-indigo-500',
+        label: 'Neptunus',
+      };
+    default:
+      return {
+        bg: 'bg-slate-100 text-slate-700 border-slate-200',
+        dot: 'bg-slate-400',
+        label: planetId,
+      };
+  }
 }
+
+const DEFAULT_EVENT: Partial<HistoryEvent> = {
+  planet_id: 'earth',
+  tahun_kejadian: new Date().getFullYear(),
+  judul: '',
+  nama_wahana: '',
+  deskripsi: '',
+  koordinat_lat: 0,
+  koordinat_lng: 0,
+};
 
 export default function AdminHistoryPage() {
   const [events, setEvents] = useState<HistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filters (PRD R04 & Bagian 8)
-  const [selectedPlanet, setSelectedPlanet] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const minYear = 1950;
-  const [maxYear, setMaxYear] = useState<number>(2030);
+  // Filters
+  const [selectedPlanetFilter, setSelectedPlanetFilter] = useState<string>('ALL');
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
 
-  // Form Modal (Tambah / Edit)
-  const [modalOpen, setModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<Partial<HistoryEvent>>({
-    planet_id: 'earth',
-    tahun_kejadian: 1969,
-    kategori_poi: 'SURFACE_LANDING',
-    judul: '',
-    deskripsi: '',
-    koordinat_lat: 28.57,
-    koordinat_lng: -80.64,
-    nama_wahana: '',
-  });
-
-  // Delete Confirmation Modal
-  const [deletingEvent, setDeletingEvent] = useState<HistoryEvent | null>(null);
+  // Modal State
+  const [editingEvent, setEditingEvent] = useState<HistoryEvent | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [formData, setFormData] = useState<Partial<HistoryEvent>>(DEFAULT_EVENT);
   const [saving, setSaving] = useState(false);
 
-  // 2D Map Picker Ref
-  const mapPickerRef = useRef<HTMLDivElement>(null);
-
-  // Alerts
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -107,7 +121,7 @@ export default function AdminHistoryPage() {
       const { data, error } = await supabase
         .from('history_events')
         .select('*')
-        .order('tahun_kejadian', { ascending: false });
+        .order('tahun_kejadian', { ascending: true });
 
       if (error) throw error;
       setEvents((data || []) as HistoryEvent[]);
@@ -115,7 +129,7 @@ export default function AdminHistoryPage() {
       console.error('Error fetching history events:', err);
       setNotification({
         type: 'error',
-        message: 'Gagal memuat daftar peristiwa sejarah dari Supabase.',
+        message: 'Gagal mengambil data peristiwa sejarah dari Supabase.',
       });
     } finally {
       setLoading(false);
@@ -127,190 +141,174 @@ export default function AdminHistoryPage() {
     fetchEvents();
   }, [fetchEvents]);
 
-  // Filtered List based on Planet, Category, Year Range, and Search (R04)
+  // Saring peristiwa sesuai filter planet dan tahun
   const filteredEvents = useMemo(() => {
-    return events.filter((item) => {
-      if (selectedPlanet !== 'all' && item.planet_id !== selectedPlanet) return false;
-      if (selectedCategory !== 'all' && item.kategori_poi !== selectedCategory) return false;
-      if (item.tahun_kejadian < minYear || item.tahun_kejadian > maxYear) return false;
+    return events.filter((ev) => {
+      const matchPlanet =
+        selectedPlanetFilter === 'ALL' || ev.planet_id === selectedPlanetFilter;
+      const matchYear =
+        selectedYearFilter === 'ALL' ||
+        String(ev.tahun_kejadian) === selectedYearFilter ||
+        (selectedYearFilter === '1960s' && ev.tahun_kejadian >= 1960 && ev.tahun_kejadian <= 1969) ||
+        (selectedYearFilter === '1970s' && ev.tahun_kejadian >= 1970 && ev.tahun_kejadian <= 1979) ||
+        (selectedYearFilter === '1990s' && ev.tahun_kejadian >= 1990 && ev.tahun_kejadian <= 1999) ||
+        (selectedYearFilter === '2000s' && ev.tahun_kejadian >= 2000 && ev.tahun_kejadian <= 2009) ||
+        (selectedYearFilter === '2010s' && ev.tahun_kejadian >= 2010 && ev.tahun_kejadian <= 2019) ||
+        (selectedYearFilter === '2020s' && ev.tahun_kejadian >= 2020);
 
-      if (searchQuery.trim() !== '') {
-        const query = searchQuery.toLowerCase();
-        const matchTitle = item.judul.toLowerCase().includes(query);
-        const matchWahana = item.nama_wahana?.toLowerCase().includes(query);
-        const matchDesc = item.deskripsi.toLowerCase().includes(query);
-        if (!matchTitle && !matchWahana && !matchDesc) return false;
-      }
-      return true;
+      return matchPlanet && matchYear;
     });
-  }, [events, selectedPlanet, selectedCategory, minYear, maxYear, searchQuery]);
-
-  const handleOpenAdd = () => {
-    setIsEditing(false);
-    setFormData({
-      planet_id: selectedPlanet !== 'all' ? selectedPlanet : 'earth',
-      tahun_kejadian: new Date().getFullYear(),
-      kategori_poi: 'SURFACE_LANDING',
-      judul: '',
-      deskripsi: '',
-      koordinat_lat: 0,
-      koordinat_lng: 0,
-      nama_wahana: '',
-    });
-    setModalOpen(true);
-  };
+  }, [events, selectedPlanetFilter, selectedYearFilter]);
 
   const handleOpenEdit = (event: HistoryEvent) => {
-    setIsEditing(true);
+    setEditingEvent(event);
+    setFormData({ ...event });
+    setIsAdding(false);
+  };
+
+  const handleOpenAdd = () => {
+    setEditingEvent(null);
     setFormData({
-      event_id: event.event_id,
-      planet_id: event.planet_id,
-      tahun_kejadian: event.tahun_kejadian,
-      kategori_poi: event.kategori_poi || 'SURFACE_LANDING',
-      judul: event.judul,
-      deskripsi: event.deskripsi,
-      koordinat_lat: Number(event.koordinat_lat),
-      koordinat_lng: Number(event.koordinat_lng),
-      nama_wahana: event.nama_wahana || '',
+      ...DEFAULT_EVENT,
+      planet_id: selectedPlanetFilter !== 'ALL' ? selectedPlanetFilter : 'earth',
     });
-    setModalOpen(true);
+    setIsAdding(true);
   };
 
-  // Visual 2D Coordinate Picker Click Handler
-  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!mapPickerRef.current) return;
-    const rect = mapPickerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // x: 0..width -> lng: -180..+180
-    // y: 0..height -> lat: +90..-90
-    const lng = (x / rect.width) * 360 - 180;
-    const lat = 90 - (y / rect.height) * 180;
-
-    setFormData((prev) => ({
-      ...prev,
-      koordinat_lat: Number(lat.toFixed(2)),
-      koordinat_lng: Number(lng.toFixed(2)),
-    }));
+  const handleCloseModal = () => {
+    setEditingEvent(null);
+    setIsAdding(false);
+    setFormData(DEFAULT_EVENT);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleResetFilter = () => {
+    setSelectedPlanetFilter('ALL');
+    setSelectedYearFilter('ALL');
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.judul || !formData.deskripsi || !formData.planet_id) return;
+    setSaving(true);
+    setNotification(null);
+
+    // Validasi koordinat sesuai spesifikasi IAU
+    const lat = Number(formData.koordinat_lat);
+    const lng = Number(formData.koordinat_lng);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      setNotification({
+        type: 'error',
+        message: 'Koordinat Latitude harus berada di antara -90° dan 90°.',
+      });
+      setSaving(false);
+      return;
+    }
+
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      setNotification({
+        type: 'error',
+        message: 'Koordinat Longitude harus berada di antara -180° dan 180°.',
+      });
+      setSaving(false);
+      return;
+    }
 
     try {
-      setSaving(true);
-      setNotification(null);
-
-      const payload = {
-        planet_id: formData.planet_id,
-        tahun_kejadian: Number(formData.tahun_kejadian),
-        kategori_poi: formData.kategori_poi || 'SURFACE_LANDING',
-        judul: formData.judul.trim(),
-        deskripsi: formData.deskripsi.trim(),
-        koordinat_lat: Number(formData.koordinat_lat),
-        koordinat_lng: Number(formData.koordinat_lng),
-        nama_wahana: formData.nama_wahana?.trim() || null,
-      };
-
-      if (isEditing && formData.event_id) {
-        const { data, error } = await supabase
-          .from('history_events')
-          .update(payload)
-          .eq('event_id', formData.event_id)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        setEvents((prev) =>
-          prev.map((item) => (item.event_id === formData.event_id ? (data as HistoryEvent) : item))
-        );
-        setNotification({
-          type: 'success',
-          message: `Titik sejarah "${payload.judul}" berhasil diperbarui.`,
+      if (isAdding) {
+        const { error } = await supabase.from('history_events').insert({
+          planet_id: formData.planet_id || 'earth',
+          tahun_kejadian: Number(formData.tahun_kejadian) || 2024,
+          kategori_poi: (formData.kategori_poi || 'SURFACE_LANDING') as PoiCategory,
+          judul: (formData.judul || '').trim(),
+          nama_wahana: formData.nama_wahana?.trim() || null,
+          deskripsi: (formData.deskripsi || '').trim(),
+          koordinat_lat: lat,
+          koordinat_lng: lng,
         });
-      } else {
-        const { data, error } = await supabase
-          .from('history_events')
-          .insert([payload])
-          .select()
-          .single();
 
         if (error) throw error;
-
-        setEvents((prev) => [data as HistoryEvent, ...prev]);
         setNotification({
           type: 'success',
-          message: `Titik sejarah baru "${payload.judul}" berhasil ditambahkan ke ${payload.planet_id}.`,
+          message: 'Peristiwa sejarah baru berhasil ditambahkan ke Supabase!',
+        });
+      } else if (editingEvent) {
+        const { error } = await supabase
+          .from('history_events')
+          .update({
+            planet_id: formData.planet_id || editingEvent.planet_id,
+            tahun_kejadian: Number(formData.tahun_kejadian) || editingEvent.tahun_kejadian,
+            kategori_poi: (formData.kategori_poi || editingEvent.kategori_poi || 'SURFACE_LANDING') as PoiCategory,
+            judul: (formData.judul || editingEvent.judul).trim(),
+            nama_wahana: formData.nama_wahana ? formData.nama_wahana.trim() : formData.nama_wahana === null ? null : editingEvent.nama_wahana,
+            deskripsi: (formData.deskripsi || editingEvent.deskripsi).trim(),
+            koordinat_lat: lat,
+            koordinat_lng: lng,
+          })
+          .eq('event_id', editingEvent.event_id);
+
+        if (error) throw error;
+        setNotification({
+          type: 'success',
+          message: `Peristiwa "${formData.judul}" berhasil diperbarui!`,
         });
       }
 
-      setModalOpen(false);
+      handleCloseModal();
+      await fetchEvents();
     } catch (err: unknown) {
-      console.error('Error saving history event:', err);
-      setNotification({
-        type: 'error',
-        message: 'Gagal menyimpan titik sejarah. Pastikan form terisi dengan benar.',
-      });
+      console.error('Save error:', err);
+      const errMsg = err instanceof Error ? err.message : 'Gagal menyimpan peristiwa sejarah.';
+      setNotification({ type: 'error', message: errMsg });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deletingEvent) return;
+  const handleDelete = async () => {
+    if (!editingEvent) return;
+    const confirmDelete = window.confirm(
+      `Apakah Anda yakin ingin menghapus peristiwa "${editingEvent.judul}"? Tindakan ini tidak dapat dibatalkan.`
+    );
+    if (!confirmDelete) return;
 
+    setSaving(true);
     try {
-      setSaving(true);
       const { error } = await supabase
         .from('history_events')
         .delete()
-        .eq('event_id', deletingEvent.event_id);
+        .eq('event_id', editingEvent.event_id);
 
       if (error) throw error;
 
-      setEvents((prev) => prev.filter((item) => item.event_id !== deletingEvent.event_id));
       setNotification({
         type: 'success',
-        message: `Peristiwa "${deletingEvent.judul}" berhasil dihapus.`,
+        message: `Peristiwa "${editingEvent.judul}" berhasil dihapus.`,
       });
-      setDeletingEvent(null);
+      handleCloseModal();
+      await fetchEvents();
     } catch (err: unknown) {
-      console.error('Error deleting event:', err);
-      setNotification({
-        type: 'error',
-        message: 'Gagal menghapus peristiwa sejarah.',
-      });
+      console.error('Delete error:', err);
+      const errMsg = err instanceof Error ? err.message : 'Gagal menghapus peristiwa.';
+      setNotification({ type: 'error', message: errMsg });
     } finally {
       setSaving(false);
     }
   };
 
-  const vector3Preview = calculateVector3(
-    formData.koordinat_lat || 0,
-    formData.koordinat_lng || 0
-  );
-
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* 1. Header Card Sesuai Gambar A03 */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-              Manajemen Sejarah & Visual 2D Coordinate Picker
-            </h1>
-            <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/30">
-              PRD R04 & Bagian 8
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-400">
-            Kelola peristiwa pendaratan dan flyby antariksa dengan pemilih koordinat 2D interaktif serta proyeksi 3D bola.
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Sejarah &amp; POI
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            Kelola linimasa penjelajahan historis antariksa dan titik koordinat pendaratan wahana (POI) pada simulasi planet 3D.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => {
@@ -318,286 +316,248 @@ export default function AdminHistoryPage() {
               fetchEvents();
             }}
             disabled={refreshing}
-            className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/90 px-3.5 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:opacity-50"
+            className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors"
+            title="Segarkan data peristiwa"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
-            <span>{refreshing ? 'Memperbarui...' : 'Segarkan Data'}</span>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
           </button>
+
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition-all"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-all"
           >
             <Plus className="h-4 w-4" />
-            <span>Tambah Titik POI Baru</span>
+            <span>Tambah Peristiwa</span>
           </button>
         </div>
       </div>
 
-      {/* Notification Toast */}
+      {/* Notification Banner */}
       {notification && (
         <div
-          className={`flex items-center justify-between gap-3 rounded-lg border p-4 text-xs ${
+          className={`flex items-start gap-2.5 rounded-xl border p-4 text-xs font-medium ${
             notification.type === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-              : 'border-red-500/30 bg-red-500/10 text-red-300'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
-          <div className="flex items-center gap-2.5">
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-            ) : (
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-            )}
-            <span>{notification.message}</span>
-          </div>
+          {notification.type === 'success' ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1">{notification.message}</div>
           <button
             type="button"
             onClick={() => setNotification(null)}
-            className="rounded p-1 text-slate-400 hover:text-white"
+            className="text-slate-400 hover:text-slate-600"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {/* Filter Control Bar (PRD R04) */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4.5 backdrop-blur-sm space-y-4 shadow-lg">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-            <Filter className="h-4 w-4 text-cyan-400" />
-            <span>Filter Linimasa Sejarah & Eksplorasi (Mendukung R04)</span>
-          </div>
-          <span className="font-mono text-xs text-cyan-400 font-bold">
-            {filteredEvents.length} Titik Ditemukan
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Planet Filter */}
-          <div>
-            <label className="block text-[11px] font-medium text-slate-400 mb-1">
-              Filter Planet
-            </label>
+      {/* 2. Filter Bar Card Sesuai Gambar A03 */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          {/* Filter Planet */}
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600 uppercase text-[11px] tracking-wider">
+              FILTER PLANET:
+            </span>
             <select
-              value={selectedPlanet}
-              onChange={(e) => setSelectedPlanet(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+              value={selectedPlanetFilter}
+              onChange={(e) => setSelectedPlanetFilter(e.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 font-semibold focus:border-blue-600 focus:outline-none"
             >
-              <option value="all">Semua Planet (8)</option>
+              <option value="ALL">Semua Planet</option>
               {PLANET_OPTIONS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label}
+                  {p.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Kategori POI Filter (PRD Bagian 8) */}
-          <div>
-            <label className="block text-[11px] font-medium text-slate-400 mb-1">
-              Kategori POI (Bagian 8 PRD)
-            </label>
+          {/* Periode Tahun */}
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-600 uppercase text-[11px] tracking-wider">
+              PERIODE TAHUN:
+            </span>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+              value={selectedYearFilter}
+              onChange={(e) => setSelectedYearFilter(e.target.value)}
+              className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 font-semibold focus:border-blue-600 focus:outline-none"
             >
-              <option value="all">Semua Kategori</option>
-              {POI_CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.label}
-                </option>
-              ))}
+              <option value="ALL">Semua Tahun</option>
+              <option value="1960s">Dekade 1960-an (Perlombaan Antariksa)</option>
+              <option value="1970s">Dekade 1970-an (Misi Viking &amp; Venera)</option>
+              <option value="1990s">Dekade 1990-an (Pathfinder &amp; ISS)</option>
+              <option value="2000s">Dekade 2000-an (Spirit &amp; Opportunity)</option>
+              <option value="2010s">Dekade 2010-an (Curiosity)</option>
+              <option value="2020s">Dekade 2020-an (Perseverance &amp; Artemis)</option>
             </select>
           </div>
 
-          {/* Rentang Tahun Slider */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-              <span>Maksimal Tahun Kejadian:</span>
-              <span className="font-mono font-bold text-cyan-400">≤ {maxYear}</span>
-            </div>
-            <input
-              type="range"
-              min={1955}
-              max={2030}
-              value={maxYear}
-              onChange={(e) => setMaxYear(Number(e.target.value))}
-              className="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
-            />
-            <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-              <span>1955</span>
-              <span>1990</span>
-              <span>2030</span>
-            </div>
-          </div>
+          {/* Reset Filter */}
+          <button
+            type="button"
+            onClick={handleResetFilter}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Reset</span>
+          </button>
+        </div>
 
-          {/* Pencarian Teks */}
-          <div>
-            <label className="block text-[11px] font-medium text-slate-400 mb-1">
-              Cari Misi / Wahana
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Apollo, Rover, Galileo..."
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
-              />
-            </div>
-          </div>
+        {/* Total Entitas Badge */}
+        <div className="flex items-center gap-2 self-start lg:self-auto text-xs">
+          <span className="text-slate-500 font-medium">Total Entitas Terdaftar:</span>
+          <span className="rounded-lg bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-800">
+            {filteredEvents.length} Peristiwa POI
+          </span>
         </div>
       </div>
 
-      {/* Table of Events */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm overflow-hidden shadow-xl">
+      {/* 3. Table Card Sesuai Gambar A03 */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
+            <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200 text-[11px] uppercase tracking-wider">
               <tr>
-                <th className="px-5 py-3 font-semibold text-center w-16">Tahun</th>
-                <th className="px-5 py-3 font-semibold">Planet</th>
-                <th className="px-5 py-3 font-semibold">Kategori</th>
-                <th className="px-5 py-3 font-semibold">Judul Misi</th>
-                <th className="px-5 py-3 font-semibold">Wahana</th>
-                <th className="px-5 py-3 font-semibold text-center">Koordinat Bola</th>
-                <th className="px-5 py-3 font-semibold text-right">Aksi</th>
+                <th className="px-6 py-3.5 w-24">TAHUN</th>
+                <th className="px-6 py-3.5">NAMA PERISTIWA</th>
+                <th className="px-6 py-3.5 w-32">PLANET</th>
+                <th className="px-6 py-3.5 text-right w-28">AKSI</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-200">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
+                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex items-center justify-center gap-2">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-                      <span>Memuat linimasa sejarah...</span>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <span>Memuat linimasa sejarah POI...</span>
                     </div>
                   </td>
                 </tr>
               ) : filteredEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                    Tidak ada peristiwa sejarah yang cocok dengan kriteria filter saat ini.
+                  <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
+                    Tidak ada peristiwa yang cocok dengan filter yang dipilih.
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((item) => (
-                  <tr key={item.event_id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="px-5 py-3.5 text-center font-mono font-bold text-indigo-400">
-                      {item.tahun_kejadian}
-                    </td>
-                    <td className="px-5 py-3.5 capitalize font-medium text-slate-300">
-                      <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] border border-slate-700">
-                        {item.planet_id}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-semibold border ${
-                          item.kategori_poi === 'SURFACE_LANDING'
-                            ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
-                            : item.kategori_poi === 'ORBITAL_FLYBY'
-                            ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
-                            : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                        }`}
-                      >
-                        {item.kategori_poi || 'SURFACE_LANDING'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 font-semibold text-white">
-                      <div>{item.judul}</div>
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-slate-400 font-normal">
-                        {item.deskripsi}
-                      </p>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {item.nama_wahana ? (
-                        <span className="font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/20 text-[11px]">
-                          {item.nama_wahana}
+                filteredEvents.map((event) => {
+                  const planetBadge = getPlanetBadgeStyle(event.planet_id);
+                  return (
+                    <tr
+                      key={event.event_id}
+                      className="hover:bg-slate-50/60 transition-colors"
+                    >
+                      {/* TAHUN */}
+                      <td className="px-6 py-4 font-mono font-bold text-sm text-blue-600">
+                        {event.tahun_kejadian}
+                      </td>
+
+                      {/* NAMA PERISTIWA */}
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">
+                            {event.judul}
+                          </p>
+                          <p className="text-slate-500 text-xs mt-0.5 font-mono">
+                            {event.nama_wahana ? `${event.nama_wahana} • ` : ''}
+                            Lat: {Number(event.koordinat_lat).toFixed(4)}°, Long: {Number(event.koordinat_lng).toFixed(4)}°
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* PLANET BADGE */}
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${planetBadge.bg}`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${planetBadge.dot}`} />
+                          <span>{planetBadge.label}</span>
                         </span>
-                      ) : (
-                        <span className="text-slate-500 italic text-[11px]">-</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-mono text-[11px] text-slate-300">
-                      <span className="rounded bg-slate-950 px-2 py-0.5 border border-slate-800">
-                        {Number(item.koordinat_lat).toFixed(2)}°, {Number(item.koordinat_lng).toFixed(2)}°
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      </td>
+
+                      {/* AKSI */}
+                      <td className="px-6 py-4 text-right">
                         <button
                           type="button"
-                          onClick={() => handleOpenEdit(item)}
-                          className="rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 p-1.5 text-slate-300 hover:text-white transition-colors"
-                          title="Edit Peristiwa"
+                          onClick={() => handleOpenEdit(event)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-3 w-3" />
+                          <span>Ubah Data</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingEvent(item)}
-                          className="rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 p-1.5 text-red-400 hover:text-red-300 transition-colors"
-                          title="Hapus Peristiwa"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Table Footer Sesuai Gambar A03 */}
+        <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
+          <span>
+            Menampilkan {filteredEvents.length} dari {events.length} peristiwa sejarah yang aktif di ruang simulasi 3D.
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span>Format Koordinat: IAU Ellipsoid Cartographic Standard</span>
+          </span>
+        </div>
       </div>
 
-      {/* Modal Tambah & Edit dengan Visual 2D Interactive Coordinate Picker */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      {/* 4. Modal Form: Tambah / Ubah Peristiwa */}
+      {(editingEvent || isAdding) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  <MapPin className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
+                  <Compass className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">
-                    {isEditing ? 'Edit Titik Sejarah POI' : 'Tambah Titik Sejarah POI Baru'}
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Penentu koordinat lat/lng visual dan parameter misi bersejarah
+                  <h3 className="text-base font-bold text-slate-900">
+                    {isAdding ? 'Tambah Peristiwa POI Baru' : `Ubah Data Peristiwa`}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Tentukan tahun, nama wahana antariksa, dan koordinat permukaan 3D
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                onClick={handleCloseModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Planet Induk */}
+            <form onSubmit={handleSave} className="mt-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Planet Target */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Planet Induk
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Planet Target
                   </label>
                   <select
-                    value={formData.planet_id}
+                    value={formData.planet_id || 'earth'}
                     onChange={(e) => setFormData({ ...formData, planet_id: e.target.value })}
                     required
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                   >
                     {PLANET_OPTIONS.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.label}
+                        {p.name}
                       </option>
                     ))}
                   </select>
@@ -605,263 +565,142 @@ export default function AdminHistoryPage() {
 
                 {/* Tahun Kejadian */}
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Tahun Misi (Filter R04)
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tahun Kejadian (Masehi)
                   </label>
                   <input
                     type="number"
-                    required
-                    value={formData.tahun_kejadian}
+                    min={1900}
+                    max={2100}
+                    value={formData.tahun_kejadian || 1969}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        tahun_kejadian: parseInt(e.target.value) || 0,
-                      })
+                      setFormData({ ...formData, tahun_kejadian: Number(e.target.value) })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none font-mono"
-                  />
-                </div>
-
-                {/* Kategori POI (PRD Bagian 8) */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Kategori POI (PRD)
-                  </label>
-                  <select
-                    value={formData.kategori_poi || 'SURFACE_LANDING'}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        kategori_poi: e.target.value as PoiCategory,
-                      })
-                    }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
-                  >
-                    <option value="SURFACE_LANDING">Pendaratan Permukaan</option>
-                    <option value="ORBITAL_FLYBY">Lintas Wahana / Flyby</option>
-                    <option value="OBSERVATION">Observasi & Lab Orbit</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Judul & Nama Wahana */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Judul Peristiwa Misi
-                  </label>
-                  <input
-                    type="text"
                     required
-                    value={formData.judul}
-                    onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
-                    placeholder="Contoh: Pendaratan Rover Perseverance"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Nama Wahana / Lander / Probe
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nama_wahana || ''}
-                    onChange={(e) => setFormData({ ...formData, nama_wahana: e.target.value })}
-                    placeholder="Contoh: Perseverance & Ingenuity"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-none font-mono"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* VISUAL 2D INTERACTIVE COORDINATE PICKER (EQUIRECTANGULAR MAP) */}
-              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3.5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-400">
-                    <Compass className="h-4 w-4" />
-                    <span>Visual 2D Interactive Coordinate Picker (Klik Peta untuk Isi)</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400">
-                    Proyeksi Equirectangular (-90° s/d 90° Lat, -180° s/d 180° Lng)
-                  </span>
-                </div>
-
-                {/* 2D Map Canvas Canvas Box */}
-                <div
-                  ref={mapPickerRef}
-                  onClick={handleMapClick}
-                  className="relative h-44 w-full rounded-lg border border-slate-700 bg-slate-950 overflow-hidden cursor-crosshair select-none group"
-                  style={{
-                    backgroundImage: `
-                      radial-gradient(circle at center, rgba(56, 189, 248, 0.05) 0%, transparent 70%),
-                      linear-gradient(to right, rgba(51, 65, 85, 0.3) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(51, 65, 85, 0.3) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '100% 100%, 25% 100%, 100% 25%',
-                  }}
-                >
-                  {/* Equator & Prime Meridian Axis Lines */}
-                  <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-cyan-500/40" />
-                  <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-cyan-500/40" />
-
-                  {/* Corner Coordinates Labels */}
-                  <span className="absolute top-1 left-2 text-[9px] font-mono text-slate-500">+90° LU, -180° BB</span>
-                  <span className="absolute top-1 right-2 text-[9px] font-mono text-slate-500">+90° LU, +180° BT</span>
-                  <span className="absolute bottom-1 left-2 text-[9px] font-mono text-slate-500">-90° LS, -180° BB</span>
-                  <span className="absolute bottom-1 right-2 text-[9px] font-mono text-slate-500">-90° LS, +180° BT</span>
-                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-mono text-cyan-400/60 bg-slate-950/80 px-1 rounded">
-                    (0°, 0°)
-                  </span>
-
-                  {/* Interactive Pin Marker on Map */}
-                  {formData.koordinat_lat !== undefined && formData.koordinat_lng !== undefined && (
-                    <div
-                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-100"
-                      style={{
-                        left: `${((Number(formData.koordinat_lng) + 180) / 360) * 100}%`,
-                        top: `${((90 - Number(formData.koordinat_lat)) / 180) * 100}%`,
-                      }}
-                    >
-                      <div className="relative flex items-center justify-center">
-                        <div className="absolute h-6 w-6 rounded-full bg-cyan-400/30 animate-ping" />
-                        <div className="h-3.5 w-3.5 rounded-full bg-cyan-400 border-2 border-white shadow-lg shadow-cyan-400/50" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Coordinate Inputs & 3D Vector3 Preview */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-400 mb-0.5">
-                      Latitude (-90° s/d 90°)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      min="-90"
-                      max="90"
-                      value={formData.koordinat_lat}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          koordinat_lat: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-slate-400 mb-0.5">
-                      Longitude (-180° s/d 180°)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      min="-180"
-                      max="180"
-                      value={formData.koordinat_lng}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          koordinat_lng: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white focus:border-cyan-500 focus:outline-none font-mono"
-                    />
-                  </div>
-
-                  {/* 3D Vector3 Preview */}
-                  <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-2">
-                    <div className="text-[10px] font-semibold text-slate-400 uppercase">
-                      Proyeksi 3D (Vector3)
-                    </div>
-                    <div className="font-mono text-[11px] text-cyan-300 mt-0.5">
-                      [{vector3Preview.x}, {vector3Preview.y}, {vector3Preview.z}]
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Deskripsi Peristiwa */}
+              {/* Judul Peristiwa */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Judul Peristiwa Sejarah
+                </label>
+                <input
+                  type="text"
+                  value={formData.judul || ''}
+                  onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
+                  placeholder="misal: Pendaratan Apollo 11 di Bulan (Laut Ketenangan)"
+                  required
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              {/* Nama Wahana */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nama Wahana / Misi / Lokasi
+                </label>
+                <input
+                  type="text"
+                  value={formData.nama_wahana || ''}
+                  onChange={(e) => setFormData({ ...formData, nama_wahana: e.target.value })}
+                  placeholder="misal: NASA • Mare Tranquillitatis"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              {/* Koordinat Lat & Lng */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Koordinat Latitude (-90° s/d 90°)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    value={formData.koordinat_lat ?? 0}
+                    onChange={(e) =>
+                      setFormData({ ...formData, koordinat_lat: Number(e.target.value) })
+                    }
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Koordinat Longitude (-180° s/d 180°)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={180}
+                    value={formData.koordinat_lng ?? 0}
+                    onChange={(e) =>
+                      setFormData({ ...formData, koordinat_lng: Number(e.target.value) })
+                    }
+                    required
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Deskripsi */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Deskripsi Narasi Edukatif
                 </label>
                 <textarea
                   rows={3}
-                  required
-                  value={formData.deskripsi}
+                  value={formData.deskripsi || ''}
                   onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
-                  placeholder="Ceritakan temuan sains atau signifikansi sejarah misi ini..."
-                  className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-xs text-white focus:border-cyan-500 focus:outline-none leading-relaxed"
+                  required
+                  placeholder="Penjelasan latar belakang misi, pencapaian sains, dan dampaknya bagi penjelajahan luar angkasa."
+                  className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
-              {/* Buttons */}
-              <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  disabled={saving}
-                  className="rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition-all disabled:opacity-50"
-                >
-                  {saving ? (
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
+              {/* Actions */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  {!isAdding && (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={saving}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-2 text-xs font-semibold text-red-700 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Hapus Peristiwa</span>
+                    </button>
                   )}
-                  <span>{saving ? 'Menyimpan...' : 'Simpan Titik POI'}</span>
-                </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Batal
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                  </button>
+                </div>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deletingEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-slate-900 p-6 shadow-2xl">
-            <div className="flex items-center gap-3 text-red-400 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
-                <Trash2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Konfirmasi Hapus POI</h3>
-                <p className="text-xs text-slate-400">Tindakan ini tidak dapat dibatalkan</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Apakah Anda yakin ingin menghapus peristiwa sejarah{' '}
-              <strong className="text-white">&quot;{deletingEvent.judul}&quot;</strong> ({deletingEvent.tahun_kejadian}) dari planet {deletingEvent.planet_id}?
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setDeletingEvent(null)}
-                className="rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:text-white"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-red-600 hover:bg-red-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-red-600/20"
-              >
-                {saving ? 'Menghapus...' : 'Ya, Hapus POI'}
-              </button>
-            </div>
           </div>
         </div>
       )}
