@@ -13,8 +13,14 @@ type AssetRow = Database['public']['Tables']['assets']['Row'];
 
 function getSupabaseConfig(): { url: string; anonKey: string } {
   return {
-    url: import.meta.env.VITE_SUPABASE_URL ?? '',
-    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
+    url:
+      import.meta.env.SUPABASE_URL ||
+      import.meta.env.VITE_SUPABASE_URL ||
+      '',
+    anonKey:
+      import.meta.env.SUPABASE_ANON_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      '',
   };
 }
 
@@ -26,7 +32,7 @@ async function supabaseFetch<T>(endpoint: string): Promise<T> {
 
   if (!url || !anonKey) {
     throw new Error(
-      '[SupabaseRepository] Konfigurasi VITE_SUPABASE_URL atau VITE_SUPABASE_ANON_KEY belum tersedia.',
+      '[SupabaseRepository] Konfigurasi SUPABASE_URL atau SUPABASE_ANON_KEY belum tersedia.',
     );
   }
 

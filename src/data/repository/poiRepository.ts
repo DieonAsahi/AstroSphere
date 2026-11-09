@@ -2,7 +2,9 @@ import { jsonPoiRepository } from './jsonRepository';
 import { supabasePoiRepository } from './supabaseRepository';
 import type { PoiRepository } from './types';
 
-const useSupabase = import.meta.env.VITE_DATA_SOURCE === 'supabase';
+const dataSource =
+  import.meta.env.DATA_SOURCE || import.meta.env.VITE_DATA_SOURCE;
+const useSupabase = dataSource === 'supabase';
 
 export const poiRepository: PoiRepository = useSupabase
   ? supabasePoiRepository

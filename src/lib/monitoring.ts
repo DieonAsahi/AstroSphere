@@ -57,7 +57,8 @@ export function reportError(
       : undefined,
   };
 
-  const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+  const sentryDsn =
+    import.meta.env.SENTRY_DSN || import.meta.env.VITE_SENTRY_DSN;
 
   if (sentryDsn) {
     // Bila Sentry DSN dikonfigurasi di lingkungan produksi
@@ -113,9 +114,11 @@ export function initMonitoring(): void {
   });
 
   // Pasang Vercel Web Analytics / Speed Insights jika diaktifkan di environment
+  const analyticsVal =
+    import.meta.env.VERCEL_ANALYTICS_ENABLED ||
+    import.meta.env.VITE_VERCEL_ANALYTICS_ENABLED;
   const isVercelAnalytics =
-    import.meta.env.VITE_VERCEL_ANALYTICS_ENABLED === 'true' ||
-    import.meta.env.VITE_VERCEL_ANALYTICS_ENABLED === '1';
+    analyticsVal === 'true' || analyticsVal === '1';
 
   if (isVercelAnalytics && !import.meta.env.DEV) {
     const script = document.createElement('script');

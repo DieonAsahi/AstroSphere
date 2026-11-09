@@ -4,6 +4,15 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig({
+  envPrefix: [
+    'VITE_',
+    'DATA_',
+    'SUPABASE_',
+    'STORAGE_',
+    'VERCEL_',
+    'SENTRY_',
+    'APP_',
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

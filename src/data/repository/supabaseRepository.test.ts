@@ -145,12 +145,32 @@ describe('SupabaseRepository Mapping & Fetch Logic', () => {
     expect(pois[0].dimensions[0].nilai).toBe(21.9);
   });
 
+  it('works with un-prefixed SUPABASE_URL and SUPABASE_ANON_KEY', async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', '');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+    vi.stubEnv('SUPABASE_URL', 'https://mock-unprefixed.supabase.co');
+    vi.stubEnv('SUPABASE_ANON_KEY', 'mock-unprefixed-key');
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      expect(url).toContain('https://mock-unprefixed.supabase.co');
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    });
+
+    const bodies = await supabaseBodyRepository.listBodies();
+    expect(bodies).toEqual([]);
+  });
+
   it('throws informative error if Supabase credentials are missing', async () => {
     vi.stubEnv('VITE_SUPABASE_URL', '');
     vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+    vi.stubEnv('SUPABASE_URL', '');
+    vi.stubEnv('SUPABASE_ANON_KEY', '');
 
     await expect(supabaseBodyRepository.listBodies()).rejects.toThrow(
-      /VITE_SUPABASE_URL atau VITE_SUPABASE_ANON_KEY belum tersedia/,
+      /SUPABASE_URL atau SUPABASE_ANON_KEY belum tersedia/,
     );
   });
 });
