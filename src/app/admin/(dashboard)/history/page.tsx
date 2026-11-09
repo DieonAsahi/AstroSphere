@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Compass,
@@ -13,6 +13,9 @@ import {
   Save,
   Trash2,
   RotateCcw,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
 import type { HistoryEvent, PoiCategory } from '../../../../types/database';
@@ -108,6 +111,7 @@ const DEFAULT_EVENT: Partial<HistoryEvent> = {
   judul: '',
   nama_wahana: '',
   deskripsi: '',
+  gambar_url: '',
   koordinat_lat: 0,
   koordinat_lng: 0,
   sumber_referensi: '',
@@ -132,7 +136,9 @@ export default function AdminHistoryPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Partial<HistoryEvent>>(DEFAULT_EVENT);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState<HistoryEvent | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
@@ -231,32 +237,84 @@ export default function AdminHistoryPage() {
     setSelectedYearFilter('ALL');
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validasi tipe file
+    if (!file.type.startsWith('image/')) {
+      setNotification({
+        type: 'error',
+        message: 'Format file tidak didukung. Harap pilih file gambar (JPG, PNG, WebP, SVG).',
+      });
+      return;
+    }
+
+    // Validasi batas ukuran file (maksimal 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setNotification({
+        type: 'error',
+        message: 'Ukuran file gambar melebihi batas 5MB.',
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+    setNotification(null);
+
+    try {
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `history/${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${cleanFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('astrosphere-assets')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('astrosphere-assets')
+        .getPublicUrl(filePath);
+
+      setFormData((prev) => ({
+        ...prev,
+        gambar_url: urlData.publicUrl,
+      }));
+
+      setNotification({
+        type: 'success',
+        message: 'Foto peristiwa berhasil diunggah ke Supabase Storage (astrosphere-assets)!',
+      });
+    } catch (err: unknown) {
+      console.error('Upload image error:', err);
+      const errMsg = err instanceof Error ? err.message : 'Gagal mengunggah foto ke storage.';
+      setNotification({
+        type: 'error',
+        message: `Gagal mengunggah foto: ${errMsg}`,
+      });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setNotification(null);
 
-    // Validasi koordinat sesuai spesifikasi IAU
-    const lat = Number(formData.koordinat_lat);
-    const lng = Number(formData.koordinat_lng);
-
-    if (isNaN(lat) || lat < -90 || lat > 90) {
-      setNotification({
-        type: 'error',
-        message: 'Koordinat Latitude harus berada di antara -90° dan 90°.',
-      });
-      setSaving(false);
-      return;
-    }
-
-    if (isNaN(lng) || lng < -180 || lng > 180) {
-      setNotification({
-        type: 'error',
-        message: 'Koordinat Longitude harus berada di antara -180° dan 180°.',
-      });
-      setSaving(false);
-      return;
-    }
+    // Koordinat tidak lagi wajib; default ke nilai yang ada atau 0
+    const rawLat = formData.koordinat_lat;
+    const rawLng = formData.koordinat_lng;
+    const lat = rawLat !== undefined && rawLat !== null && !isNaN(Number(rawLat)) ? Number(rawLat) : 0;
+    const lng = rawLng !== undefined && rawLng !== null && !isNaN(Number(rawLng)) ? Number(rawLng) : 0;
 
     try {
       if (isAdding) {
@@ -268,6 +326,7 @@ export default function AdminHistoryPage() {
           judul: (formData.judul || '').trim(),
           nama_wahana: formData.nama_wahana?.trim() || null,
           deskripsi: (formData.deskripsi || '').trim(),
+          gambar_url: formData.gambar_url?.trim() || '',
           koordinat_lat: lat,
           koordinat_lng: lng,
           sumber_referensi: formData.sumber_referensi?.trim() || '',
@@ -289,6 +348,7 @@ export default function AdminHistoryPage() {
             judul: (formData.judul || editingEvent.judul).trim(),
             nama_wahana: formData.nama_wahana ? formData.nama_wahana.trim() : formData.nama_wahana === null ? null : editingEvent.nama_wahana,
             deskripsi: (formData.deskripsi || editingEvent.deskripsi).trim(),
+            gambar_url: formData.gambar_url !== undefined ? (formData.gambar_url?.trim() || '') : (editingEvent.gambar_url || ''),
             koordinat_lat: lat,
             koordinat_lng: lng,
             sumber_referensi: formData.sumber_referensi !== undefined ? (formData.sumber_referensi?.trim() || '') : (editingEvent.sumber_referensi || ''),
@@ -524,14 +584,31 @@ export default function AdminHistoryPage() {
 
                       {/* NAMA PERISTIWA */}
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="font-bold text-slate-900 text-sm">
-                            {event.judul}
-                          </p>
-                          <p className="text-slate-500 text-xs mt-0.5 font-mono">
-                            {event.nama_wahana ? `${event.nama_wahana} • ` : ''}
-                            Lat: {Number(event.koordinat_lat).toFixed(4)}°, Long: {Number(event.koordinat_lng).toFixed(4)}°
-                          </p>
+                        <div className="flex items-center gap-3">
+                          {/* Thumbnail Foto Peristiwa / Placeholder */}
+                          <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-xl border border-slate-200 bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+                            {event.gambar_url ? (
+                              <img
+                                src={event.gambar_url}
+                                alt={event.judul}
+                                className="h-full w-full object-cover transition-transform duration-200 hover:scale-110"
+                                onError={(e) => {
+                                  // Fallback jika URL gambar rusak
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <ImageIcon className="h-5 w-5 text-slate-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-900 text-sm line-clamp-1" title={event.judul}>
+                              {event.judul}
+                            </p>
+                            <p className="text-slate-500 text-xs mt-0.5 line-clamp-1" title={event.nama_wahana || ''}>
+                              {event.nama_wahana || 'Peristiwa / Bentang Alam'}
+                            </p>
+                          </div>
                         </div>
                       </td>
 
@@ -630,7 +707,7 @@ export default function AdminHistoryPage() {
                     {isAdding ? 'Tambah Peristiwa POI Baru' : `Ubah Data Peristiwa`}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Tentukan tahun, nama wahana antariksa, dan koordinat permukaan 3D
+                    Tentukan tahun, nama wahana/peristiwa, foto ilustrasi, dan penjelasan lengkap materi
                   </p>
                 </div>
               </div>
@@ -748,43 +825,78 @@ export default function AdminHistoryPage() {
                 />
               </div>
 
-              {/* Koordinat Lat & Lng */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Koordinat Latitude (-90° s/d 90°)
-                  </label>
+              {/* URL Foto / Gambar Peristiwa & Upload Supabase Storage */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-700">
+                  URL Foto / Gambar Peristiwa (Ilustrasi Sejarah)
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="url"
+                      value={formData.gambar_url || ''}
+                      onChange={(e) => setFormData({ ...formData, gambar_url: e.target.value })}
+                      placeholder="https://... atau klik tombol Upload Foto di samping"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                    />
+                  </div>
                   <input
-                    type="number"
-                    step="any"
-                    min={-90}
-                    max={90}
-                    value={formData.koordinat_lat ?? 0}
-                    onChange={(e) =>
-                      setFormData({ ...formData, koordinat_lat: Number(e.target.value) })
-                    }
-                    required
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
                   />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 px-3.5 py-2 text-xs font-semibold text-blue-700 transition-colors shrink-0 disabled:opacity-50"
+                  >
+                    {uploadingImage ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                        <span>Mengunggah...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 text-blue-600" />
+                        <span>Upload Foto</span>
+                      </>
+                    )}
+                  </button>
                 </div>
+                <p className="text-[11px] text-slate-400">
+                  Mendukung gambar JPG, PNG, WebP (maks. 5MB). Otomatis disimpan ke bucket <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono">astrosphere-assets</code>.
+                </p>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Koordinat Longitude (-180° s/d 180°)
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    min={-180}
-                    max={180}
-                    value={formData.koordinat_lng ?? 0}
-                    onChange={(e) =>
-                      setFormData({ ...formData, koordinat_lng: Number(e.target.value) })
-                    }
-                    required
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                  />
-                </div>
+                {/* Live Thumbnail Image Preview */}
+                {formData.gambar_url && (
+                  <div className="relative mt-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 flex items-center gap-3">
+                    <img
+                      src={formData.gambar_url}
+                      alt="Pratinjau Foto Peristiwa"
+                      className="h-16 w-24 rounded-lg object-cover border border-slate-200 shadow-xs shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="min-w-0 flex-1 text-xs">
+                      <p className="font-semibold text-slate-800">Pratinjau Gambar Aktif</p>
+                      <p className="text-[11px] text-slate-500 truncate font-mono mt-0.5">
+                        {formData.gambar_url}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, gambar_url: '' })}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="Hapus foto"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Deskripsi */}

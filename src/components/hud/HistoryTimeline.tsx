@@ -469,6 +469,21 @@ export function HistoryTimeline() {
                   </div>
                 )}
 
+                {/* Foto / Ilustrasi Peristiwa */}
+                {event.gambar_url && (
+                  <div className="mt-2.5 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/40">
+                    <img
+                      src={event.gambar_url}
+                      alt={event.judul}
+                      className="w-full h-32 object-cover transition-transform duration-300 hover:scale-105"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* Deskripsi Lengkap */}
                 <p className="mt-2 text-xs text-slate-300 leading-relaxed text-justify">
                   {event.deskripsi}
@@ -486,7 +501,9 @@ export function HistoryTimeline() {
                   <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
                     <MapPin className="h-3.5 w-3.5 text-rose-400" />
                     <span>
-                      {event.koordinat_lat}° L, {event.koordinat_lng}° B
+                      {event.koordinat_lat !== null && event.koordinat_lat !== undefined && (event.koordinat_lat !== 0 || (event.koordinat_lng !== null && event.koordinat_lng !== undefined && event.koordinat_lng !== 0))
+                        ? `${event.koordinat_lat}° L, ${event.koordinat_lng}° B`
+                        : 'Arsip / Ilustrasi'}
                     </span>
                   </div>
 

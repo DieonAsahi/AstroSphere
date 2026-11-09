@@ -164,6 +164,11 @@ export default function AstroCanvas() {
 
         if (isMounted) {
           if (planetRes.data) {
+            // Jika planet ini dinonaktifkan oleh admin, otomatis alihkan pemain ke Bumi
+            if (planetRes.data.is_active === false) {
+              useSceneStore.getState().setActivePlanetId('earth');
+              return;
+            }
             setPlanetData(planetRes.data);
           } else {
             setPlanetData(FALLBACK_PLANETS[activePlanetId] || FALLBACK_PLANETS.earth);
@@ -188,7 +193,7 @@ export default function AstroCanvas() {
       .channel(`public:realtime_canvas_${activePlanetId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'planets', filter: `planet_id=eq.${activePlanetId}` },
+        { event: '*', schema: 'public', table: 'planets' },
         () => {
           loadPlanetDetails();
         }

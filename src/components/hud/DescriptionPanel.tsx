@@ -178,6 +178,11 @@ export function DescriptionPanel() {
 
         if (isMounted) {
           if (data) {
+            if (data.is_active === false) {
+              // Jika planet dinonaktifkan, kembalikan pemain ke Bumi
+              useSceneStore.getState().setActivePlanetId('earth');
+              return;
+            }
             setPlanet(data);
           } else {
             setPlanet(FALLBACK_PLANETS[activePlanetId] || FALLBACK_PLANETS.earth);

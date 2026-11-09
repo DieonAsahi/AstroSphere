@@ -39,8 +39,8 @@ function SinglePoiPin({
   // Letakkan pin sedikit di atas permukaan bola
   const position = useMemo(() => {
     return latLngToVector3(
-      Number(event.koordinat_lat),
-      Number(event.koordinat_lng),
+      Number(event.koordinat_lat ?? 0),
+      Number(event.koordinat_lng ?? 0),
       planetRadius * 1.04
     );
   }, [event.koordinat_lat, event.koordinat_lng, planetRadius]);

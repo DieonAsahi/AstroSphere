@@ -83,6 +83,7 @@ export type Planet = {
   skala_visual: number;
   batas_zona_radius: number;
   kecepatan_jelajah_nyaman?: number;
+  is_active?: boolean;
   updated_at: string;
 };
 
@@ -94,8 +95,9 @@ export type HistoryEvent = {
   kategori_poi?: PoiCategory;
   judul: string;
   deskripsi: string;
-  koordinat_lat: number;
-  koordinat_lng: number;
+  gambar_url?: string | null;
+  koordinat_lat?: number | null;
+  koordinat_lng?: number | null;
   nama_wahana: string | null;
   sumber_referensi?: string | null;
   created_at: string;
@@ -192,6 +194,7 @@ export type Database = {
           skala_visual: number;
           batas_zona_radius: number;
           kecepatan_jelajah_nyaman: number;
+          is_active: boolean;
           updated_at: string;
         };
         Insert: {
@@ -212,6 +215,7 @@ export type Database = {
           skala_visual?: number;
           batas_zona_radius?: number;
           kecepatan_jelajah_nyaman?: number;
+          is_active?: boolean;
           updated_at?: string;
         };
         Update: {
@@ -232,6 +236,7 @@ export type Database = {
           skala_visual?: number;
           batas_zona_radius?: number;
           kecepatan_jelajah_nyaman?: number;
+          is_active?: boolean;
           updated_at?: string;
         };
         Relationships: [];
@@ -245,8 +250,9 @@ export type Database = {
           kategori_poi: PoiCategory;
           judul: string;
           deskripsi: string;
-          koordinat_lat: number;
-          koordinat_lng: number;
+          gambar_url: string | null;
+          koordinat_lat: number | null;
+          koordinat_lng: number | null;
           nama_wahana: string | null;
           sumber_referensi: string | null;
           created_at: string;
@@ -259,8 +265,9 @@ export type Database = {
           kategori_poi?: PoiCategory;
           judul: string;
           deskripsi: string;
-          koordinat_lat: number;
-          koordinat_lng: number;
+          gambar_url?: string | null;
+          koordinat_lat?: number | null;
+          koordinat_lng?: number | null;
           nama_wahana?: string | null;
           sumber_referensi?: string | null;
           created_at?: string;
@@ -273,8 +280,9 @@ export type Database = {
           kategori_poi?: PoiCategory;
           judul?: string;
           deskripsi?: string;
-          koordinat_lat?: number;
-          koordinat_lng?: number;
+          gambar_url?: string | null;
+          koordinat_lat?: number | null;
+          koordinat_lng?: number | null;
           nama_wahana?: string | null;
           sumber_referensi?: string | null;
           created_at?: string;

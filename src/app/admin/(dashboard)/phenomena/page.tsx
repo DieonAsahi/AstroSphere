@@ -3,9 +3,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  Plus,
   Pencil,
-  Trash2,
   RefreshCw,
   Search,
   AlertCircle,
@@ -14,6 +12,7 @@ import {
   Save,
   Sparkles,
   Layers,
+  Trash2,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
 import type { Phenomenon, AnimationType, VisualConfig, PlanetSlug } from '../../../../types/database';
@@ -88,7 +87,7 @@ export default function AdminPhenomenaPage() {
 
   // Form State
   const [modalOpen, setModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingItem, setEditingItem] = useState<Phenomenon | null>(null);
 
   // Structured Form Fields
   const [formData, setFormData] = useState<{
@@ -125,7 +124,6 @@ export default function AdminPhenomenaPage() {
   });
 
   const [newStepText, setNewStepText] = useState('');
-  const [deletingPhenomenon, setDeletingPhenomenon] = useState<Phenomenon | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Alerts
@@ -185,32 +183,8 @@ export default function AdminPhenomenaPage() {
     return filteredPhenomena.slice(start, start + itemsPerPage);
   }, [filteredPhenomena, currentPage, itemsPerPage]);
 
-  const handleOpenAdd = () => {
-    setIsEditing(false);
-    setFormData({
-      planet_id: selectedPlanet !== 'all' ? selectedPlanet : 'earth',
-      judul: '',
-      tombol_aksi_label: 'Putar Simulasi Fenomena',
-      tipe_animasi: 'SOLAR_ECLIPSE',
-      subtitle: 'Umbra & Penumbra',
-      deskripsi_edukatif: '',
-      is_active: true,
-      secondaryObjects: ['SUN', 'MOON'],
-      showUmbraPenumbra: true,
-      durationSeconds: 20,
-      cameraZoomDistance: 35,
-      educationalSteps: [
-        'Tahap 1: Penyejajaran posisi benda langit di bidang orbit.',
-        'Tahap 2: Pembentukan kerucut bayangan umbra dan penumbra.',
-        'Tahap 3: Puncak gerhana dan pemulihan rotasi normal.',
-      ],
-    });
-    setNewStepText('');
-    setModalOpen(true);
-  };
-
   const handleOpenEdit = (item: Phenomenon) => {
-    setIsEditing(true);
+    setEditingItem(item);
 
     const config = (item.konfigurasi_visual || {}) as VisualConfig & { subtitle?: string };
     const secondaryObjects = config.secondaryObjects || ['SUN', 'MOON'];
@@ -241,6 +215,42 @@ export default function AdminPhenomenaPage() {
     });
     setNewStepText('');
     setModalOpen(true);
+  };
+
+  // Toggle Switch Aktif / Nonaktif langsung via tabel
+  const handleToggleActive = async (item: Phenomenon) => {
+    const nextActive = item.is_active === false;
+
+    // Optimistic local state update
+    setPhenomena((prev) =>
+      prev.map((p) =>
+        p.phenomenon_id === item.phenomenon_id ? { ...p, is_active: nextActive } : p
+      )
+    );
+
+    try {
+      const { error } = await supabase
+        .from('phenomena')
+        .update({ is_active: nextActive })
+        .eq('phenomenon_id', item.phenomenon_id);
+
+      if (error) throw error;
+
+      setNotification({
+        type: 'success',
+        message: `Status fenomena "${item.judul}" diubah menjadi ${nextActive ? 'Aktif' : 'Nonaktif'}.`,
+      });
+    } catch (err: unknown) {
+      console.error('Toggle active error:', err);
+      // Rollback on error
+      setPhenomena((prev) =>
+        prev.map((p) =>
+          p.phenomenon_id === item.phenomenon_id ? { ...p, is_active: item.is_active } : p
+        )
+      );
+      const errMsg = err instanceof Error ? err.message : 'Gagal memperbarui status fenomena.';
+      setNotification({ type: 'error', message: errMsg });
+    }
   };
 
   const handleToggleObject = (objId: string) => {
@@ -291,6 +301,7 @@ export default function AdminPhenomenaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingItem || !formData.phenomenon_id) return;
     if (!formData.judul.trim() || !formData.deskripsi_edukatif.trim()) return;
 
     try {
@@ -307,78 +318,32 @@ export default function AdminPhenomenaPage() {
         is_active: formData.is_active,
       };
 
-      if (isEditing && formData.phenomenon_id) {
-        const { data, error } = await supabase
-          .from('phenomena')
-          .update(payload)
-          .eq('phenomenon_id', formData.phenomenon_id)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        setPhenomena((prev) =>
-          prev.map((item) =>
-            item.phenomenon_id === formData.phenomenon_id ? (data as Phenomenon) : item
-          )
-        );
-        setNotification({
-          type: 'success',
-          message: `Simulasi "${payload.judul}" berhasil diperbarui di Supabase.`,
-        });
-      } else {
-        const { data, error } = await supabase
-          .from('phenomena')
-          .insert([payload])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        setPhenomena((prev) => [...prev, data as Phenomenon]);
-        setNotification({
-          type: 'success',
-          message: `Simulasi fenomena "${payload.judul}" berhasil ditambahkan.`,
-        });
-      }
-
-      setModalOpen(false);
-    } catch (err: unknown) {
-      console.error('Error saving phenomenon:', err);
-      setNotification({
-        type: 'error',
-        message: 'Gagal menyimpan simulasi fenomena ke database Supabase.',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deletingPhenomenon) return;
-
-    try {
-      setSaving(true);
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('phenomena')
-        .delete()
-        .eq('phenomenon_id', deletingPhenomenon.phenomenon_id);
+        .update(payload)
+        .eq('phenomenon_id', formData.phenomenon_id)
+        .select()
+        .single();
 
       if (error) throw error;
 
       setPhenomena((prev) =>
-        prev.filter((p) => p.phenomenon_id !== deletingPhenomenon.phenomenon_id)
+        prev.map((item) =>
+          item.phenomenon_id === formData.phenomenon_id ? (data as Phenomenon) : item
+        )
       );
       setNotification({
         type: 'success',
-        message: `Simulasi "${deletingPhenomenon.judul}" berhasil dihapus.`,
+        message: `Simulasi "${payload.judul}" berhasil diperbarui di Supabase.`,
       });
-      setDeletingPhenomenon(null);
+
+      setModalOpen(false);
+      setEditingItem(null);
     } catch (err: unknown) {
-      console.error('Error deleting phenomenon:', err);
+      console.error('Error saving phenomenon:', err);
       setNotification({
         type: 'error',
-        message: 'Gagal menghapus simulasi fenomena dari Supabase.',
+        message: 'Gagal menyimpan perubahan simulasi fenomena.',
       });
     } finally {
       setSaving(false);
@@ -413,14 +378,14 @@ export default function AdminPhenomenaPage() {
         </div>
       )}
 
-      {/* Header Section (Matching Mockup A04) */}
+      {/* Header Section (Tanpa Tombol Tambah Fenomena) */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Fenomena Astronomi
           </h1>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Kelola konfigurasi fenomena optik, geometri bayangan, dan animasi edukatif antariksa dalam game AstroSphere.
+            Kelola konfigurasi fenomena optik, narasi edukatif, dan status aktif simulasi astronomi 3D AstroSphere.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -433,14 +398,7 @@ export default function AdminPhenomenaPage() {
             className="p-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
             title="Muat ulang data"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah Fenomena</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
           </button>
         </div>
       </div>
@@ -478,12 +436,12 @@ export default function AdminPhenomenaPage() {
         {/* Filtered Badge */}
         <div className="shrink-0 flex items-center justify-end">
           <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-            {filteredPhenomena.length} Fenomena Terfilter
+            {filteredPhenomena.length} Fenomena Terdaftar
           </span>
         </div>
       </div>
 
-      {/* Table Card (Matching Mockup A04) */}
+      {/* Table Card (Matching Mockup A04 dengan Kolom STATUS) */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-400">
@@ -506,6 +464,7 @@ export default function AdminPhenomenaPage() {
                   <th className="py-3 px-6">Nama Fenomena</th>
                   <th className="py-3 px-6">Planet</th>
                   <th className="py-3 px-6">Tipe Animasi</th>
+                  <th className="py-3 px-6">Status</th>
                   <th className="py-3 px-6 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -517,10 +476,10 @@ export default function AdminPhenomenaPage() {
                     dotColor: 'bg-slate-400',
                     badgeBg: 'bg-slate-100 text-slate-700 border-slate-200',
                   };
-
                   const animMeta = ANIMATION_TYPES.find((t) => t.id === item.tipe_animasi);
                   const config = (item.konfigurasi_visual || {}) as VisualConfig & { subtitle?: string };
                   const subtext = config.subtitle || animMeta?.defaultSubtitle || 'Simulasi Visual';
+                  const isActive = item.is_active !== false;
 
                   return (
                     <tr
@@ -555,22 +514,42 @@ export default function AdminPhenomenaPage() {
                         <div className="text-xs text-slate-500 mt-0.5">{subtext}</div>
                       </td>
 
+                      {/* Switch Toggle Status Aktif / Nonaktif */}
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(item)}
+                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                              isActive ? 'bg-emerald-500' : 'bg-slate-300'
+                            } cursor-pointer`}
+                            title={`Klik untuk ${isActive ? 'menonaktifkan' : 'mengaktifkan'} fenomena`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+                                isActive ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`text-xs font-semibold ${
+                              isActive ? 'text-emerald-700' : 'text-slate-400'
+                            }`}
+                          >
+                            {isActive ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                        </div>
+                      </td>
+
                       {/* Aksi Button */}
                       <td className="py-4 px-6 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2 justify-end">
                           <button
                             onClick={() => handleOpenEdit(item)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-sm hover:text-blue-600"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-sm hover:text-blue-600"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                             <span>Ubah Data</span>
-                          </button>
-                          <button
-                            onClick={() => setDeletingPhenomenon(item)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Hapus Fenomena"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -624,8 +603,8 @@ export default function AdminPhenomenaPage() {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
-      {modalOpen && (
+      {/* Edit Modal (Tanpa Tambah / Hapus) */}
+      {modalOpen && editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Modal Header */}
@@ -636,15 +615,18 @@ export default function AdminPhenomenaPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {isEditing ? 'Ubah Simulasi Fenomena' : 'Tambah Simulasi Fenomena Baru'}
+                    Ubah Simulasi Fenomena: {editingItem.judul}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Konfigurasi parameter visual dan skrip pedagogis fenomena antariksa.
+                    Konfigurasi parameter visual, narasi edukatif, dan status aktif simulasi
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setModalOpen(false)}
+                onClick={() => {
+                  setModalOpen(false);
+                  setEditingItem(null);
+                }}
                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -652,17 +634,56 @@ export default function AdminPhenomenaPage() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Planet Selector */}
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
+              {/* Status Visibilitas Fenomena */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Planet Lokasi
+                  <span className="text-xs font-bold text-slate-900">
+                    Visibilitas di HUD Pemain Game AstroSphere
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    Jika aktif, pemain dapat memutar simulasi ini di layar 3D.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        is_active: !prev.is_active,
+                      }))
+                    }
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                      formData.is_active ? 'bg-emerald-500' : 'bg-slate-300'
+                    } cursor-pointer`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+                        formData.is_active ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span
+                    className={`text-xs font-semibold ${
+                      formData.is_active ? 'text-emerald-700' : 'text-slate-400'
+                    }`}
+                  >
+                    {formData.is_active ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grid Baris 1: Planet & Tipe Animasi */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Planet Terkait
                   </label>
                   <select
                     value={formData.planet_id}
                     onChange={(e) => setFormData({ ...formData, planet_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
                   >
                     {PLANET_OPTIONS.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -672,19 +693,22 @@ export default function AdminPhenomenaPage() {
                   </select>
                 </div>
 
-                {/* Tipe Animasi */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Tipe Animasi Simulasi
                   </label>
                   <select
                     value={formData.tipe_animasi}
                     onChange={(e) => {
-                      const newType = e.target.value as AnimationType;
-                      const def = ANIMATION_TYPES.find((t) => t.id === newType)?.defaultSubtitle || '';
-                      setFormData({ ...formData, tipe_animasi: newType, subtitle: def });
+                      const nextType = e.target.value as AnimationType;
+                      const defSub = ANIMATION_TYPES.find((t) => t.id === nextType)?.defaultSubtitle || '';
+                      setFormData({
+                        ...formData,
+                        tipe_animasi: nextType,
+                        subtitle: defSub,
+                      });
                     }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
                   >
                     {ANIMATION_TYPES.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -695,106 +719,146 @@ export default function AdminPhenomenaPage() {
                 </div>
               </div>
 
-              {/* Judul & Subtitle */}
+              {/* Judul & Label Tombol HUD */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Nama Fenomena <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Judul Fenomena Astronomi
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: Gerhana Matahari Total"
+                    placeholder="misal: Gerhana Matahari Total"
                     value={formData.judul}
                     onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Label Subtitle / Efek Optik
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Label Tombol Aksi di Layar HUD
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Umbra & Penumbra"
-                    value={formData.subtitle}
-                    onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                    placeholder="misal: Putar Simulasi Gerhana"
+                    value={formData.tombol_aksi_label}
+                    onChange={(e) => setFormData({ ...formData, tombol_aksi_label: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
-              {/* Tombol Aksi Label & Durasi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Label Tombol di HUD Pemain
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Putar Simulasi Gerhana"
-                    value={formData.tombol_aksi_label}
-                    onChange={(e) => setFormData({ ...formData, tombol_aksi_label: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Durasi Simulasi (Detik)
-                  </label>
-                  <input
-                    type="number"
-                    min={5}
-                    max={120}
-                    value={formData.durationSeconds}
-                    onChange={(e) => setFormData({ ...formData, durationSeconds: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+              {/* Subtitle Efek Optik */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Subjudul Efek Optik (Ditampilkan di tabel &amp; header modul)
+                </label>
+                <input
+                  type="text"
+                  placeholder="misal: Umbra & Penumbra / Pembiasan Rayleigh"
+                  value={formData.subtitle}
+                  onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
 
               {/* Deskripsi Edukatif */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Deskripsi Ilmiah Edukatif <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Deskripsi Lengkap Materi Fenomena
                 </label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="Jelaskan mekanisme fisika di balik fenomena ini secara ramah pelajar..."
+                  placeholder="Jelaskan proses fisika/astronomi terjadinya fenomena ini secara ramah siswa..."
                   value={formData.deskripsi_edukatif}
                   onChange={(e) => setFormData({ ...formData, deskripsi_edukatif: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
-              {/* Objek Bantuan Sekunder */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center gap-2">
+              {/* Konfigurasi Visual 3D */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                   <Layers className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-slate-800 uppercase tracking-wider">
-                    Objek Langit Terlibat dalam Simulasi
-                  </span>
+                  <span>Parameter Visualisasi 3D</span>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {SECONDARY_OBJECT_OPTIONS.map((obj) => {
-                    const selected = formData.secondaryObjects.includes(obj.id);
-                    return (
-                      <button
-                        type="button"
-                        key={obj.id}
-                        onClick={() => handleToggleObject(obj.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                          selected
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        {selected ? '✓ ' : '+ '}
-                        {obj.label}
-                      </button>
-                    );
-                  })}
+
+                {/* Secondary Objects Multi-checkbox */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1.5">
+                    Objek Benda Langit Sekunder Terlibat:
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {SECONDARY_OBJECT_OPTIONS.map((obj) => {
+                      const isChecked = formData.secondaryObjects.includes(obj.id);
+                      return (
+                        <button
+                          key={obj.id}
+                          type="button"
+                          onClick={() => handleToggleObject(obj.id)}
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                            isChecked
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                          }`}
+                        >
+                          {obj.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Sliders: Durasi & Zoom */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <div className="flex justify-between text-xs font-medium text-slate-700 mb-1">
+                      <span>Durasi Simulasi:</span>
+                      <span className="font-bold text-blue-600">{formData.durationSeconds} detik</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={60}
+                      step={1}
+                      value={formData.durationSeconds}
+                      onChange={(e) => setFormData({ ...formData, durationSeconds: Number(e.target.value) })}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-medium text-slate-700 mb-1">
+                      <span>Jarak Kamera 3D:</span>
+                      <span className="font-bold text-blue-600">{formData.cameraZoomDistance} unit</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={15}
+                      max={80}
+                      step={1}
+                      value={formData.cameraZoomDistance}
+                      onChange={(e) => setFormData({ ...formData, cameraZoomDistance: Number(e.target.value) })}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Show Umbra / Penumbra Checkbox */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="umbra_checkbox"
+                    checked={formData.showUmbraPenumbra}
+                    onChange={(e) => setFormData({ ...formData, showUmbraPenumbra: e.target.checked })}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  />
+                  <label htmlFor="umbra_checkbox" className="text-xs text-slate-700 font-medium cursor-pointer">
+                    Tampilkan Kerucut Geometri Bayangan (Umbra &amp; Penumbra)
+                  </label>
                 </div>
               </div>
 
@@ -817,6 +881,7 @@ export default function AdminPhenomenaPage() {
                         type="button"
                         onClick={() => handleRemoveStep(idx)}
                         className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                        title="Hapus langkah"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -847,25 +912,14 @@ export default function AdminPhenomenaPage() {
                 </div>
               </div>
 
-              {/* Status Aktif */}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="is_active_checkbox"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                />
-                <label htmlFor="is_active_checkbox" className="text-xs font-medium text-slate-700 cursor-pointer">
-                  Aktifkan simulasi ini di HUD Pemain Game AstroSphere
-                </label>
-              </div>
-
               {/* Modal Footer */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setModalOpen(false)}
+                  onClick={() => {
+                    setModalOpen(false);
+                    setEditingItem(null);
+                  }}
                   className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
                 >
                   Batal
@@ -876,49 +930,10 @@ export default function AdminPhenomenaPage() {
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{saving ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Buat Fenomena'}</span>
+                  <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deletingPhenomenon && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Hapus Simulasi Fenomena?</h3>
-                <p className="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-slate-600">
-              Apakah Anda yakin ingin menghapus simulasi{' '}
-              <strong className="text-slate-900">"{deletingPhenomenon.judul}"</strong>? Fenomena ini
-              tidak akan lagi dapat disimulasikan oleh pemain di antarmuka 3D AstroSphere.
-            </p>
-
-            <div className="pt-2 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setDeletingPhenomenon(null)}
-                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
-              >
-                {saving ? 'Menghapus...' : 'Ya, Hapus'}
-              </button>
-            </div>
           </div>
         </div>
       )}

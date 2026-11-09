@@ -5,13 +5,11 @@ import { useOutletContext } from 'react-router-dom';
 import {
   Globe,
   Pencil,
-  Plus,
   RefreshCw,
   AlertCircle,
   CheckCircle2,
   X,
   Save,
-  Trash2,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
 import type { Planet } from '../../../../types/database';
@@ -69,16 +67,6 @@ function getOrbitBadgeStyle(orbit: number) {
   }
 }
 
-// Helper slugify nama planet otomatis
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 const DEFAULT_PLANET: Partial<Planet> = {
   planet_id: '',
   urutan_orbit: 9,
@@ -97,6 +85,7 @@ const DEFAULT_PLANET: Partial<Planet> = {
   skala_visual: 1.0,
   batas_zona_radius: 35,
   kecepatan_jelajah_nyaman: 15.0,
+  is_active: true,
 };
 
 export default function AdminPlanetsPage() {
@@ -105,10 +94,8 @@ export default function AdminPlanetsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editingPlanet, setEditingPlanet] = useState<Planet | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Partial<Planet>>(DEFAULT_PLANET);
   const [saving, setSaving] = useState(false);
-  const [deletingPlanet, setDeletingPlanet] = useState<Planet | null>(null);
 
   // Pagination State (M-02)
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,119 +133,110 @@ export default function AdminPlanetsPage() {
 
   const handleOpenEdit = (planet: Planet) => {
     setEditingPlanet(planet);
-    setFormData({ ...planet });
-    setIsAdding(false);
-  };
-
-  const handleOpenAdd = () => {
-    setEditingPlanet(null);
-    setFormData({
-      ...DEFAULT_PLANET,
-      urutan_orbit: (planets.length || 0) + 1,
-    });
-    setIsAdding(true);
+    setFormData({ ...planet, is_active: planet.is_active !== false });
   };
 
   const handleCloseModal = () => {
     setEditingPlanet(null);
-    setIsAdding(false);
     setFormData(DEFAULT_PLANET);
+  };
+
+  // Toggle Aktif / Nonaktif langsung via tabel
+  const handleToggleActive = async (planet: Planet) => {
+    // Proteksi planet bumi (home)
+    if (planet.planet_id === 'earth' && planet.is_active !== false) {
+      setNotification({
+        type: 'error',
+        message: 'Planet Bumi adalah stasiun utama (Home) dan tidak dapat dinonaktifkan.',
+      });
+      return;
+    }
+
+    const nextActive = planet.is_active === false;
+
+    // Proteksi minimal ada 1 planet aktif
+    if (!nextActive) {
+      const activeCount = planets.filter((p) => p.is_active !== false).length;
+      if (activeCount <= 1) {
+        setNotification({
+          type: 'error',
+          message: 'Minimal harus ada satu planet aktif di dalam sistem AstroSphere.',
+        });
+        return;
+      }
+    }
+
+    // Optimistic local state update
+    setPlanets((prev) =>
+      prev.map((p) => (p.planet_id === planet.planet_id ? { ...p, is_active: nextActive } : p))
+    );
+
+    try {
+      const { error } = await supabase
+        .from('planets')
+        .update({
+          is_active: nextActive,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('planet_id', planet.planet_id);
+
+      if (error) throw error;
+
+      setNotification({
+        type: 'success',
+        message: `Status planet ${planet.nama} berhasil diubah menjadi ${nextActive ? 'Aktif' : 'Nonaktif'}.`,
+      });
+    } catch (err: unknown) {
+      console.error('Toggle active error:', err);
+      // Rollback jika terjadi kesalahan
+      setPlanets((prev) =>
+        prev.map((p) => (p.planet_id === planet.planet_id ? { ...p, is_active: planet.is_active } : p))
+      );
+      const errMsg = err instanceof Error ? err.message : 'Gagal memperbarui status planet.';
+      setNotification({ type: 'error', message: errMsg });
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingPlanet) return;
+
     setSaving(true);
     setNotification(null);
 
     try {
-      if (isAdding) {
-        // Insert new planet
-        const { error } = await supabase.from('planets').insert({
-          planet_id: (formData.planet_id || '').trim().toLowerCase(),
-          urutan_orbit: Number(formData.urutan_orbit) || 1,
-          nama: (formData.nama || '').trim(),
-          kategori_planet: (formData.kategori_planet || 'TERRESTRIAL') as Planet['kategori_planet'],
-          diameter_km: Number(formData.diameter_km) || 0,
-          rotation_period_hours: Number(formData.rotation_period_hours) || 24,
-          orbital_period_days: Number(formData.orbital_period_days) || 365,
-          axial_tilt_deg: Number(formData.axial_tilt_deg) || 0,
-          deskripsi_materi: (formData.deskripsi_materi || '').trim(),
-          ringkasan_cepat: formData.ringkasan_cepat?.trim() || '',
-          sumber_referensi: formData.sumber_referensi?.trim() || 'NASA Planetary Fact Sheet',
-          aset_model_url: formData.aset_model_url?.trim() || '/models/planets/earth.glb',
-          tekstur_url: formData.tekstur_url?.trim() || null,
-          warna_atmosfer_hex: formData.warna_atmosfer_hex || '#38bdf8',
-          skala_visual: Number(formData.skala_visual) || 1.0,
-          batas_zona_radius: Number(formData.batas_zona_radius) || 35,
-          kecepatan_jelajah_nyaman: Number(formData.kecepatan_jelajah_nyaman) || 15.0,
-        });
+      const { error } = await supabase
+        .from('planets')
+        .update({
+          urutan_orbit: Number(formData.urutan_orbit) || editingPlanet.urutan_orbit,
+          nama: (formData.nama || editingPlanet.nama).trim(),
+          kategori_planet: (formData.kategori_planet || editingPlanet.kategori_planet || 'TERRESTRIAL') as Planet['kategori_planet'],
+          diameter_km: Number(formData.diameter_km) || editingPlanet.diameter_km,
+          rotation_period_hours: Number(formData.rotation_period_hours) || editingPlanet.rotation_period_hours,
+          orbital_period_days: Number(formData.orbital_period_days) || editingPlanet.orbital_period_days,
+          axial_tilt_deg: formData.axial_tilt_deg !== undefined ? Number(formData.axial_tilt_deg) : editingPlanet.axial_tilt_deg,
+          deskripsi_materi: (formData.deskripsi_materi || editingPlanet.deskripsi_materi).trim(),
+          ringkasan_cepat: formData.ringkasan_cepat !== undefined ? formData.ringkasan_cepat.trim() : editingPlanet.ringkasan_cepat,
+          sumber_referensi: formData.sumber_referensi !== undefined ? (formData.sumber_referensi?.trim() || null) : editingPlanet.sumber_referensi,
+          aset_model_url: (formData.aset_model_url || editingPlanet.aset_model_url).trim(),
+          tekstur_url: formData.tekstur_url !== undefined ? formData.tekstur_url?.trim() || null : editingPlanet.tekstur_url,
+          warna_atmosfer_hex: formData.warna_atmosfer_hex || editingPlanet.warna_atmosfer_hex,
+          skala_visual: Number(formData.skala_visual) || editingPlanet.skala_visual,
+          batas_zona_radius: Number(formData.batas_zona_radius) || editingPlanet.batas_zona_radius,
+          kecepatan_jelajah_nyaman: Number(formData.kecepatan_jelajah_nyaman) || editingPlanet.kecepatan_jelajah_nyaman || 15.0,
+          is_active: formData.planet_id === 'earth' ? true : (formData.is_active !== false),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('planet_id', editingPlanet.planet_id);
 
-        if (error) throw error;
-        setNotification({ type: 'success', message: 'Planet baru berhasil ditambahkan ke Supabase!' });
-      } else if (editingPlanet) {
-        // Update existing planet
-        const { error } = await supabase
-          .from('planets')
-          .update({
-            urutan_orbit: Number(formData.urutan_orbit) || editingPlanet.urutan_orbit,
-            nama: (formData.nama || editingPlanet.nama).trim(),
-            kategori_planet: (formData.kategori_planet || editingPlanet.kategori_planet || 'TERRESTRIAL') as Planet['kategori_planet'],
-            diameter_km: Number(formData.diameter_km) || editingPlanet.diameter_km,
-            rotation_period_hours: Number(formData.rotation_period_hours) || editingPlanet.rotation_period_hours,
-            orbital_period_days: Number(formData.orbital_period_days) || editingPlanet.orbital_period_days,
-            axial_tilt_deg: formData.axial_tilt_deg !== undefined ? Number(formData.axial_tilt_deg) : editingPlanet.axial_tilt_deg,
-            deskripsi_materi: (formData.deskripsi_materi || editingPlanet.deskripsi_materi).trim(),
-            ringkasan_cepat: formData.ringkasan_cepat !== undefined ? formData.ringkasan_cepat.trim() : editingPlanet.ringkasan_cepat,
-            sumber_referensi: formData.sumber_referensi !== undefined ? (formData.sumber_referensi?.trim() || null) : editingPlanet.sumber_referensi,
-            aset_model_url: (formData.aset_model_url || editingPlanet.aset_model_url).trim(),
-            tekstur_url: formData.tekstur_url !== undefined ? formData.tekstur_url?.trim() || null : editingPlanet.tekstur_url,
-            warna_atmosfer_hex: formData.warna_atmosfer_hex || editingPlanet.warna_atmosfer_hex,
-            skala_visual: Number(formData.skala_visual) || editingPlanet.skala_visual,
-            batas_zona_radius: Number(formData.batas_zona_radius) || editingPlanet.batas_zona_radius,
-            kecepatan_jelajah_nyaman: Number(formData.kecepatan_jelajah_nyaman) || editingPlanet.kecepatan_jelajah_nyaman || 15.0,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('planet_id', editingPlanet.planet_id);
-
-        if (error) throw error;
-        setNotification({ type: 'success', message: `Data planet ${formData.nama} berhasil diperbarui!` });
-      }
+      if (error) throw error;
+      setNotification({ type: 'success', message: `Data planet ${formData.nama} berhasil diperbarui!` });
 
       handleCloseModal();
       await fetchPlanets();
     } catch (err: unknown) {
       console.error('Save error:', err);
       const errMsg = err instanceof Error ? err.message : 'Gagal menyimpan data planet.';
-      setNotification({ type: 'error', message: errMsg });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deletingPlanet) return;
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('planets')
-        .delete()
-        .eq('planet_id', deletingPlanet.planet_id);
-
-      if (error) throw error;
-
-      setNotification({
-        type: 'success',
-        message: `Planet ${deletingPlanet.nama} berhasil dihapus dari Supabase.`,
-      });
-      if (editingPlanet?.planet_id === deletingPlanet.planet_id) {
-        handleCloseModal();
-      }
-      setDeletingPlanet(null);
-      await fetchPlanets();
-    } catch (err: unknown) {
-      console.error('Delete error:', err);
-      const errMsg = err instanceof Error ? err.message : 'Gagal menghapus planet.';
       setNotification({ type: 'error', message: errMsg });
     } finally {
       setSaving(false);
@@ -290,14 +268,14 @@ export default function AdminPlanetsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Card Sesuai Gambar A02 */}
+      {/* 1. Header Card Sesuai Gambar A02 (Tanpa Tombol Tambah Planet) */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Data Planet
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Kelola data dan parameter edukasi 8 planet tata surya dalam modul simulasi 3D.
+            Kelola parameter sains, ringkasan materi, dan status visibilitas planet tata surya dalam modul simulasi 3D.
           </p>
         </div>
 
@@ -313,15 +291,6 @@ export default function AdminPlanetsPage() {
             title="Segarkan data planet"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah Planet</span>
           </button>
         </div>
       </div>
@@ -351,7 +320,7 @@ export default function AdminPlanetsPage() {
         </div>
       )}
 
-      {/* 2. Table Card Sesuai Gambar A02 */}
+      {/* 2. Table Card Sesuai Gambar A02 dengan Kolom STATUS */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         {/* Table Top Header */}
         <div className="p-5 flex items-center justify-between border-b border-slate-100">
@@ -377,13 +346,14 @@ export default function AdminPlanetsPage() {
                 <th className="px-6 py-3.5">NAMA PLANET</th>
                 <th className="px-6 py-3.5">DIAMETER</th>
                 <th className="px-6 py-3.5">PERIODE ROTASI</th>
+                <th className="px-6 py-3.5">STATUS</th>
                 <th className="px-6 py-3.5 text-right">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                       <span>Memuat data planet tata surya...</span>
@@ -392,13 +362,15 @@ export default function AdminPlanetsPage() {
                 </tr>
               ) : paginatedPlanets.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
                     Tidak ada planet yang cocok dengan pencarian "{searchQuery}".
                   </td>
                 </tr>
               ) : (
                 paginatedPlanets.map((planet) => {
                   const isEarth = planet.planet_id === 'earth';
+                  const isActive = planet.is_active !== false;
+
                   return (
                     <tr
                       key={planet.planet_id}
@@ -448,6 +420,38 @@ export default function AdminPlanetsPage() {
                         )}
                       </td>
 
+                      {/* Switch Toggle Status Aktif / Nonaktif */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(planet)}
+                            disabled={isEarth && isActive}
+                            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                              isActive ? 'bg-emerald-500' : 'bg-slate-300'
+                            } ${isEarth ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}
+                            title={
+                              isEarth
+                                ? 'Planet Bumi selalu aktif sebagai stasiun utama'
+                                : `Klik untuk ${isActive ? 'menonaktifkan' : 'mengaktifkan'} planet`
+                            }
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+                                isActive ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`text-xs font-semibold ${
+                              isActive ? 'text-emerald-700' : 'text-slate-400'
+                            }`}
+                          >
+                            {isActive ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                        </div>
+                      </td>
+
                       {/* Tombol Aksi */}
                       <td className="px-6 py-4 text-right">
                         <div className="inline-flex items-center gap-2 justify-end">
@@ -463,16 +467,6 @@ export default function AdminPlanetsPage() {
                             <Pencil className="h-3 w-3" />
                             <span>Ubah Data</span>
                           </button>
-                          {!isEarth && (
-                            <button
-                              type="button"
-                              onClick={() => setDeletingPlanet(planet)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                              title={`Hapus ${planet.nama}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -525,8 +519,8 @@ export default function AdminPlanetsPage() {
         </div>
       </div>
 
-      {/* 3. Modal Form: Tambah / Edit Planet */}
-      {(editingPlanet || isAdding) && (
+      {/* 3. Modal Form: Ubah Data Planet (Tanpa Tambah / Hapus) */}
+      {editingPlanet && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -536,10 +530,10 @@ export default function AdminPlanetsPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    {isAdding ? 'Tambah Entitas Planet Baru' : `Ubah Data Planet: ${formData.nama}`}
+                    Ubah Data Planet: {formData.nama}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Konfigurasi parameter astronomi dan modul pembelajaran 3D
+                    Konfigurasi parameter sains, teks pembuka, dan visibilitas di modul 3D
                   </p>
                 </div>
               </div>
@@ -553,20 +547,59 @@ export default function AdminPlanetsPage() {
             </div>
 
             <form onSubmit={handleSave} className="mt-5 space-y-4">
+              {/* Status Visibilitas Planet */}
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+                <div>
+                  <span className="text-xs font-bold text-slate-900">
+                    Visibilitas di Modul Pemain
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    {formData.planet_id === 'earth'
+                      ? 'Planet Bumi adalah stasiun utama (Home) dan harus selalu aktif.'
+                      : 'Jika dinonaktifkan, planet akan disembunyikan dari orbit dan navigasi pemain.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={formData.planet_id === 'earth'}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        is_active: prev.is_active === false ? true : false,
+                      }))
+                    }
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                      formData.is_active !== false ? 'bg-emerald-500' : 'bg-slate-300'
+                    } ${formData.planet_id === 'earth' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+                        formData.is_active !== false ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span
+                    className={`text-xs font-semibold ${
+                      formData.is_active !== false ? 'text-emerald-700' : 'text-slate-400'
+                    }`}
+                  >
+                    {formData.is_active !== false ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* ID Planet */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Slug ID Planet (misal: earth, mars)
+                    Slug ID Planet (Terkunci)
                   </label>
                   <input
                     type="text"
-                    disabled={!isAdding}
+                    disabled
                     value={formData.planet_id || ''}
-                    onChange={(e) => setFormData({ ...formData, planet_id: e.target.value })}
-                    required
-                    placeholder="earth"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none disabled:bg-slate-100"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-500 font-mono cursor-not-allowed"
                   />
                 </div>
 
@@ -578,14 +611,7 @@ export default function AdminPlanetsPage() {
                   <input
                     type="text"
                     value={formData.nama || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setFormData((prev) => ({
-                        ...prev,
-                        nama: val,
-                        planet_id: isAdding ? slugify(val) : prev.planet_id,
-                      }));
-                    }}
+                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                     required
                     placeholder="misal: Bumi"
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
@@ -706,7 +732,7 @@ export default function AdminPlanetsPage() {
               {/* Deskripsi Utama Materi */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Deskripsi Utama Planet (Saat Pemain Berhenti & Mengamati Planet)
+                  Deskripsi Utama Planet (Saat Pemain Berhenti &amp; Mengamati Planet)
                 </label>
                 <textarea
                   rows={3}
@@ -735,7 +761,7 @@ export default function AdminPlanetsPage() {
               {/* Parameter Visual & Zona Jelajah 3D */}
               <div className="pt-3 border-t border-slate-100">
                 <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2.5">
-                  Pengaturan Model 3D & Navigasi Jelajah
+                  Pengaturan Model 3D &amp; Navigasi Jelajah
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -818,82 +844,26 @@ export default function AdminPlanetsPage() {
                 </div>
               </div>
 
-              {/* Tombol Simpan & Hapus */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  {!isAdding && editingPlanet && editingPlanet.planet_id !== 'earth' && (
-                    <button
-                      type="button"
-                      onClick={() => setDeletingPlanet(editingPlanet)}
-                      disabled={saving}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-2 text-xs font-semibold text-red-700 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Hapus Planet</span>
-                    </button>
-                  )}
-                </div>
+              {/* Tombol Simpan */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Batal
+                </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Batal
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
-                  >
-                    <Save className="h-4 w-4" />
-                    <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Konfirmasi Hapus Custom (R-03) */}
-      {deletingPlanet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Hapus Data Planet?</h3>
-                <p className="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-slate-600">
-              Apakah Anda yakin ingin menghapus planet{' '}
-              <strong className="text-slate-900">"{deletingPlanet.nama}"</strong>? Seluruh data peristiwa sejarah, kuis, dan simulasi fenomena terkait planet ini akan terhapus secara berjenjang dari sistem.
-            </p>
-
-            <div className="pt-2 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setDeletingPlanet(null)}
-                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
-              >
-                {saving ? 'Menghapus...' : 'Ya, Hapus'}
-              </button>
-            </div>
           </div>
         </div>
       )}

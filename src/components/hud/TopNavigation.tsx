@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Globe,
   Rocket,
@@ -13,8 +13,20 @@ import {
 } from 'lucide-react';
 import { useSceneStore } from '@/store/useSceneStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { supabase } from '@/lib/supabase/client';
 
-const PLANETS = [
+const PLANET_EMOJIS: Record<string, string> = {
+  mercury: '☿',
+  venus: '♀',
+  earth: '♁',
+  mars: '♂',
+  jupiter: '♃',
+  saturn: '♄',
+  uranus: '♅',
+  neptune: '♆',
+};
+
+const DEFAULT_NAV_PLANETS = [
   { id: 'mercury', name: 'Merkurius', emoji: '☿' },
   { id: 'venus', name: 'Venus', emoji: '♀' },
   { id: 'earth', name: 'Bumi', emoji: '♁' },
@@ -41,9 +53,65 @@ export function TopNavigation({ onOpenHangar, onOpenCloudSave }: TopNavigationPr
   const isSyncing = usePlayerStore((state) => state.isSyncing);
 
   const [planetDropdownOpen, setPlanetDropdownOpen] = useState(false);
+  const [navPlanets, setNavPlanets] = useState(DEFAULT_NAV_PLANETS);
+
+  // Ambil data planet aktif dari Supabase dengan filter is_active !== false
+  const fetchActivePlanets = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('planets')
+        .select('planet_id, nama, urutan_orbit, is_active')
+        .order('urutan_orbit', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const activeOnly = data
+          .filter((p) => p.is_active !== false)
+          .map((p) => ({
+            id: p.planet_id,
+            name: p.nama,
+            emoji: PLANET_EMOJIS[p.planet_id] || '🪐',
+          }));
+
+        if (activeOnly.length > 0) {
+          setNavPlanets(activeOnly);
+
+          // Jika planet yang sedang aktif saat ini dinonaktifkan di admin, fallback ke Bumi atau planet aktif pertama
+          const isCurrentActive = activeOnly.some((p) => p.id === activePlanetId);
+          if (!isCurrentActive) {
+            const fallbackId = activeOnly.some((p) => p.id === 'earth') ? 'earth' : activeOnly[0].id;
+            setActivePlanetId(fallbackId);
+            setCheckpointPlanet(fallbackId);
+          }
+        }
+      }
+    } catch {
+      // Pertahankan default fallback
+    }
+  }, [activePlanetId, setActivePlanetId, setCheckpointPlanet]);
+
+  useEffect(() => {
+    fetchActivePlanets();
+
+    // Real-time subscription untuk update instan saat Admin mengubah toggle di /admin/planets
+    const channel = supabase
+      .channel('public:realtime_planets_navigation')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'planets' },
+        () => {
+          fetchActivePlanets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchActivePlanets]);
 
   const activePlanetObj =
-    PLANETS.find((p) => p.id === activePlanetId) || PLANETS[2];
+    navPlanets.find((p) => p.id === activePlanetId) || navPlanets[0] || DEFAULT_NAV_PLANETS[2];
 
   const handleSelectPlanet = (planetId: string) => {
     setActivePlanetId(planetId);
@@ -98,7 +166,7 @@ export function TopNavigation({ onOpenHangar, onOpenCloudSave }: TopNavigationPr
                 Pilih Zona Planet
               </div>
               <div className="space-y-0.5">
-                {PLANETS.map((planet) => (
+                {navPlanets.map((planet) => (
                   <button
                     key={planet.id}
                     type="button"
