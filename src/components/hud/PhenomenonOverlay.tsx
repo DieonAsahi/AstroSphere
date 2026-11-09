@@ -108,6 +108,23 @@ export function PhenomenonOverlay() {
 
     if (mode === 'PHENOMENON') {
       loadPhenomena();
+
+      // Realtime subscription ke tabel phenomena (M-03)
+      const channel = supabase
+        .channel('public:realtime_phenomena')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'phenomena' }, () => {
+          loadPhenomena();
+        })
+        .subscribe();
+
+      const handleFocus = () => loadPhenomena();
+      window.addEventListener('focus', handleFocus);
+
+      return () => {
+        isMounted = false;
+        supabase.removeChannel(channel);
+        window.removeEventListener('focus', handleFocus);
+      };
     }
 
     return () => {

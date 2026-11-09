@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Compass,
   Plus,
@@ -86,17 +87,34 @@ function getPlanetBadgeStyle(planetId: string) {
   }
 }
 
+// Format tampilan tahun ramah Sebelum Masehi (SM) & Masehi (M)
+function formatYearDisplay(year: number): string {
+  if (year < 0) {
+    const absYear = Math.abs(year);
+    if (absYear >= 1000000) {
+      const millions = absYear / 1000000;
+      return `${millions % 1 === 0 ? millions : millions.toFixed(1)} Juta SM`;
+    }
+    return `${absYear.toLocaleString('id-ID')} SM`;
+  }
+  return `${year} M`;
+}
+
 const DEFAULT_EVENT: Partial<HistoryEvent> = {
   planet_id: 'earth',
+  era_label: 'Sejarah & Bentang Alam',
   tahun_kejadian: new Date().getFullYear(),
+  kategori_poi: 'SURFACE_LANDING',
   judul: '',
   nama_wahana: '',
   deskripsi: '',
   koordinat_lat: 0,
   koordinat_lng: 0,
+  sumber_referensi: '',
 };
 
 export default function AdminHistoryPage() {
+  const { searchQuery = '' } = useOutletContext<{ searchQuery?: string }>() || {};
   const [events, setEvents] = useState<HistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,11 +123,16 @@ export default function AdminHistoryPage() {
   const [selectedPlanetFilter, setSelectedPlanetFilter] = useState<string>('ALL');
   const [selectedYearFilter, setSelectedYearFilter] = useState<string>('ALL');
 
+  // Pagination State (M-02)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
   // Modal State
   const [editingEvent, setEditingEvent] = useState<HistoryEvent | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Partial<HistoryEvent>>(DEFAULT_EVENT);
   const [saving, setSaving] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState<HistoryEvent | null>(null);
 
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
@@ -141,13 +164,14 @@ export default function AdminHistoryPage() {
     fetchEvents();
   }, [fetchEvents]);
 
-  // Saring peristiwa sesuai filter planet dan tahun
+  // Saring peristiwa sesuai filter planet, tahun, dan search query (M-01)
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => {
       const matchPlanet =
         selectedPlanetFilter === 'ALL' || ev.planet_id === selectedPlanetFilter;
       const matchYear =
         selectedYearFilter === 'ALL' ||
+        (selectedYearFilter === 'ANCIENT' && ev.tahun_kejadian < 1) ||
         String(ev.tahun_kejadian) === selectedYearFilter ||
         (selectedYearFilter === '1960s' && ev.tahun_kejadian >= 1960 && ev.tahun_kejadian <= 1969) ||
         (selectedYearFilter === '1970s' && ev.tahun_kejadian >= 1970 && ev.tahun_kejadian <= 1979) ||
@@ -156,9 +180,30 @@ export default function AdminHistoryPage() {
         (selectedYearFilter === '2010s' && ev.tahun_kejadian >= 2010 && ev.tahun_kejadian <= 2019) ||
         (selectedYearFilter === '2020s' && ev.tahun_kejadian >= 2020);
 
-      return matchPlanet && matchYear;
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        ev.judul.toLowerCase().includes(q) ||
+        (ev.era_label && ev.era_label.toLowerCase().includes(q)) ||
+        (ev.nama_wahana && ev.nama_wahana.toLowerCase().includes(q)) ||
+        (ev.deskripsi && ev.deskripsi.toLowerCase().includes(q)) ||
+        (ev.sumber_referensi && ev.sumber_referensi.toLowerCase().includes(q)) ||
+        ev.planet_id.toLowerCase().includes(q);
+
+      return matchPlanet && matchYear && matchSearch;
     });
-  }, [events, selectedPlanetFilter, selectedYearFilter]);
+  }, [events, selectedPlanetFilter, selectedYearFilter, searchQuery]);
+
+  // Reset pagination saat filter berganti
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPlanetFilter, selectedYearFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage));
+  const paginatedEvents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredEvents.slice(start, start + itemsPerPage);
+  }, [filteredEvents, currentPage, itemsPerPage]);
 
   const handleOpenEdit = (event: HistoryEvent) => {
     setEditingEvent(event);
@@ -217,6 +262,7 @@ export default function AdminHistoryPage() {
       if (isAdding) {
         const { error } = await supabase.from('history_events').insert({
           planet_id: formData.planet_id || 'earth',
+          era_label: (formData.era_label || '').trim() || 'Sejarah & Bentang Alam',
           tahun_kejadian: Number(formData.tahun_kejadian) || 2024,
           kategori_poi: (formData.kategori_poi || 'SURFACE_LANDING') as PoiCategory,
           judul: (formData.judul || '').trim(),
@@ -224,6 +270,7 @@ export default function AdminHistoryPage() {
           deskripsi: (formData.deskripsi || '').trim(),
           koordinat_lat: lat,
           koordinat_lng: lng,
+          sumber_referensi: formData.sumber_referensi?.trim() || '',
         });
 
         if (error) throw error;
@@ -236,6 +283,7 @@ export default function AdminHistoryPage() {
           .from('history_events')
           .update({
             planet_id: formData.planet_id || editingEvent.planet_id,
+            era_label: formData.era_label !== undefined ? (formData.era_label.trim() || 'Sejarah & Bentang Alam') : (editingEvent.era_label || 'Sejarah & Bentang Alam'),
             tahun_kejadian: Number(formData.tahun_kejadian) || editingEvent.tahun_kejadian,
             kategori_poi: (formData.kategori_poi || editingEvent.kategori_poi || 'SURFACE_LANDING') as PoiCategory,
             judul: (formData.judul || editingEvent.judul).trim(),
@@ -243,6 +291,7 @@ export default function AdminHistoryPage() {
             deskripsi: (formData.deskripsi || editingEvent.deskripsi).trim(),
             koordinat_lat: lat,
             koordinat_lng: lng,
+            sumber_referensi: formData.sumber_referensi !== undefined ? (formData.sumber_referensi?.trim() || '') : (editingEvent.sumber_referensi || ''),
           })
           .eq('event_id', editingEvent.event_id);
 
@@ -264,27 +313,26 @@ export default function AdminHistoryPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!editingEvent) return;
-    const confirmDelete = window.confirm(
-      `Apakah Anda yakin ingin menghapus peristiwa "${editingEvent.judul}"? Tindakan ini tidak dapat dibatalkan.`
-    );
-    if (!confirmDelete) return;
+  const handleDeleteConfirm = async () => {
+    if (!deletingEvent) return;
 
     setSaving(true);
     try {
       const { error } = await supabase
         .from('history_events')
         .delete()
-        .eq('event_id', editingEvent.event_id);
+        .eq('event_id', deletingEvent.event_id);
 
       if (error) throw error;
 
       setNotification({
         type: 'success',
-        message: `Peristiwa "${editingEvent.judul}" berhasil dihapus.`,
+        message: `Peristiwa "${deletingEvent.judul}" berhasil dihapus dari Supabase.`,
       });
-      handleCloseModal();
+      if (editingEvent?.event_id === deletingEvent.event_id) {
+        handleCloseModal();
+      }
+      setDeletingEvent(null);
       await fetchEvents();
     } catch (err: unknown) {
       console.error('Delete error:', err);
@@ -391,6 +439,7 @@ export default function AdminHistoryPage() {
               className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 font-semibold focus:border-blue-600 focus:outline-none"
             >
               <option value="ALL">Semua Tahun</option>
+              <option value="ANCIENT">Zaman Prasejarah &amp; SM (&lt; 1 M)</option>
               <option value="1960s">Dekade 1960-an (Perlombaan Antariksa)</option>
               <option value="1970s">Dekade 1970-an (Misi Viking &amp; Venera)</option>
               <option value="1990s">Dekade 1990-an (Pathfinder &amp; ISS)</option>
@@ -426,7 +475,7 @@ export default function AdminHistoryPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200 text-[11px] uppercase tracking-wider">
               <tr>
-                <th className="px-6 py-3.5 w-24">TAHUN</th>
+                <th className="px-6 py-3.5 w-36">TAHUN</th>
                 <th className="px-6 py-3.5">NAMA PERISTIWA</th>
                 <th className="px-6 py-3.5 w-32">PLANET</th>
                 <th className="px-6 py-3.5 text-right w-28">AKSI</th>
@@ -442,14 +491,14 @@ export default function AdminHistoryPage() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredEvents.length === 0 ? (
+              ) : paginatedEvents.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
-                    Tidak ada peristiwa yang cocok dengan filter yang dipilih.
+                    Tidak ada peristiwa yang cocok dengan filter atau pencarian yang dipilih.
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((event) => {
+                paginatedEvents.map((event) => {
                   const planetBadge = getPlanetBadgeStyle(event.planet_id);
                   return (
                     <tr
@@ -457,8 +506,20 @@ export default function AdminHistoryPage() {
                       className="hover:bg-slate-50/60 transition-colors"
                     >
                       {/* TAHUN */}
-                      <td className="px-6 py-4 font-mono font-bold text-sm text-blue-600">
-                        {event.tahun_kejadian}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-mono font-bold text-sm text-blue-600">
+                            {formatYearDisplay(event.tahun_kejadian)}
+                          </span>
+                          {event.era_label && (
+                            <span
+                              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 line-clamp-1 max-w-[170px]"
+                              title={event.era_label}
+                            >
+                              {event.era_label}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* NAMA PERISTIWA */}
@@ -486,14 +547,24 @@ export default function AdminHistoryPage() {
 
                       {/* AKSI */}
                       <td className="px-6 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(event)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
-                        >
-                          <Pencil className="h-3 w-3" />
-                          <span>Ubah Data</span>
-                        </button>
+                        <div className="inline-flex items-center gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(event)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 px-3 py-1.5 text-xs font-medium shadow-sm transition-colors"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            <span>Ubah Data</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingEvent(event)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            title="Hapus Peristiwa"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -503,15 +574,45 @@ export default function AdminHistoryPage() {
           </table>
         </div>
 
-        {/* Table Footer Sesuai Gambar A03 */}
-        <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
+        {/* Table Footer with Functional Pagination (M-02) */}
+        <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <span>
-            Menampilkan {filteredEvents.length} dari {events.length} peristiwa sejarah yang aktif di ruang simulasi 3D.
+            Menampilkan {filteredEvents.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
+            {Math.min(currentPage * itemsPerPage, filteredEvents.length)} dari {filteredEvents.length} peristiwa
+            {searchQuery && ` (difilter dari "${searchQuery}")`}
           </span>
-          <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span>Format Koordinat: IAU Ellipsoid Cartographic Standard</span>
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition-colors"
+            >
+              Sebelumnya
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => setCurrentPage(num)}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
+                  currentPage === num
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition-colors"
+            >
+              Selanjutnya
+            </button>
+          </div>
         </div>
       </div>
 
@@ -563,29 +664,65 @@ export default function AdminHistoryPage() {
                   </select>
                 </div>
 
-                {/* Tahun Kejadian */}
+                {/* Kategori POI */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tahun Kejadian (Masehi)
+                    Kategori POI / Misi
+                  </label>
+                  <select
+                    value={formData.kategori_poi || 'SURFACE_LANDING'}
+                    onChange={(e) =>
+                      setFormData({ ...formData, kategori_poi: e.target.value as PoiCategory })
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                  >
+                    <option value="OBSERVATION">OBSERVATION — Bentang Alam &amp; Sejarah Peradaban</option>
+                    <option value="SURFACE_LANDING">SURFACE_LANDING — Pendaratan Permukaan</option>
+                    <option value="ORBITAL_FLYBY">ORBITAL_FLYBY — Lintas Wahana / Orbit</option>
+                  </select>
+                </div>
+
+                {/* Babak / Era Sejarah / Topik Bahasan */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Babak / Era Sejarah / Topik Bahasan
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.era_label || ''}
+                    onChange={(e) => setFormData({ ...formData, era_label: e.target.value })}
+                    placeholder="misal: Zaman Dinosaurus (~66 Juta SM) / Sejarah Islam (~2000 SM) / Fenomena Hujan Berlian"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                {/* Tahun Kejadian */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tahun Filter Urutan (Gunakan angka negatif untuk SM/Prasejarah, misal -2560 untuk 2560 SM)
                   </label>
                   <input
                     type="number"
-                    min={1900}
-                    max={2100}
-                    value={formData.tahun_kejadian || 1969}
+                    value={formData.tahun_kejadian ?? 1969}
                     onChange={(e) =>
                       setFormData({ ...formData, tahun_kejadian: Number(e.target.value) })
                     }
                     required
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Preview Tahun:{' '}
+                    <strong className="text-blue-600 font-mono">
+                      {formatYearDisplay(formData.tahun_kejadian ?? 0)}
+                    </strong>
+                  </p>
                 </div>
               </div>
 
               {/* Judul Peristiwa */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Judul Peristiwa Sejarah
+                  Judul Sejarah / Bentang Alam / POI
                 </label>
                 <input
                   type="text"
@@ -597,16 +734,16 @@ export default function AdminHistoryPage() {
                 />
               </div>
 
-              {/* Nama Wahana */}
+              {/* Lokasi & Subjudul / Objek / Wahana */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nama Wahana / Misi / Lokasi
+                  Lokasi &amp; Subjudul / Objek / Wahana
                 </label>
                 <input
                   type="text"
                   value={formData.nama_wahana || ''}
                   onChange={(e) => setFormData({ ...formData, nama_wahana: e.target.value })}
-                  placeholder="misal: NASA • Mare Tranquillitatis"
+                  placeholder="misal: Masjidil Haram, Makkah • Nabi Ibrahim AS & Nabi Ismail AS"
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                 />
               </div>
@@ -653,25 +790,39 @@ export default function AdminHistoryPage() {
               {/* Deskripsi */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Deskripsi Narasi Edukatif
+                  Penjelasan Lengkap Sejarah, Sains, &amp; Keberadaannya Saat Ini
                 </label>
                 <textarea
                   rows={3}
                   value={formData.deskripsi || ''}
                   onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                   required
-                  placeholder="Penjelasan latar belakang misi, pencapaian sains, dan dampaknya bagi penjelajahan luar angkasa."
+                  placeholder="Penjelasan latar belakang sejarah, bentang alam, pencapaian sains, dan dampaknya bagi peradaban atau eksplorasi antariksa."
                   className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              {/* Sumber Referensi */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Sumber Referensi Ilmiah
+                </label>
+                <input
+                  type="text"
+                  value={formData.sumber_referensi || ''}
+                  onChange={(e) => setFormData({ ...formData, sumber_referensi: e.target.value })}
+                  placeholder="misal: UNESCO World Heritage / NASA Planetary Fact Sheet / Nature"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
               {/* Actions */}
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                 <div>
-                  {!isAdding && (
+                  {!isAdding && editingEvent && (
                     <button
                       type="button"
-                      onClick={handleDelete}
+                      onClick={() => setDeletingEvent(editingEvent)}
                       disabled={saving}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-2 text-xs font-semibold text-red-700 transition-colors"
                     >
@@ -701,6 +852,46 @@ export default function AdminHistoryPage() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Custom (R-03) */}
+      {deletingEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Hapus Peristiwa Sejarah?</h3>
+                <p className="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-600">
+              Apakah Anda yakin ingin menghapus peristiwa{' '}
+              <strong className="text-slate-900">"{deletingEvent.judul}"</strong>? Titik POI ini tidak akan lagi ditampilkan pada permukaan planet 3D AstroSphere.
+            </p>
+
+            <div className="pt-2 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeletingEvent(null)}
+                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+              >
+                {saving ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
+            </div>
           </div>
         </div>
       )}

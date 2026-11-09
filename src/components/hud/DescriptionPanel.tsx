@@ -25,8 +25,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: 1407.6,
     orbital_period_days: 87.97,
     axial_tilt_deg: 0.034,
+    ringkasan_cepat: 'Planet terkecil dan terdekat dari Matahari dengan variasi suhu paling ekstrem.',
     deskripsi_materi:
       'Merkurius adalah planet terkecil di Tata Surya dan yang paling dekat dengan Matahari. Permukaannya dipenuhi kawah mirip Bulan, dan tidak memiliki atmosfer tebal untuk menahan panas, menyebabkan suhu ekstrem antara siang (430°C) dan malam (-180°C).',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/mercury.glb',
     skala_visual: 0.8,
     batas_zona_radius: 26,
@@ -40,8 +42,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: -5832.5,
     orbital_period_days: 224.7,
     axial_tilt_deg: 177.36,
+    ringkasan_cepat: 'Kembaran Bumi yang panas membara dengan rotasi retrograde unik searah jarum jam.',
     deskripsi_materi:
       'Venus adalah planet terpanas di Tata Surya karena efek rumah kaca ekstrem dari atmosfer karbon dioksida tebalnya. Venus memiliki rotasi retrograde (berputar searah jarum jam dari timur ke barat), sehingga Matahari terbit dari barat dan terbenam di timur. Satu hari di Venus lebih panjang daripada satu tahunnya!',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/venus.glb',
     skala_visual: 0.95,
     batas_zona_radius: 30,
@@ -55,8 +59,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: 23.93,
     orbital_period_days: 365.25,
     axial_tilt_deg: 23.44,
+    ringkasan_cepat: 'Planet samudra biru, rumah bagi peradaban dan satu-satunya dunia berpenghuni.',
     deskripsi_materi:
       'Bumi adalah satu-satunya objek astronomi yang diketahui menampung kehidupan. Sekitar 71% permukaannya tertutup air cair. Kemiringan poros 23.44° menyebabkan terjadinya empat musim di berbagai belahan bumi seiring bumi berevolusi mengitari Matahari.',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/earth.glb',
     skala_visual: 1.0,
     batas_zona_radius: 32,
@@ -70,8 +76,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: 24.62,
     orbital_period_days: 687.0,
     axial_tilt_deg: 25.19,
+    ringkasan_cepat: 'Dunia berkarat dengan ngarai raksasa dan jejak danau air masa silam.',
     deskripsi_materi:
       'Mars dikenal sebagai Planet Merah karena oksida besi melimpah di permukaannya. Mars adalah rumah bagi Olympus Mons (gunung berapi terbesar di Tata Surya) dan Valles Marineris (sistem ngarai raksasa yang panjangnya mencapai ribuan kilometer).',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/mars.glb',
     skala_visual: 0.85,
     batas_zona_radius: 28,
@@ -85,8 +93,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: 9.93,
     orbital_period_days: 4332.59,
     axial_tilt_deg: 3.13,
+    ringkasan_cepat: 'Raja para planet berputar tercepat dengan Badai Merah Raksasa yang melegenda.',
     deskripsi_materi:
       'Jupiter adalah raksasa gas sekaligus planet terbesar di Tata Surya. Memiliki massa 2.5 kali gabungan seluruh planet lainnya. Jupiter berputar sangat cepat pada porosnya (kurang dari 10 jam per putaran) dan terkenal dengan Bintik Merah Raksasa (Great Red Spot), badai antisiklon yang telah berkecamuk ratusan tahun.',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/jupiter.glb',
     skala_visual: 1.5,
     batas_zona_radius: 45,
@@ -100,8 +110,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: 10.7,
     orbital_period_days: 10759.22,
     axial_tilt_deg: 26.73,
+    ringkasan_cepat: 'Permata Tata Surya bermahkotakan cincin es berkilauan selebar ratusan ribu kilometer.',
     deskripsi_materi:
       'Saturnus adalah raksasa gas dengan sistem cincin es spektakuler yang membentang hingga 282.000 km namun tebalnya rata-rata hanya puluhan meter. Kerapatan Saturnus sangat rendah hingga secara teoritis planet ini dapat mengapung jika ada wadah air yang cukup besar.',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/saturn.glb',
     skala_visual: 1.35,
     batas_zona_radius: 42,
@@ -115,8 +127,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: -17.24,
     orbital_period_days: 30685.4,
     axial_tilt_deg: 97.77,
+    ringkasan_cepat: 'Raksasa es menggelinding miring dengan rotasi retrograde di tepian dingin antariksa.',
     deskripsi_materi:
       'Uranus adalah raksasa es dengan atmosfer kaya metana yang memberinya rona biru kehijauan. Keunikan utama Uranus adalah poros rotasinya yang miring 97.77°, membuatnya tampak "menggelinding" di sepanjang orbitnya, serta memiliki rotasi retrograde.',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/uranus.glb',
     skala_visual: 1.15,
     batas_zona_radius: 36,
@@ -130,8 +144,10 @@ const FALLBACK_PLANETS: Record<string, Planet> = {
     rotation_period_hours: 16.11,
     orbital_period_days: 60189.0,
     axial_tilt_deg: 28.32,
+    ringkasan_cepat: 'Planet terluar berwarna biru samudra kosmis dengan badai angin supersonik dahsyat.',
     deskripsi_materi:
       'Neptunus adalah planet terjauh dari Matahari di Tata Surya. Berwarna biru tua pekat akibat metana di atmosfernya, planet ini dikenal memiliki kecepatan angin paling ekstrem di Tata Surya, mencapai lebih dari 2.100 km/jam.',
+    sumber_referensi: 'NASA Planetary Fact Sheet',
     aset_model_url: '/models/planets/neptune.glb',
     skala_visual: 1.1,
     batas_zona_radius: 35,
@@ -231,6 +247,19 @@ export function DescriptionPanel() {
         </div>
       ) : (
         <div className="mt-5 space-y-6 flex-1">
+          {/* Opening Highlight Banner (ringkasan_cepat) */}
+          {planet.ringkasan_cepat && (
+            <div className="relative overflow-hidden rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-indigo-950/40 p-4 shadow-lg shadow-cyan-950/20">
+              <div className="absolute top-0 left-0 h-full w-1.5 bg-gradient-to-b from-cyan-400 to-indigo-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block mb-1">
+                Sekilas Pengenalan Planet
+              </span>
+              <p className="text-xs font-medium text-cyan-100 italic leading-relaxed pl-1">
+                "{planet.ringkasan_cepat}"
+              </p>
+            </div>
+          )}
+
           {/* Retrograde Banner if applicable (Venus & Uranus - PRD R07) */}
           {isRetrograde && (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-start gap-3">
@@ -320,7 +349,9 @@ export function DescriptionPanel() {
           {/* Validasi Ilmiah Badge */}
           <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-300">
             <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>Data diverifikasi berdasarkan astronomi NASA Planetary Fact Sheet.</span>
+            <span>
+              Data diverifikasi berdasarkan {planet.sumber_referensi || 'astronomi NASA Planetary Fact Sheet'}.
+            </span>
           </div>
 
           {/* Tombol Lanjut ke Kuis / Kembali */}

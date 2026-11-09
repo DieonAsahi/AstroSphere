@@ -76,6 +76,7 @@ export type Planet = {
   axial_tilt_deg: number;
   deskripsi_materi: string;
   ringkasan_cepat?: string;
+  sumber_referensi?: string | null;
   aset_model_url: string;
   tekstur_url?: string | null;
   warna_atmosfer_hex?: string;
@@ -88,6 +89,7 @@ export type Planet = {
 export type HistoryEvent = {
   event_id: string;
   planet_id: string;
+  era_label?: string;
   tahun_kejadian: number;
   kategori_poi?: PoiCategory;
   judul: string;
@@ -95,6 +97,7 @@ export type HistoryEvent = {
   koordinat_lat: number;
   koordinat_lng: number;
   nama_wahana: string | null;
+  sumber_referensi?: string | null;
   created_at: string;
 };
 
@@ -182,6 +185,7 @@ export type Database = {
           axial_tilt_deg: number;
           deskripsi_materi: string;
           ringkasan_cepat: string;
+          sumber_referensi: string | null;
           aset_model_url: string;
           tekstur_url: string | null;
           warna_atmosfer_hex: string;
@@ -201,6 +205,7 @@ export type Database = {
           axial_tilt_deg?: number;
           deskripsi_materi: string;
           ringkasan_cepat?: string;
+          sumber_referensi?: string | null;
           aset_model_url: string;
           tekstur_url?: string | null;
           warna_atmosfer_hex?: string;
@@ -220,6 +225,7 @@ export type Database = {
           axial_tilt_deg?: number;
           deskripsi_materi?: string;
           ringkasan_cepat?: string;
+          sumber_referensi?: string | null;
           aset_model_url?: string;
           tekstur_url?: string | null;
           warna_atmosfer_hex?: string;
@@ -234,6 +240,7 @@ export type Database = {
         Row: {
           event_id: string;
           planet_id: string;
+          era_label: string;
           tahun_kejadian: number;
           kategori_poi: PoiCategory;
           judul: string;
@@ -241,11 +248,13 @@ export type Database = {
           koordinat_lat: number;
           koordinat_lng: number;
           nama_wahana: string | null;
+          sumber_referensi: string | null;
           created_at: string;
         };
         Insert: {
           event_id?: string;
           planet_id: string;
+          era_label?: string;
           tahun_kejadian: number;
           kategori_poi?: PoiCategory;
           judul: string;
@@ -253,11 +262,13 @@ export type Database = {
           koordinat_lat: number;
           koordinat_lng: number;
           nama_wahana?: string | null;
+          sumber_referensi?: string | null;
           created_at?: string;
         };
         Update: {
           event_id?: string;
           planet_id?: string;
+          era_label?: string;
           tahun_kejadian?: number;
           kategori_poi?: PoiCategory;
           judul?: string;
@@ -265,6 +276,7 @@ export type Database = {
           koordinat_lat?: number;
           koordinat_lng?: number;
           nama_wahana?: string | null;
+          sumber_referensi?: string | null;
           created_at?: string;
         };
         Relationships: [];

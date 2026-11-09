@@ -80,7 +80,11 @@ function SinglePoiPin({
               : 'border-slate-700 bg-slate-950/80 text-slate-300 hover:border-slate-500 hover:text-white'
           }`}
         >
-          <span className="font-mono text-cyan-400">{event.tahun_kejadian}</span>
+          <span className="font-mono text-cyan-400">
+            {event.tahun_kejadian < 0
+              ? `${Math.abs(event.tahun_kejadian) >= 1000000 ? `${(Math.abs(event.tahun_kejadian) / 1000000).toFixed(0)} Jt` : Math.abs(event.tahun_kejadian)} SM`
+              : `${event.tahun_kejadian} M`}
+          </span>
           <span>·</span>
           <span>{event.judul}</span>
         </button>

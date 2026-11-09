@@ -9,6 +9,7 @@ import {
   HelpCircle,
   ArrowRight,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase/client';
 
@@ -22,14 +23,16 @@ interface StatCounts {
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<StatCounts>({
-    planets: 8,
-    historyEvents: 18,
-    phenomena: 12,
-    questions: 45,
+    planets: 0,
+    historyEvents: 0,
+    phenomena: 0,
+    questions: 0,
   });
 
   const loadDashboardStats = useCallback(async () => {
+    setError(null);
     try {
       const [planetsRes, historyRes, phenomenaRes, quizRes] = await Promise.all([
         supabase.from('planets').select('*', { count: 'exact', head: true }),
@@ -38,14 +41,24 @@ export default function AdminDashboardPage() {
         supabase.from('questions').select('*', { count: 'exact', head: true }),
       ]);
 
+      if (planetsRes.error) throw planetsRes.error;
+      if (historyRes.error) throw historyRes.error;
+      if (phenomenaRes.error) throw phenomenaRes.error;
+      if (quizRes.error) throw quizRes.error;
+
       setStats({
-        planets: planetsRes.count ?? 8,
-        historyEvents: historyRes.count ?? 18,
-        phenomena: phenomenaRes.count ?? 12,
-        questions: quizRes.count ?? 45,
+        planets: planetsRes.count ?? 0,
+        historyEvents: historyRes.count ?? 0,
+        phenomena: phenomenaRes.count ?? 0,
+        questions: quizRes.count ?? 0,
       });
-    } catch (err) {
-      console.warn('Gagal memuat count live dari Supabase, menggunakan data default:', err);
+    } catch (err: unknown) {
+      console.error('Gagal memuat count live dari Supabase:', err);
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : 'Terjadi kegagalan saat mengambil metrik dari database Supabase.';
+      setError(errMsg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,10 +93,36 @@ export default function AdminDashboardPage() {
           disabled={refreshing || loading}
           className="self-start sm:self-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`} />
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${
+              refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'
+            }`}
+          />
           <span>Segarkan Data</span>
         </button>
       </div>
+
+      {/* Error Alert Banner (R-02) */}
+      {error && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs font-medium text-red-800 shadow-sm animate-in fade-in">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-bold text-red-900">Gagal Mengambil Metrik Database</p>
+              <p className="text-red-700 mt-0.5 truncate">{error}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors shrink-0 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>Muat Ulang</span>
+          </button>
+        </div>
+      )}
 
       {/* 2x2 Grid Kartu Utama Sesuai Desain A01 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
@@ -94,9 +133,13 @@ export default function AdminDashboardPage() {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                 <Globe className="h-5 w-5" />
               </div>
-              <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                {loading ? '...' : `${stats.planets} Planet Terdaftar`}
-              </span>
+              {loading ? (
+                <div className="h-6 w-28 rounded-full bg-slate-200 animate-pulse" />
+              ) : (
+                <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {stats.planets} Planet Terdaftar
+                </span>
+              )}
             </div>
 
             <h2 className="mt-4 text-base font-bold text-slate-900">
@@ -126,9 +169,13 @@ export default function AdminDashboardPage() {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                 <Compass className="h-5 w-5" />
               </div>
-              <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                {loading ? '...' : `${stats.historyEvents} Entri Riwayat`}
-              </span>
+              {loading ? (
+                <div className="h-6 w-28 rounded-full bg-slate-200 animate-pulse" />
+              ) : (
+                <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {stats.historyEvents} Entri Riwayat
+                </span>
+              )}
             </div>
 
             <h2 className="mt-4 text-base font-bold text-slate-900">
@@ -158,9 +205,13 @@ export default function AdminDashboardPage() {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                {loading ? '...' : `${stats.phenomena} Skenario`}
-              </span>
+              {loading ? (
+                <div className="h-6 w-28 rounded-full bg-slate-200 animate-pulse" />
+              ) : (
+                <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {stats.phenomena} Skenario
+                </span>
+              )}
             </div>
 
             <h2 className="mt-4 text-base font-bold text-slate-900">
@@ -190,9 +241,13 @@ export default function AdminDashboardPage() {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                 <HelpCircle className="h-5 w-5" />
               </div>
-              <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                {loading ? '...' : `${stats.questions} Butir Soal`}
-              </span>
+              {loading ? (
+                <div className="h-6 w-28 rounded-full bg-slate-200 animate-pulse" />
+              ) : (
+                <span className="rounded-full bg-slate-100 border border-slate-200/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {stats.questions} Butir Soal
+                </span>
+              )}
             </div>
 
             <h2 className="mt-4 text-base font-bold text-slate-900">

@@ -1,8 +1,10 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { resolveAssetUrl } from '@/lib/utils/cdn';
 import type { Planet } from '@/types/database';
 
 interface PlanetMeshProps {
@@ -105,9 +107,12 @@ function getPlanetVisualConfig(planetId: string) {
 
 export function PlanetMesh({ planet, onRotationUpdate }: PlanetMeshProps) {
   const tiltGroupRef = useRef<THREE.Group>(null);
-  const planetMeshRef = useRef<THREE.Mesh>(null);
+  const planetMeshRef = useRef<THREE.Group>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
   const ringsRef = useRef<THREE.Mesh>(null);
+
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [customModel, setCustomModel] = useState<THREE.Group | null>(null);
 
   const radius = useMemo(
     () => getPlanetRadius(planet.planet_id, Number(planet.skala_visual) || 1.0),
@@ -129,10 +134,68 @@ export function PlanetMesh({ planet, onRotationUpdate }: PlanetMeshProps) {
   const rotationSpeed = useMemo(() => {
     const hours = Number(planet.rotation_period_hours) || 24;
     const isRetrograde = hours < 0;
-    // Normalisasi kecepatan tampilan agar terlihat berputar perlahan dan estetik
     const baseSpeed = (2 * Math.PI) / (Math.abs(hours) * 1.5 + 20);
     return isRetrograde ? -baseSpeed : baseSpeed;
   }, [planet.rotation_period_hours]);
+
+  // Dynamic Texture Loading dengan fallback (T-02)
+  useEffect(() => {
+    let isCurrent = true;
+    if (planet.tekstur_url && planet.tekstur_url.trim()) {
+      const resolvedUrl = resolveAssetUrl(planet.tekstur_url.trim());
+      const loader = new THREE.TextureLoader();
+      loader.load(
+        resolvedUrl,
+        (loadedTex) => {
+          if (isCurrent) {
+            loadedTex.colorSpace = THREE.SRGBColorSpace;
+            setTexture(loadedTex);
+          }
+        },
+        undefined,
+        () => {
+          if (isCurrent) setTexture(null);
+        }
+      );
+    } else {
+      setTexture(null);
+    }
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [planet.tekstur_url]);
+
+  // Dynamic GLTF Model Loading dengan fallback (T-02)
+  useEffect(() => {
+    let isCurrent = true;
+    if (
+      planet.aset_model_url &&
+      planet.aset_model_url.trim() &&
+      (planet.aset_model_url.endsWith('.glb') || planet.aset_model_url.endsWith('.gltf'))
+    ) {
+      const resolvedUrl = resolveAssetUrl(planet.aset_model_url.trim());
+      const loader = new GLTFLoader();
+      loader.load(
+        resolvedUrl,
+        (gltf) => {
+          if (isCurrent) {
+            setCustomModel(gltf.scene);
+          }
+        },
+        undefined,
+        () => {
+          if (isCurrent) setCustomModel(null);
+        }
+      );
+    } else {
+      setCustomModel(null);
+    }
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [planet.aset_model_url]);
 
   useFrame((_, delta) => {
     if (planetMeshRef.current) {
@@ -148,17 +211,26 @@ export function PlanetMesh({ planet, onRotationUpdate }: PlanetMeshProps) {
     }
   });
 
+  const atmosphereColor = planet.warna_atmosfer_hex || visualConfig.atmosphereColor;
+
   return (
     <group ref={tiltGroupRef} rotation={[0, 0, axialTiltRad]}>
-      {/* Bola Planet Utama */}
-      <mesh ref={planetMeshRef} castShadow receiveShadow>
-        <sphereGeometry args={[radius, 64, 64]} />
-        <meshStandardMaterial
-          color={visualConfig.baseColor}
-          roughness={visualConfig.roughness}
-          metalness={visualConfig.metalness}
-        />
-      </mesh>
+      {/* Bola Planet Utama (Atau Model GLTF jika berhasil dimuat) */}
+      <group ref={planetMeshRef}>
+        {customModel ? (
+          <primitive object={customModel} scale={radius} />
+        ) : (
+          <mesh castShadow receiveShadow>
+            <sphereGeometry args={[radius, 64, 64]} />
+            <meshStandardMaterial
+              color={texture ? '#ffffff' : visualConfig.baseColor}
+              map={texture || null}
+              roughness={visualConfig.roughness}
+              metalness={visualConfig.metalness}
+            />
+          </mesh>
+        )}
+      </group>
 
       {/* Lapisan Atmosfer / Awan (Khusus Bumi & Venus) */}
       {planet.planet_id === 'earth' && (
@@ -175,11 +247,11 @@ export function PlanetMesh({ planet, onRotationUpdate }: PlanetMeshProps) {
       )}
 
       {/* Atmospheric Glow Rim */}
-      {visualConfig.atmosphereColor && (
+      {atmosphereColor && (
         <mesh>
           <sphereGeometry args={[radius * 1.05, 32, 32]} />
           <meshBasicMaterial
-            color={visualConfig.atmosphereColor}
+            color={atmosphereColor}
             transparent
             opacity={0.12}
             side={THREE.BackSide}

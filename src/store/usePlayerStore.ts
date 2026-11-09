@@ -24,7 +24,11 @@ export interface PlayerProgressState {
 
   // Actions
   initializePlayer: () => Promise<void>;
-  submitQuizScore: (planetId: string, score: number) => { delta: number; newTotal: number };
+  submitQuizScore: (
+    planetId: string,
+    score: number,
+    maxAllowedScore?: number
+  ) => { delta: number; newTotal: number };
   buyShip: (shipId: string, price: number) => boolean;
   selectShip: (shipId: string) => boolean;
   setCheckpointPlanet: (planetId: string) => void;
@@ -123,12 +127,16 @@ export const usePlayerStore = create<PlayerProgressState>((set, get) => ({
     });
   },
 
-  // Logika Klaim Poin Kuis Bebas Stres (R10)
-  submitQuizScore: (planetId: string, newScore: number) => {
+  // Logika Klaim Poin Kuis Bebas Stres (R10) & Anti-Tampering (T-01)
+  submitQuizScore: (planetId: string, newScore: number, maxAllowedScore?: number) => {
     const currentBest = get().quizBestScores[planetId] || 0;
+    // Anti-tampering score capping: skor dibatasi antara 0 dan batas maksimal soal planet (default 100)
+    const capLimit = typeof maxAllowedScore === 'number' && maxAllowedScore > 0 ? maxAllowedScore : 100;
+    const cappedScore = Math.max(0, Math.min(newScore, capLimit));
+
     // Poin hanya diberikan jika skor baru melampaui skor terbaik lama (selisih delta)
-    const delta = Math.max(0, newScore - currentBest);
-    const newBest = Math.max(currentBest, newScore);
+    const delta = Math.max(0, cappedScore - currentBest);
+    const newBest = Math.max(currentBest, cappedScore);
     const newBalance = get().pointsBalance + delta;
 
     const newQuizScores = {

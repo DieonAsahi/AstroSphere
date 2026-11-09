@@ -42,6 +42,7 @@ export default function AdminDashboardLayout({
 
   const [loading, setLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [adminName, setAdminName] = useState<string>('Admin AstroSphere');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -87,7 +88,15 @@ export default function AdminDashboardLayout({
         }
 
         if (isMounted) {
-          setAdminEmail(user.email || 'Admin AstroSphere');
+          const email = user.email || 'admin@astrosphere.edu';
+          const metaName =
+            (user.user_metadata?.full_name as string) ||
+            (user.user_metadata?.name as string);
+          const computedName =
+            metaName && metaName.trim() ? metaName.trim() : email.split('@')[0];
+
+          setAdminEmail(email);
+          setAdminName(computedName || 'Admin AstroSphere');
           setLoading(false);
         }
       } catch (err) {
@@ -125,10 +134,19 @@ export default function AdminDashboardLayout({
 
   // Initials admin avatar
   const initials = useMemo(() => {
-    if (!adminEmail) return 'AA';
-    const clean = adminEmail.split('@')[0].toUpperCase();
-    return clean.slice(0, 2);
-  }, [adminEmail]);
+    if (adminName && adminName !== 'Admin AstroSphere') {
+      const parts = adminName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (adminEmail) {
+      const clean = adminEmail.split('@')[0].toUpperCase();
+      return clean.slice(0, 2);
+    }
+    return 'AA';
+  }, [adminName, adminEmail]);
 
   if (loading) {
     return (
@@ -242,7 +260,7 @@ export default function AdminDashboardLayout({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-slate-800 leading-tight">
-                  Dr. Eleanor Vance
+                  {adminName}
                 </p>
                 <p className="truncate text-[10px] text-slate-500">
                   {adminEmail || 'admin@astrosphere.edu'}
@@ -317,7 +335,7 @@ export default function AdminDashboardLayout({
             <div className="flex items-center gap-2.5 border-l border-slate-200 pl-3 sm:pl-4">
               <div className="text-right hidden sm:block">
                 <span className="block text-xs font-bold text-slate-900 leading-tight">
-                  Dr. Eleanor Vance
+                  {adminName}
                 </span>
                 <span className="block text-[10px] text-slate-400">Admin AstroSphere</span>
               </div>
@@ -330,7 +348,9 @@ export default function AdminDashboardLayout({
 
         {/* Scrollable Main Viewport */}
         <main className="flex-1 overflow-y-auto bg-slate-50 p-6 sm:p-8">
-          <div className="mx-auto max-w-7xl">{children ?? <Outlet />}</div>
+          <div className="mx-auto max-w-7xl">
+            {children ?? <Outlet context={{ searchQuery }} />}
+          </div>
         </main>
       </div>
     </div>

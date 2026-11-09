@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   X,
   Rocket,
@@ -12,6 +12,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { supabase } from '@/lib/supabase/client';
 
 interface HangarModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ interface ShipCatalogItem {
     hull: string;
   };
   colorAccent: string;
+  assetModelUrl?: string | null;
 }
 
 const SHIPS: ShipCatalogItem[] = [
@@ -85,6 +87,84 @@ export function HangarModal({ isOpen, onClose }: HangarModalProps) {
   const selectShip = usePlayerStore((state) => state.selectShip);
 
   const [messageNotice, setMessageNotice] = useState<string | null>(null);
+  const [shipsList, setShipsList] = useState<ShipCatalogItem[]>(SHIPS);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Ambil data armada pesawat dari public.ships Supabase (T-03 & M-03)
+  const fetchShips = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('ships')
+        .select('*')
+        .order('urutan_tier', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const formatted: ShipCatalogItem[] = data.map((s) => {
+          const isAstra = s.ship_id === 'astra-scout';
+          const isOrion = s.ship_id === 'orion-glider';
+          const speedText = `${Math.round(12 * (Number(s.kecepatan_bonus_multiplier) || 1.0))} km/s`;
+          const maneuverText = isAstra ? 'Sangat Tinggi' : isOrion ? 'Seimbang' : 'Stabil Berat';
+          const hullText = isAstra
+            ? 'Paduan Titanium Aerogel'
+            : isOrion
+            ? 'Komposit Karbon Berlian'
+            : 'Lapisan Kristal Nanokomposit';
+          const colorAccent = isAstra
+            ? 'from-cyan-500 to-blue-600'
+            : isOrion
+            ? 'from-emerald-500 to-teal-600'
+            : 'from-purple-500 to-indigo-600';
+
+          return {
+            id: s.ship_id,
+            name: s.nama,
+            lengthM: Number(s.panjang_meter) || 12,
+            price: Number(s.harga_poin) || 0,
+            description: s.deskripsi || '',
+            specs: {
+              maneuver: maneuverText,
+              speed: speedText,
+              hull: hullText,
+            },
+            colorAccent,
+            assetModelUrl: s.aset_model_url,
+          };
+        });
+        setShipsList(formatted);
+      } else {
+        setShipsList(SHIPS);
+      }
+    } catch {
+      setShipsList(SHIPS);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchShips();
+
+      // Realtime subscription ke tabel ships (M-03)
+      const channel = supabase
+        .channel('public:realtime_ships')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ships' }, () => {
+          fetchShips();
+        })
+        .subscribe();
+
+      const handleFocus = () => fetchShips();
+      window.addEventListener('focus', handleFocus);
+
+      return () => {
+        supabase.removeChannel(channel);
+        window.removeEventListener('focus', handleFocus);
+      };
+    }
+  }, [isOpen, fetchShips]);
 
   if (!isOpen) return null;
 
@@ -159,7 +239,15 @@ export function HangarModal({ isOpen, onClose }: HangarModalProps) {
 
         {/* 3 Ships Showcase Cards */}
         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4 overflow-y-auto pr-1">
-          {SHIPS.map((ship) => {
+          {isLoading && shipsList.length === 0 ? (
+            <div className="col-span-3 py-10 text-center text-slate-400">
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+                <span>Menghubungi hanggar armada antariksa...</span>
+              </div>
+            </div>
+          ) : (
+            shipsList.map((ship) => {
             const isOwned = ownedShips.includes(ship.id);
             const isActive = activeShipId === ship.id;
             const canAfford = pointsBalance >= ship.price;
@@ -274,7 +362,7 @@ export function HangarModal({ isOpen, onClose }: HangarModalProps) {
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       </div>
     </div>

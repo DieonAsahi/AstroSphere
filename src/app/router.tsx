@@ -1,29 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-import { RoleGuard } from '../features/classes/RoleGuard';
 import { RouteLoadingFallback } from '../ui/RouteLoadingFallback';
 import { AppLayout } from './AppLayout';
+
 // Pemisahan kode berbasis rute (Route Code-Splitting) untuk efisiensi muat awal
 const PlayerHomePage = lazy(() => import('./(player)/page'));
-const AuthPage = lazy(() =>
-  import('../features/classes/AuthPage').then((m) => ({ default: m.AuthPage })),
-);
-const ClassesPage = lazy(() =>
-  import('../features/classes/ClassesPage').then((m) => ({
-    default: m.ClassesPage,
-  })),
-);
-const PrivacyPolicyPage = lazy(() =>
-  import('../features/classes/PrivacyPolicyPage').then((m) => ({
-    default: m.PrivacyPolicyPage,
-  })),
-);
-const MyExplorationsPage = lazy(() =>
-  import('../features/progress/MyExplorationsPage').then((m) => ({
-    default: m.MyExplorationsPage,
-  })),
-);
-// Admin Mission Control & CMS Sub-Modules
+
+// Admin Mission Control & CMS Sub-Modules (A01 - A05)
 const AdminLoginPage = lazy(() => import('./admin/login/page'));
 const AdminDashboardLayout = lazy(() => import('./admin/(dashboard)/layout'));
 const AdminDashboardPage = lazy(() => import('./admin/(dashboard)/page'));
@@ -31,6 +14,13 @@ const AdminPlanetsPage = lazy(() => import('./admin/(dashboard)/planets/page'));
 const AdminHistoryPage = lazy(() => import('./admin/(dashboard)/history/page'));
 const AdminPhenomenaPage = lazy(() => import('./admin/(dashboard)/phenomena/page'));
 const AdminQuizzesPage = lazy(() => import('./admin/(dashboard)/quizzes/page'));
+
+// Static Info Pages
+const PrivacyPolicyPage = lazy(() =>
+  import('../features/classes/PrivacyPolicyPage').then((m) => ({
+    default: m.PrivacyPolicyPage,
+  })),
+);
 const AboutPage = lazy(() =>
   import('../features/about/AboutPage').then((m) => ({
     default: m.AboutPage,
@@ -57,6 +47,7 @@ export const router = createBrowserRouter([
   {
     element: <AppLayout />,
     children: [
+      // 1. Rute Pemain Utama (3D WebGL Engine + HUD)
       {
         path: '/',
         element: (
@@ -81,52 +72,8 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      // Autentikasi
-      {
-        path: '/masuk',
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <AuthPage initialMode="masuk" />
-          </Suspense>
-        ),
-      },
-      {
-        path: '/daftar',
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <AuthPage initialMode="daftar" />
-          </Suspense>
-        ),
-      },
-      {
-        path: '/lupa-sandi',
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <AuthPage initialMode="lupa-sandi" />
-          </Suspense>
-        ),
-      },
-      // Manajemen Kelas (Terlindungi Route Guard)
-      {
-        path: '/kelas',
-        element: (
-          <RoleGuard allowedRoles={['siswa', 'guru', 'admin']}>
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <ClassesPage />
-            </Suspense>
-          </RoleGuard>
-        ),
-      },
-      // Progres Siswa: Jelajahku (FR-09)
-      {
-        path: '/jelajahku',
-        element: (
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <MyExplorationsPage />
-          </Suspense>
-        ),
-      },
-      // Autentikasi Khusus Admin (Tanpa Registrasi Publik)
+
+      // 2. Autentikasi Khusus Admin (Tanpa Registrasi Publik)
       {
         path: '/admin/login',
         element: (
@@ -135,7 +82,8 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      // CMS Admin & Mission Control (Dilindungi Whitelist public.admin_users)
+
+      // 3. CMS Admin & Mission Control (Dilindungi Whitelist public.admin_users)
       {
         path: '/admin',
         element: (
@@ -186,7 +134,8 @@ export const router = createBrowserRouter([
           },
         ],
       },
-      // Kebijakan Privasi & Kepatuhan UU PDP
+
+      // 4. Kebijakan Privasi & Kepatuhan UU PDP
       {
         path: '/kebijakan-privasi',
         element: (
@@ -195,7 +144,8 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      // Halaman Tentang dan Kredit Aset
+
+      // 5. Halaman Tentang dan Kredit Aset
       {
         path: '/tentang',
         element: (

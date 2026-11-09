@@ -1,10 +1,13 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useSceneStore } from '@/store/useSceneStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
+import { supabase } from '@/lib/supabase/client';
+import { resolveAssetUrl } from '@/lib/utils/cdn';
 
 interface SpacecraftProps {
   batasZonaRadius: number;
@@ -141,6 +144,50 @@ export function Spacecraft({ batasZonaRadius }: SpacecraftProps) {
   const restoreTrigger = useSceneStore((state) => state.restoreTrigger);
 
   const activeShipId = usePlayerStore((state) => state.activeShipId);
+
+  // Dynamic 3D Model Loading untuk Pesawat (T-02)
+  const [customShipModel, setCustomShipModel] = useState<THREE.Group | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+    async function loadShipAsset() {
+      try {
+        const { data } = await supabase
+          .from('ships')
+          .select('aset_model_url')
+          .eq('ship_id', activeShipId)
+          .maybeSingle();
+
+        if (
+          isCurrent &&
+          data?.aset_model_url &&
+          (data.aset_model_url.endsWith('.glb') || data.aset_model_url.endsWith('.gltf'))
+        ) {
+          const resolved = resolveAssetUrl(data.aset_model_url);
+          const loader = new GLTFLoader();
+          loader.load(
+            resolved,
+            (gltf) => {
+              if (isCurrent) setCustomShipModel(gltf.scene);
+            },
+            undefined,
+            () => {
+              if (isCurrent) setCustomShipModel(null);
+            }
+          );
+        } else {
+          if (isCurrent) setCustomShipModel(null);
+        }
+      } catch {
+        if (isCurrent) setCustomShipModel(null);
+      }
+    }
+
+    loadShipAsset();
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeShipId]);
 
   // Vektor Fisika Terbang
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
@@ -287,7 +334,9 @@ export function Spacecraft({ batasZonaRadius }: SpacecraftProps) {
 
   return (
     <group ref={shipGroupRef}>
-      {activeShipId === 'nova-voyager' ? (
+      {customShipModel ? (
+        <primitive object={customShipModel} scale={0.7} />
+      ) : activeShipId === 'nova-voyager' ? (
         <NovaVoyagerModel accelerating={isAccelerating.current} />
       ) : activeShipId === 'orion-glider' ? (
         <OrionGliderModel accelerating={isAccelerating.current} />

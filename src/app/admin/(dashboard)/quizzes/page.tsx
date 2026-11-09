@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import {
   Plus,
   Pencil,
@@ -32,6 +33,7 @@ const PLANET_OPTIONS: { id: PlanetSlug; label: string; dotColor: string; badgeBg
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
 export default function AdminQuizzesPage() {
+  const { searchQuery: topSearchQuery = '' } = useOutletContext<{ searchQuery?: string }>() || {};
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,6 +41,10 @@ export default function AdminQuizzesPage() {
   // Filters
   const [selectedPlanet, setSelectedPlanet] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination State (M-02)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Form State
   const [modalOpen, setModalOpen] = useState(false);
@@ -94,18 +100,31 @@ export default function AdminQuizzesPage() {
     fetchQuestions();
   }, [fetchQuestions]);
 
+  const effectiveQuery = (topSearchQuery || searchQuery).trim().toLowerCase();
+
   const filteredQuestions = useMemo(() => {
     return questions.filter((q) => {
       if (selectedPlanet !== 'all' && q.planet_id !== selectedPlanet) return false;
-      if (searchQuery.trim() !== '') {
-        const query = searchQuery.toLowerCase();
-        const matchSoal = q.soal.toLowerCase().includes(query);
-        const matchPembahasan = q.pembahasan_edukatif.toLowerCase().includes(query);
-        if (!matchSoal && !matchPembahasan) return false;
+      if (effectiveQuery !== '') {
+        const matchSoal = q.soal.toLowerCase().includes(effectiveQuery);
+        const matchPembahasan = q.pembahasan_edukatif.toLowerCase().includes(effectiveQuery);
+        const matchPlanet = q.planet_id.toLowerCase().includes(effectiveQuery);
+        if (!matchSoal && !matchPembahasan && !matchPlanet) return false;
       }
       return true;
     });
-  }, [questions, selectedPlanet, searchQuery]);
+  }, [questions, selectedPlanet, effectiveQuery]);
+
+  // Reset pagination saat filter berganti
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPlanet, effectiveQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / itemsPerPage));
+  const paginatedQuestions = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredQuestions.slice(start, start + itemsPerPage);
+  }, [filteredQuestions, currentPage, itemsPerPage]);
 
   const handleOpenAdd = () => {
     setIsEditing(false);
@@ -361,7 +380,7 @@ export default function AdminQuizzesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {filteredQuestions.map((q) => {
+                {paginatedQuestions.map((q) => {
                   const planetInfo = PLANET_OPTIONS.find((p) => p.id === q.planet_id) || {
                     id: q.planet_id,
                     label: q.planet_id,
@@ -436,6 +455,47 @@ export default function AdminQuizzesPage() {
             </table>
           </div>
         )}
+
+        {/* Table Footer with Functional Pagination (M-02) */}
+        <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <span>
+            Menampilkan {filteredQuestions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
+            {Math.min(currentPage * itemsPerPage, filteredQuestions.length)} dari {filteredQuestions.length} soal
+            {effectiveQuery && ` (difilter dari "${effectiveQuery}")`}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition-colors"
+            >
+              Sebelumnya
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => setCurrentPage(num)}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
+                  currentPage === num
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs transition-colors"
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Format Pedagogis Suportif Banner (Exact Match to Mockup A05) */}

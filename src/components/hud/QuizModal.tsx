@@ -172,6 +172,27 @@ export function QuizModal() {
       setScoreEarned(0);
       setIsFinished(false);
       setRewardDelta(null);
+
+      // Realtime subscription ke tabel questions (M-03)
+      const channel = supabase
+        .channel(`public:realtime_questions_${activePlanetId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'questions', filter: `planet_id=eq.${activePlanetId}` },
+          () => {
+            loadQuestions();
+          }
+        )
+        .subscribe();
+
+      const handleFocus = () => loadQuestions();
+      window.addEventListener('focus', handleFocus);
+
+      return () => {
+        isMounted = false;
+        supabase.removeChannel(channel);
+        window.removeEventListener('focus', handleFocus);
+      };
     }
 
     return () => {
@@ -204,9 +225,10 @@ export function QuizModal() {
       setSelectedOption(null);
       setIsAnswerChecked(false);
     } else {
-      // Kuis selesai! Hitung delta skor & poin (PRD R10)
-      const finalScore = scoreEarned;
-      const { delta } = submitQuizScore(activePlanetId, finalScore);
+      // Kuis selesai! Hitung delta skor & poin (PRD R10 & T-01 Anti-tampering capping)
+      const maxPossibleScore = questions.reduce((acc, q) => acc + (q.bobot_poin || 25), 0);
+      const finalScore = Math.min(scoreEarned, maxPossibleScore);
+      const { delta } = submitQuizScore(activePlanetId, finalScore, maxPossibleScore);
       setRewardDelta(delta);
       setIsFinished(true);
     }

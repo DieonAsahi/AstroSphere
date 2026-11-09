@@ -183,8 +183,32 @@ export default function AstroCanvas() {
 
     loadPlanetDetails();
 
+    // Realtime subscriptions ke tabel planets dan history_events (M-03)
+    const channel = supabase
+      .channel(`public:realtime_canvas_${activePlanetId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'planets', filter: `planet_id=eq.${activePlanetId}` },
+        () => {
+          loadPlanetDetails();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'history_events', filter: `planet_id=eq.${activePlanetId}` },
+        () => {
+          loadPlanetDetails();
+        }
+      )
+      .subscribe();
+
+    const handleFocus = () => loadPlanetDetails();
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [activePlanetId]);
 
