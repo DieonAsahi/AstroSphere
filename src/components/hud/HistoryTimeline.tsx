@@ -4,16 +4,25 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   X,
   History,
-  MapPin,
   Calendar,
   Rocket,
   Compass,
   Filter,
   CheckCircle,
   Eye,
+  ArrowRight,
+  ArrowLeft,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useSceneStore } from '@/store/useSceneStore';
 import { supabase } from '@/lib/supabase/client';
+import { FALLBACK_HISTORY_EVENTS } from '@/data/fallbackMasterData';
+import {
+  EARTH_ERA_OPTIONS,
+  MODERN_ERA_LABEL,
+  MODERN_CENTURY_OPTIONS,
+  matchesModernCenturyFilter,
+} from '@/lib/constants/historyFilters';
 import type { HistoryEvent } from '@/types/database';
 
 // Format tampilan tahun ramah Sebelum Masehi (SM) & Masehi (M)
@@ -29,212 +38,6 @@ function formatYearDisplay(year: number): string {
   return `${year} M`;
 }
 
-// Fallback POI bersejarah jika offline (PRD R04)
-const FALLBACK_EVENTS: Record<string, HistoryEvent[]> = {
-  earth: [
-    {
-      event_id: 'earth-chicxulub',
-      planet_id: 'earth',
-      era_label: 'Zaman Dinosaurus (~66 Juta SM)',
-      tahun_kejadian: -66000000,
-      kategori_poi: 'OBSERVATION',
-      judul: 'Kepunahan Massal Kapur-Paleogen (Kawah Chicxulub)',
-      deskripsi:
-        'Tumbukan asteroid raksasa berdiameter ~10 km memicu kepunahan massal dinosaurus non-unggas dan membentuk Kawah Chicxulub.',
-      koordinat_lat: 21.4,
-      koordinat_lng: -89.5,
-      nama_wahana: 'Semenanjung Yucatán, Meksiko • T-Rex & Triceratops',
-      sumber_referensi: 'Geological Survey / Nature Science',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'earth-giza',
-      planet_id: 'earth',
-      era_label: 'Sejarah Peradaban Kuno (~2560 SM)',
-      tahun_kejadian: -2560,
-      kategori_poi: 'OBSERVATION',
-      judul: 'Pembangunan Piramida Agung Giza',
-      deskripsi:
-        'Piramida tertua dan terbesar dari tiga piramida di kompleks makam Giza, keajaiban dunia kuno yang masih tegak berdiri.',
-      koordinat_lat: 29.9792,
-      koordinat_lng: 31.1342,
-      nama_wahana: 'Giza, Mesir • Firaun Khufu',
-      sumber_referensi: 'UNESCO World Heritage',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'earth-kabah',
-      planet_id: 'earth',
-      era_label: 'Sejarah Islam & Kenabian (~2000 SM – Kini)',
-      tahun_kejadian: -2000,
-      kategori_poi: 'OBSERVATION',
-      judul: "Pembangunan Ka'bah oleh Nabi Ibrahim AS & Ismail AS",
-      deskripsi:
-        "Pondasi Baitullah Ka'bah didirikan kembali oleh Nabi Ibrahim AS dan putranya Nabi Ismail AS sebagai kiblat umat Islam sedunia.",
-      koordinat_lat: 21.4225,
-      koordinat_lng: 39.8262,
-      nama_wahana: 'Masjidil Haram, Makkah, Arab Saudi',
-      sumber_referensi: 'Sejarah Kenabian & Arkeologi Timur Tengah',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'earth-apollo11',
-      planet_id: 'earth',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1969,
-      kategori_poi: 'SURFACE_LANDING',
-      judul: 'Peluncuran Apollo 11 (Pusat Antariksa Kennedy)',
-      deskripsi:
-        'Misi pertama manusia mendarat di Bulan diluncurkan dari Cape Canaveral, Florida menggunakan roket raksasa Saturn V.',
-      koordinat_lat: 28.57,
-      koordinat_lng: -80.64,
-      nama_wahana: 'Saturn V / Apollo 11',
-      sumber_referensi: 'NASA Apollo Fact Sheet',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'earth-baikonur',
-      planet_id: 'earth',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1961,
-      kategori_poi: 'SURFACE_LANDING',
-      judul: 'Penerbangan Manusia Pertama (Yuri Gagarin)',
-      deskripsi:
-        'Kosmodrom Baikonur mencatat sejarah saat Vostok 1 membawa Yuri Gagarin menjadi manusia pertama di orbit Bumi.',
-      koordinat_lat: 45.96,
-      koordinat_lng: 63.3,
-      nama_wahana: 'Vostok 1',
-      sumber_referensi: 'Roscosmos Historical Archives',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'earth-iss',
-      planet_id: 'earth',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1998,
-      kategori_poi: 'ORBITAL_FLYBY',
-      judul: 'Peluncuran Modul Zarya (Stasiun Luar Angkasa Internasional)',
-      deskripsi:
-        'Awal mula perakitan laboratorium multinasional terbesar di orbit rendah Bumi.',
-      koordinat_lat: 45.96,
-      koordinat_lng: 63.3,
-      nama_wahana: 'Proton-K / Zarya',
-      sumber_referensi: 'NASA ISS Reference Guide',
-      created_at: new Date().toISOString(),
-    },
-  ],
-  mars: [
-    {
-      event_id: 'mars-perseverance',
-      planet_id: 'mars',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 2021,
-      kategori_poi: 'SURFACE_LANDING',
-      judul: 'Pendaratan Rover Perseverance (Kawah Jezero)',
-      deskripsi:
-        'Rover NASA menjelajahi bekas danau purba untuk mencari tanda-tanda kehidupan mikroba masa lalu.',
-      koordinat_lat: 18.38,
-      koordinat_lng: 77.58,
-      nama_wahana: 'Perseverance & Ingenuity',
-      sumber_referensi: 'NASA Mars 2020 Mission',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'mars-curiosity',
-      planet_id: 'mars',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 2012,
-      kategori_poi: 'SURFACE_LANDING',
-      judul: 'Pendaratan Rover Curiosity (Kawah Gale)',
-      deskripsi:
-        'Misi sains untuk meneliti kelayakhunian Mars purba dan menemukan bukti adanya air mengalir di masa silam.',
-      koordinat_lat: -4.58,
-      koordinat_lng: 137.44,
-      nama_wahana: 'Curiosity (MSL)',
-      sumber_referensi: 'NASA MSL Science',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'mars-viking1',
-      planet_id: 'mars',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1976,
-      kategori_poi: 'SURFACE_LANDING',
-      judul: 'Pendaratan Sukses Pertama Viking 1 (Chryse Planitia)',
-      deskripsi:
-        'Wahana pertama Amerika Serikat yang berhasil mendarat di Mars dan mentransmisikan foto permukaan berwarna.',
-      koordinat_lat: 22.48,
-      koordinat_lng: -48.0,
-      nama_wahana: 'Viking 1 Lander',
-      sumber_referensi: 'NASA Viking Mission',
-      created_at: new Date().toISOString(),
-    },
-  ],
-  venus: [
-    {
-      event_id: 'venus-venera7',
-      planet_id: 'venus',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1970,
-      kategori_poi: 'SURFACE_LANDING',
-      judul: 'Pendaratan Pertama di Planet Lain (Venera 7)',
-      deskripsi:
-        'Wahana antariksa pertama yang berhasil mendarat di planet lain dan mentransmisikan data suhu 475°C dan tekanan 90 atmosfer.',
-      koordinat_lat: -5.0,
-      koordinat_lng: 351.0,
-      nama_wahana: 'Venera 7',
-      sumber_referensi: 'Soviet Planetary Exploration',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'venus-magellan',
-      planet_id: 'venus',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1990,
-      kategori_poi: 'ORBITAL_FLYBY',
-      judul: 'Pemetaan Radar Global Wahana Magellan',
-      deskripsi:
-        'Menggunakan radar aperture sintetis untuk menembus awan tebal dan memetakan 98% permukaan Venus.',
-      koordinat_lat: 10.0,
-      koordinat_lng: 120.0,
-      nama_wahana: 'Magellan Spacecraft',
-      sumber_referensi: 'NASA JPL Magellan',
-      created_at: new Date().toISOString(),
-    },
-  ],
-  jupiter: [
-    {
-      event_id: 'jupiter-galileo',
-      planet_id: 'jupiter',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 1995,
-      kategori_poi: 'ORBITAL_FLYBY',
-      judul: 'Wahana Penyelidik Galileo Menembus Atmosfer Jupiter',
-      deskripsi:
-        'Melepaskan probe atmosfer yang mengukur kecepatan angin badai ekstrem sebelum hancur oleh tekanan gas Jupiter.',
-      koordinat_lat: 6.5,
-      koordinat_lng: 4.5,
-      nama_wahana: 'Galileo Atmospheric Probe',
-      sumber_referensi: 'NASA Galileo Mission',
-      created_at: new Date().toISOString(),
-    },
-    {
-      event_id: 'jupiter-juno',
-      planet_id: 'jupiter',
-      era_label: 'Eksplorasi Antariksa Modern (1957 - Kini)',
-      tahun_kejadian: 2016,
-      kategori_poi: 'ORBITAL_FLYBY',
-      judul: 'Wahana Juno Masuki Orbit Polar Jupiter',
-      deskripsi:
-        'Meneliti medan magnet, struktur inti, dan kelimpahan air di atmosfer Jupiter dari jarak dekat.',
-      koordinat_lat: -15.0,
-      koordinat_lng: 180.0,
-      nama_wahana: 'Juno Spacecraft',
-      created_at: new Date().toISOString(),
-    },
-  ],
-};
-
 export function HistoryTimeline() {
   const activePlanetId = useSceneStore((state) => state.activePlanetId);
   const mode = useSceneStore((state) => state.mode);
@@ -247,6 +50,30 @@ export function HistoryTimeline() {
   const [events, setEvents] = useState<HistoryEvent[]>([]);
   const [sliderYear, setSliderYear] = useState<number>(2030);
   const [isFilterActive, setIsFilterActive] = useState(false);
+  const [selectedEraFilter, setSelectedEraFilter] = useState<string>('ALL');
+  const [selectedCenturyFilter, setSelectedCenturyFilter] = useState<string>('ALL');
+  const [detailEvent, setDetailEvent] = useState<HistoryEvent | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+
+  // Reset filter 2 tingkat & detail modal saat planet berganti
+  useEffect(() => {
+    setSelectedEraFilter('ALL');
+    setSelectedCenturyFilter('ALL');
+    setIsFilterActive(false);
+    setSelectedYearFilter(null);
+    setDetailEvent(null);
+    setBrokenImages({});
+  }, [activePlanetId, setSelectedYearFilter]);
+
+  // Tutup modal detail dengan tombol Escape
+  useEffect(() => {
+    if (!detailEvent) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDetailEvent(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [detailEvent]);
 
   // Ambil POI dari Supabase
   useEffect(() => {
@@ -262,13 +89,14 @@ export function HistoryTimeline() {
         if (isMounted) {
           if (data && data.length > 0) {
             setEvents(data);
+            setBrokenImages({});
           } else {
-            setEvents(FALLBACK_EVENTS[activePlanetId] || []);
+            setEvents(FALLBACK_HISTORY_EVENTS[activePlanetId] || []);
           }
         }
       } catch {
         if (isMounted) {
-          setEvents(FALLBACK_EVENTS[activePlanetId] || []);
+          setEvents(FALLBACK_HISTORY_EVENTS[activePlanetId] || []);
         }
       }
     }
@@ -320,15 +148,50 @@ export function HistoryTimeline() {
   };
 
   const handleResetFilter = () => {
+    setSelectedEraFilter('ALL');
+    setSelectedCenturyFilter('ALL');
     setIsFilterActive(false);
     setSelectedYearFilter(null);
     setSliderYear(maxYear);
   };
 
+  const handleSelectEra = (era: string) => {
+    setSelectedEraFilter(era);
+    setSelectedCenturyFilter('ALL');
+    setIsFilterActive(false);
+    setSelectedYearFilter(null);
+  };
+
+  const handleSelectCentury = (centuryId: string) => {
+    setSelectedCenturyFilter(centuryId);
+    setIsFilterActive(false);
+    setSelectedYearFilter(null);
+  };
+
   const filteredEvents = useMemo(() => {
-    if (!isFilterActive || selectedYearFilter === null) return events;
-    return events.filter((e) => e.tahun_kejadian <= selectedYearFilter);
-  }, [events, isFilterActive, selectedYearFilter]);
+    return events.filter((e) => {
+      if (activePlanetId === 'earth' && selectedEraFilter !== 'ALL') {
+        if ((e.era_label || '') !== selectedEraFilter) return false;
+        if (
+          selectedEraFilter === MODERN_ERA_LABEL &&
+          !matchesModernCenturyFilter(e.tahun_kejadian, selectedCenturyFilter)
+        ) {
+          return false;
+        }
+      }
+      if (isFilterActive && selectedYearFilter !== null && e.tahun_kejadian > selectedYearFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    events,
+    activePlanetId,
+    selectedEraFilter,
+    selectedCenturyFilter,
+    isFilterActive,
+    selectedYearFilter,
+  ]);
 
   if (mode !== 'HISTORY') return null;
 
@@ -366,8 +229,96 @@ export function HistoryTimeline() {
         </button>
       </div>
 
+      {/* Filter 2 Tingkat (Khusus Bumi: 6 Zaman Baku + Sub-Filter 1 Abad Era Modern) */}
+      {activePlanetId === 'earth' && (
+        <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-900/50 p-3.5 space-y-3">
+          <div>
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-2">
+              <span className="uppercase tracking-wider text-cyan-300">Filter Zaman Bumi</span>
+              {selectedEraFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={handleResetFilter}
+                  className="text-[10px] text-slate-400 hover:text-cyan-300 underline"
+                >
+                  Semua Zaman
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleSelectEra('ALL')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition-colors ${
+                  selectedEraFilter === 'ALL'
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                    : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200'
+                }`}
+              >
+                Semua Zaman
+              </button>
+              {EARTH_ERA_OPTIONS.map((era) => {
+                const isEraActive = selectedEraFilter === era;
+                return (
+                  <button
+                    key={era}
+                    type="button"
+                    onClick={() => handleSelectEra(era)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition-colors text-left ${
+                      isEraActive
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                        : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    {era}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {selectedEraFilter === MODERN_ERA_LABEL && (
+            <div className="pt-2.5 border-t border-slate-800/80">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-300 mb-1.5">
+                Sub-Filter Rentang 1 Abad (Zaman Modern)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelectCentury('ALL')}
+                  className={`rounded-md px-2 py-1 text-[10px] font-mono font-semibold border transition-colors ${
+                    selectedCenturyFilter === 'ALL'
+                      ? 'bg-indigo-500/25 text-indigo-200 border-indigo-400/50'
+                      : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  Semua Abad
+                </button>
+                {MODERN_CENTURY_OPTIONS.map((century) => {
+                  const isCenturyActive = selectedCenturyFilter === century.id;
+                  return (
+                    <button
+                      key={century.id}
+                      type="button"
+                      onClick={() => handleSelectCentury(century.id)}
+                      className={`rounded-md px-2 py-1 text-[10px] font-mono font-semibold border transition-colors ${
+                        isCenturyActive
+                          ? 'bg-indigo-500/25 text-indigo-200 border-indigo-400/50'
+                          : 'bg-slate-950/70 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      {century.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Year Range Filter Slider (PRD R04) */}
-      <div className="mt-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 p-4">
+      <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-900/40 p-4">
         <div className="flex items-center justify-between text-xs mb-2">
           <div className="flex items-center gap-1.5 font-semibold text-slate-300">
             <Filter className="h-3.5 w-3.5 text-cyan-400" />
@@ -406,122 +357,122 @@ export function HistoryTimeline() {
         </div>
       </div>
 
-      {/* List of Missions / POIs */}
-      <div className="mt-5 space-y-3 flex-1">
+      {/* List of Missions / POIs (Arsitektur List -> Detail) */}
+      <div className="mt-4 space-y-3 flex-1">
         {filteredEvents.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-8 text-center">
             <Calendar className="h-8 w-8 text-slate-600 mx-auto mb-2" />
             <p className="text-xs text-slate-400">
-              Tidak ada catatan sejarah sebelum {formatYearDisplay(sliderYear)}.
+              Tidak ada catatan sejarah pada filter zaman/tahun ini.
             </p>
             <button
               type="button"
               onClick={handleResetFilter}
               className="mt-3 text-xs font-semibold text-cyan-400 hover:underline"
             >
-              Tampilkan Semua Tahun
+              Tampilkan Semua Peristiwa
             </button>
           </div>
         ) : (
           filteredEvents.map((event) => {
             const isSelected = activePoi?.event_id === event.event_id;
+            const hasValidImage = Boolean(event.gambar_url && !brokenImages[event.event_id]);
+            const listSummary =
+              (event.ringkasan_singkat || '').trim() ||
+              event.deskripsi;
 
             return (
               <div
                 key={event.event_id}
-                onClick={() => setActivePoi(event)}
-                className={`rounded-2xl border p-4 cursor-pointer transition-all ${
+                onClick={() => {
+                  setActivePoi(event);
+                  setDetailEvent(event);
+                }}
+                className={`rounded-2xl border p-3.5 cursor-pointer transition-all flex gap-3 items-start ${
                   isSelected
                     ? 'border-cyan-500/60 bg-gradient-to-r from-cyan-950/40 to-slate-900/60 shadow-lg shadow-cyan-950/30'
                     : 'border-slate-800/80 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/70'
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-1.5 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex h-6 items-center justify-center rounded-lg bg-indigo-500/20 px-2 font-mono text-[11px] font-bold text-indigo-300 border border-indigo-500/30">
+                {/* Thumbnail Foto List Card */}
+                <div className="h-20 w-20 rounded-xl border border-slate-700/70 bg-slate-950 overflow-hidden shrink-0 flex items-center justify-center">
+                  {hasValidImage ? (
+                    <img
+                      src={event.gambar_url as string}
+                      alt={event.judul}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={() =>
+                        setBrokenImages((prev) => ({
+                          ...prev,
+                          [event.event_id]: true,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <ImageIcon className="h-6 w-6 text-slate-600" />
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="flex h-5 items-center justify-center rounded bg-indigo-500/20 px-1.5 font-mono text-[10px] font-bold text-indigo-300 border border-indigo-500/30">
                         {formatYearDisplay(event.tahun_kejadian)}
                       </span>
                       {event.era_label && (
-                        <span className="rounded-md bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+                        <span className="rounded bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300 line-clamp-1 max-w-[190px]">
                           {event.era_label}
                         </span>
                       )}
                     </div>
-                    <h3 className="text-sm font-bold text-white leading-snug">
-                      {event.judul}
-                    </h3>
+
+                    {isSelected && (
+                      <span className="shrink-0 flex items-center gap-1 rounded bg-cyan-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300 border border-cyan-500/30">
+                        <CheckCircle className="h-2.5 w-2.5" />
+                        Aktif
+                      </span>
+                    )}
                   </div>
 
-                  {isSelected && (
-                    <span className="shrink-0 flex items-center gap-1 rounded bg-cyan-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300 border border-cyan-500/30">
-                      <CheckCircle className="h-3 w-3" />
-                      Aktif
-                    </span>
-                  )}
-                </div>
+                  <h3 className="text-sm font-bold text-white leading-snug line-clamp-1">
+                    {event.judul}
+                  </h3>
 
-                {/* Subjudul / Lokasi / Wahana */}
-                {event.nama_wahana && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-cyan-300/90 font-medium">
-                    <Rocket className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
-                    <span>{event.nama_wahana}</span>
-                  </div>
-                )}
+                  <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                    {listSummary}
+                  </p>
 
-                {/* Foto / Ilustrasi Peristiwa */}
-                {event.gambar_url && (
-                  <div className="mt-2.5 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-950/40">
-                    <img
-                      src={event.gambar_url}
-                      alt={event.judul}
-                      className="w-full h-32 object-cover transition-transform duration-300 hover:scale-105"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
+                  <div className="pt-1.5 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePoi(event);
                       }}
-                    />
+                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                          : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      <Eye className="h-3 w-3" />
+                      <span>{isSelected ? 'Terfokus' : 'Pin 3D'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActivePoi(event);
+                        setDetailEvent(event);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 px-2.5 py-1 text-[11px] font-bold text-slate-950 transition-colors shadow-sm"
+                    >
+                      <span>Detail</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
                   </div>
-                )}
-
-                {/* Deskripsi Lengkap */}
-                <p className="mt-2 text-xs text-slate-300 leading-relaxed text-justify">
-                  {event.deskripsi}
-                </p>
-
-                {/* Sumber Referensi */}
-                {event.sumber_referensi && (
-                  <div className="mt-2 text-[10px] text-slate-400 italic">
-                    Sumber: {event.sumber_referensi}
-                  </div>
-                )}
-
-                {/* Spherical Coordinates & Focus Button (R04) */}
-                <div className="mt-3 pt-3 border-t border-slate-800/70 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
-                    <MapPin className="h-3.5 w-3.5 text-rose-400" />
-                    <span>
-                      {event.koordinat_lat !== null && event.koordinat_lat !== undefined && (event.koordinat_lat !== 0 || (event.koordinat_lng !== null && event.koordinat_lng !== undefined && event.koordinat_lng !== 0))
-                        ? `${event.koordinat_lat}° L, ${event.koordinat_lng}° B`
-                        : 'Arsip / Ilustrasi'}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActivePoi(event);
-                    }}
-                    className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-cyan-500 text-slate-950 font-bold'
-                        : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-                    }`}
-                  >
-                    <Eye className="h-3 w-3" />
-                    <span>{isSelected ? 'Terfokus' : 'Fokus Pin 3D'}</span>
-                  </button>
                 </div>
               </div>
             );
@@ -540,6 +491,100 @@ export function HistoryTimeline() {
           <span>Kembali ke Mode Jelajah Terbang</span>
         </button>
       </div>
+
+      {/* Modal Detail Peristiwa (Tahap 2 Alur List -> Detail) */}
+      {detailEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setDetailEvent(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-detail-title"
+            className="w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 shadow-2xl p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDetailEvent(null)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Kembali ke Daftar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailEvent(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                aria-label="Tutup modal detail"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {detailEvent.gambar_url && !brokenImages[detailEvent.event_id] ? (
+              <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+                <img
+                  src={detailEvent.gambar_url}
+                  alt={detailEvent.judul}
+                  className="w-full max-h-60 object-cover"
+                  onError={() =>
+                    setBrokenImages((prev) => ({
+                      ...prev,
+                      [detailEvent.event_id]: true,
+                    }))
+                  }
+                />
+              </div>
+            ) : (
+              <div className="flex h-36 flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/50 text-slate-500 text-xs gap-1.5">
+                <ImageIcon className="h-6 w-6 text-slate-600" />
+                <span>Ilustrasi foto peristiwa belum tersedia</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg bg-cyan-500/15 border border-cyan-400/30 px-2.5 py-1 text-xs font-bold font-mono text-cyan-300">
+                {formatYearDisplay(detailEvent.tahun_kejadian)}
+              </span>
+              {detailEvent.era_label && (
+                <span className="rounded-full bg-indigo-500/15 border border-indigo-400/30 px-2.5 py-0.5 text-[11px] font-medium text-indigo-200">
+                  {detailEvent.era_label}
+                </span>
+              )}
+            </div>
+
+            <h3 id="history-detail-title" className="text-lg font-extrabold text-white leading-snug">
+              {detailEvent.judul}
+            </h3>
+
+            {detailEvent.nama_wahana && (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 flex items-start gap-2 text-xs text-amber-200">
+                <Rocket className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                <div>
+                  <span className="block text-[10px] uppercase tracking-wider font-bold text-amber-400/90">
+                    Fakta Lokasi, Ukuran &amp; Data Utama
+                  </span>
+                  <span className="font-medium">{detailEvent.nama_wahana}</span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line text-justify">
+              {detailEvent.deskripsi}
+            </p>
+
+            {detailEvent.sumber_referensi && (
+              <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                Sumber referensi ilmiah:{' '}
+                <span className="text-slate-200 font-medium">{detailEvent.sumber_referensi}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

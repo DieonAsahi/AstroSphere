@@ -94,6 +94,7 @@ export type HistoryEvent = {
   tahun_kejadian: number;
   kategori_poi?: PoiCategory;
   judul: string;
+  ringkasan_singkat?: string | null;
   deskripsi: string;
   gambar_url?: string | null;
   koordinat_lat?: number | null;
@@ -159,18 +160,21 @@ export type Database = {
     Tables: {
       admin_users: {
         Row: {
-          user_id: string;
           email: string;
+          user_id: string | null;
+          password_hash?: string | null;
           created_at: string;
         };
         Insert: {
-          user_id: string;
           email: string;
+          user_id?: string | null;
+          password_hash?: string | null;
           created_at?: string;
         };
         Update: {
-          user_id?: string;
           email?: string;
+          user_id?: string | null;
+          password_hash?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -249,6 +253,7 @@ export type Database = {
           tahun_kejadian: number;
           kategori_poi: PoiCategory;
           judul: string;
+          ringkasan_singkat?: string | null;
           deskripsi: string;
           gambar_url: string | null;
           koordinat_lat: number | null;
@@ -264,6 +269,7 @@ export type Database = {
           tahun_kejadian: number;
           kategori_poi?: PoiCategory;
           judul: string;
+          ringkasan_singkat?: string | null;
           deskripsi: string;
           gambar_url?: string | null;
           koordinat_lat?: number | null;
@@ -279,6 +285,7 @@ export type Database = {
           tahun_kejadian?: number;
           kategori_poi?: PoiCategory;
           judul?: string;
+          ringkasan_singkat?: string | null;
           deskripsi?: string;
           gambar_url?: string | null;
           koordinat_lat?: number | null;

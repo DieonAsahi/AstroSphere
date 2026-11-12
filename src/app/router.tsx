@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RouteLoadingFallback } from '../ui/RouteLoadingFallback';
 import { AppLayout } from './AppLayout';
 
@@ -131,6 +131,10 @@ export const router = createBrowserRouter([
                 <AdminQuizzesPage />
               </Suspense>
             ),
+          },
+          {
+            path: '*',
+            element: <Navigate to="/admin" replace />,
           },
         ],
       },

@@ -82,7 +82,11 @@ function SinglePoiPin({
         >
           <span className="font-mono text-cyan-400">
             {event.tahun_kejadian < 0
-              ? `${Math.abs(event.tahun_kejadian) >= 1000000 ? `${(Math.abs(event.tahun_kejadian) / 1000000).toFixed(0)} Jt` : Math.abs(event.tahun_kejadian)} SM`
+              ? `${
+                  Math.abs(event.tahun_kejadian) >= 1000000
+                    ? `${(Math.abs(event.tahun_kejadian) / 1000000).toFixed(0)} Jt`
+                    : Math.abs(event.tahun_kejadian).toLocaleString('id-ID')
+                } SM`
               : `${event.tahun_kejadian} M`}
           </span>
           <span>·</span>

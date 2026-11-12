@@ -13,63 +13,8 @@ import {
 } from 'lucide-react';
 import { useSceneStore } from '@/store/useSceneStore';
 import { supabase } from '@/lib/supabase/client';
-import type { Phenomenon, AnimationType } from '@/types/database';
-
-// 4 Simulasi Fenomena Astronomi Inti (PRD R14)
-const BUILTIN_PHENOMENA: Phenomenon[] = [
-  {
-    phenomenon_id: 'solar-eclipse',
-    planet_id: 'earth',
-    judul: 'Gerhana Matahari Total',
-    tipe_animasi: 'SOLAR_ECLIPSE',
-    deskripsi_edukatif:
-      'Terjadi ketika Bulan berada tepat di antara Matahari dan Bumi, sehingga piringan Bulan menutupi piringan Matahari secara total. Kerucut bayangan inti (Umbra) jatuh di permukaan Bumi, menciptakan kegelapan sesaat di siang hari di sepanjang jalur totalitas.',
-    konfigurasi_visual: {
-      durasi_detik: 15,
-      jarak_kamera: 35,
-    },
-    created_at: new Date().toISOString(),
-  },
-  {
-    phenomenon_id: 'lunar-eclipse',
-    planet_id: 'earth',
-    judul: 'Gerhana Bulan Total (Blood Moon)',
-    tipe_animasi: 'LUNAR_ECLIPSE',
-    deskripsi_edukatif:
-      'Terjadi saat posisi Bumi tepat berada di antara Matahari dan Bulan. Bulan masuk sepenuhnya ke dalam kerucut bayangan umbra Bumi. Cahaya merah berpanjang gelombang panjang terbiaskan oleh atmosfer Bumi ke permukaan Bulan, menghasilkan rona tembaga kemerahan spektakuler.',
-    konfigurasi_visual: {
-      durasi_detik: 20,
-      jarak_kamera: 32,
-    },
-    created_at: new Date().toISOString(),
-  },
-  {
-    phenomenon_id: 'moon-phases',
-    planet_id: 'earth',
-    judul: 'Siklus 8 Fase Bulan',
-    tipe_animasi: 'MOON_PHASES',
-    deskripsi_edukatif:
-      'Perubahan bentuk kenampakan Bulan yang tampak dari Bumi terjadi karena perubahan sudut pencahayaan Matahari seiring Bulan menyelesaikan revolusi orbit sinodisnya (sekitar 29.5 hari): Bulan Baru, Sabit Awal, Perbani Awal, Cembung Awal, Purnama, Cembung Akhir, Perbani Akhir, dan Sabit Akhir.',
-    konfigurasi_visual: {
-      durasi_detik: 25,
-      jarak_kamera: 28,
-    },
-    created_at: new Date().toISOString(),
-  },
-  {
-    phenomenon_id: 'galilean-transit',
-    planet_id: 'jupiter',
-    judul: 'Transit Satelit Galilea di Jupiter',
-    tipe_animasi: 'GALILEAN_TRANSIT',
-    deskripsi_edukatif:
-      'Empat satelit terbesar Jupiter yang ditemukan Galileo Galilei tahun 1610 (Io, Europa, Ganymede, Callisto) mengorbit dengan kecepatan berbeda dalam resonansi Laplace. Saat melintas di depan awan Jupiter, bayangan bulat pekat mereka tampak bergerak di atas atmosfer badai gas raksasa.',
-    konfigurasi_visual: {
-      durasi_detik: 30,
-      jarak_kamera: 40,
-    },
-    created_at: new Date().toISOString(),
-  },
-];
+import { FALLBACK_PHENOMENA } from '@/data/fallbackMasterData';
+import type { Phenomenon } from '@/types/database';
 
 export function PhenomenonOverlay() {
   const mode = useSceneStore((state) => state.mode);
@@ -78,9 +23,12 @@ export function PhenomenonOverlay() {
   const activePhenomenon = useSceneStore((state) => state.activePhenomenon);
   const setActivePhenomenon = useSceneStore((state) => state.setActivePhenomenon);
 
-  const [phenomenaList, setPhenomenaList] = useState<Phenomenon[]>(BUILTIN_PHENOMENA);
-  const [selectedType, setSelectedType] = useState<AnimationType>(
-    activePhenomenon?.tipe_animasi || (activePlanetId === 'jupiter' ? 'GALILEAN_TRANSIT' : 'SOLAR_ECLIPSE')
+  const [phenomenaList, setPhenomenaList] = useState<Phenomenon[]>(FALLBACK_PHENOMENA);
+  const [selectedPhenomenonId, setSelectedPhenomenonId] = useState<string>(
+    activePhenomenon?.phenomenon_id ||
+      FALLBACK_PHENOMENA.find((p) => p.planet_id === activePlanetId)?.phenomenon_id ||
+      FALLBACK_PHENOMENA[0]?.phenomenon_id ||
+      ''
   );
 
   // Ambil fenomena dari Supabase atau fallback
@@ -99,12 +47,12 @@ export function PhenomenonOverlay() {
             const activeOnly = data.filter((p) => p.is_active !== false);
             setPhenomenaList(activeOnly);
           } else {
-            setPhenomenaList(BUILTIN_PHENOMENA.filter((p) => p.is_active !== false));
+            setPhenomenaList(FALLBACK_PHENOMENA.filter((p) => p.is_active !== false));
           }
         }
       } catch {
         if (isMounted) {
-          setPhenomenaList(BUILTIN_PHENOMENA.filter((p) => p.is_active !== false));
+          setPhenomenaList(FALLBACK_PHENOMENA.filter((p) => p.is_active !== false));
         }
       }
     }
@@ -137,15 +85,19 @@ export function PhenomenonOverlay() {
 
   // Set default aktif fenomena
   useEffect(() => {
-    if (mode === 'PHENOMENON') {
+    if (mode === 'PHENOMENON' && phenomenaList.length > 0) {
       const match =
-        phenomenaList.find((p) => p.tipe_animasi === selectedType) ||
+        phenomenaList.find((p) => p.phenomenon_id === selectedPhenomenonId) ||
+        phenomenaList.find((p) => p.planet_id === activePlanetId) ||
         phenomenaList[0];
       if (match) {
         setActivePhenomenon(match);
+        if (match.phenomenon_id !== selectedPhenomenonId) {
+          setSelectedPhenomenonId(match.phenomenon_id);
+        }
       }
     }
-  }, [mode, selectedType, phenomenaList, setActivePhenomenon]);
+  }, [mode, selectedPhenomenonId, phenomenaList, activePlanetId, setActivePhenomenon]);
 
   if (mode !== 'PHENOMENON') return null;
 
@@ -174,11 +126,11 @@ export function PhenomenonOverlay() {
   }
 
   const currentItem =
-    phenomenaList.find((p) => p.tipe_animasi === selectedType) ||
+    phenomenaList.find((p) => p.phenomenon_id === selectedPhenomenonId) ||
     phenomenaList[0];
 
   const handleSelectPhenomenon = (item: Phenomenon) => {
-    setSelectedType(item.tipe_animasi);
+    setSelectedPhenomenonId(item.phenomenon_id);
     setActivePhenomenon(item);
   };
 
@@ -188,7 +140,7 @@ export function PhenomenonOverlay() {
       <div className="pointer-events-auto max-w-4xl mx-auto w-full pt-16 sm:pt-14">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/85 p-2 backdrop-blur-xl shadow-2xl flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
           {phenomenaList.map((item) => {
-            const isSelected = selectedType === item.tipe_animasi;
+            const isSelected = currentItem.phenomenon_id === item.phenomenon_id;
             return (
               <button
                 key={item.phenomenon_id}
@@ -203,7 +155,9 @@ export function PhenomenonOverlay() {
                 {item.tipe_animasi === 'SOLAR_ECLIPSE' && <Sun className="h-3.5 w-3.5 text-amber-400" />}
                 {item.tipe_animasi === 'LUNAR_ECLIPSE' && <Moon className="h-3.5 w-3.5 text-rose-400" />}
                 {item.tipe_animasi === 'MOON_PHASES' && <Orbit className="h-3.5 w-3.5 text-cyan-400" />}
-                {item.tipe_animasi === 'GALILEAN_TRANSIT' && <Sparkles className="h-3.5 w-3.5 text-purple-400" />}
+                {(item.tipe_animasi === 'GALILEAN_TRANSIT' || item.tipe_animasi === 'CUSTOM_ALIGNMENT') && (
+                  <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                )}
                 <span className="whitespace-nowrap">{item.judul}</span>
               </button>
             );

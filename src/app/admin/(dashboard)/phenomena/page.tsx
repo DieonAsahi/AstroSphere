@@ -13,8 +13,10 @@ import {
   Sparkles,
   Layers,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
+import { formatSupabaseError } from '../../../../lib/supabase/adminAuth';
 import type { Phenomenon, AnimationType, VisualConfig, PlanetSlug } from '../../../../types/database';
 
 const PLANET_OPTIONS: { id: PlanetSlug; label: string; dotColor: string; badgeBg: string }[] = [
@@ -71,6 +73,16 @@ const SECONDARY_OBJECT_OPTIONS = [
   { id: 'RINGS', label: 'Cincin Planet (Rings)' },
 ];
 
+function matchesPhenomenonQuery(item: Phenomenon, query: string): boolean {
+  if (!query) return true;
+  return (
+    item.judul.toLowerCase().includes(query) ||
+    item.deskripsi_edukatif.toLowerCase().includes(query) ||
+    item.planet_id.toLowerCase().includes(query) ||
+    item.tipe_animasi.toLowerCase().includes(query)
+  );
+}
+
 export default function AdminPhenomenaPage() {
   const { searchQuery: topSearchQuery = '' } = useOutletContext<{ searchQuery?: string }>() || {};
   const [phenomena, setPhenomena] = useState<Phenomenon[]>([]);
@@ -125,12 +137,15 @@ export default function AdminPhenomenaPage() {
 
   const [newStepText, setNewStepText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Alerts
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const fetchPhenomena = useCallback(async () => {
     try {
@@ -145,7 +160,10 @@ export default function AdminPhenomenaPage() {
       console.error('Error fetching phenomena:', err);
       setNotification({
         type: 'error',
-        message: 'Gagal memuat daftar simulasi fenomena dari Supabase.',
+        message: formatSupabaseError(
+          err,
+          'Gagal memuat daftar simulasi fenomena dari Supabase'
+        ),
       });
     } finally {
       setLoading(false);
@@ -157,25 +175,22 @@ export default function AdminPhenomenaPage() {
     fetchPhenomena();
   }, [fetchPhenomena]);
 
-  const effectiveQuery = (topSearchQuery || searchQuery).trim().toLowerCase();
+  const topQ = topSearchQuery.trim().toLowerCase();
+  const localQ = searchQuery.trim().toLowerCase();
 
   const filteredPhenomena = useMemo(() => {
     return phenomena.filter((item) => {
       if (selectedPlanet !== 'all' && item.planet_id !== selectedPlanet) return false;
-      if (effectiveQuery !== '') {
-        const matchTitle = item.judul.toLowerCase().includes(effectiveQuery);
-        const matchDesc = item.deskripsi_edukatif.toLowerCase().includes(effectiveQuery);
-        const matchPlanet = item.planet_id.toLowerCase().includes(effectiveQuery);
-        if (!matchTitle && !matchDesc && !matchPlanet) return false;
-      }
+      if (!matchesPhenomenonQuery(item, topQ)) return false;
+      if (!matchesPhenomenonQuery(item, localQ)) return false;
       return true;
     });
-  }, [phenomena, selectedPlanet, effectiveQuery]);
+  }, [phenomena, selectedPlanet, topQ, localQ]);
 
   // Reset pagination saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedPlanet, effectiveQuery]);
+  }, [selectedPlanet, topQ, localQ]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPhenomena.length / itemsPerPage));
   const paginatedPhenomena = useMemo(() => {
@@ -185,6 +200,7 @@ export default function AdminPhenomenaPage() {
 
   const handleOpenEdit = (item: Phenomenon) => {
     setEditingItem(item);
+    setModalError(null);
 
     const config = (item.konfigurasi_visual || {}) as VisualConfig & { subtitle?: string };
     const secondaryObjects = config.secondaryObjects || ['SUN', 'MOON'];
@@ -195,7 +211,8 @@ export default function AdminPhenomenaPage() {
       'Tahap 1: Penyejajaran posisi pengamatan orbit.',
       'Tahap 2: Puncak pergerakan fenomena astronomi.',
     ];
-    const defaultSub = ANIMATION_TYPES.find((t) => t.id === item.tipe_animasi)?.defaultSubtitle || 'Efek Optik Antariksa';
+    const defaultSub =
+      ANIMATION_TYPES.find((t) => t.id === item.tipe_animasi)?.defaultSubtitle || 'Efek Optik Antariksa';
     const sub = config.subtitle || defaultSub;
 
     setFormData({
@@ -219,9 +236,11 @@ export default function AdminPhenomenaPage() {
 
   // Toggle Switch Aktif / Nonaktif langsung via tabel
   const handleToggleActive = async (item: Phenomenon) => {
+    if (togglingId) return;
     const nextActive = item.is_active === false;
 
-    // Optimistic local state update
+    setTogglingId(item.phenomenon_id);
+    setNotification(null);
     setPhenomena((prev) =>
       prev.map((p) =>
         p.phenomenon_id === item.phenomenon_id ? { ...p, is_active: nextActive } : p
@@ -229,27 +248,36 @@ export default function AdminPhenomenaPage() {
     );
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('phenomena')
         .update({ is_active: nextActive })
-        .eq('phenomenon_id', item.phenomenon_id);
+        .eq('phenomenon_id', item.phenomenon_id)
+        .select('phenomenon_id, is_active')
+        .single();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error('Status fenomena tidak terbarui di database.');
+      }
 
       setNotification({
         type: 'success',
         message: `Status fenomena "${item.judul}" diubah menjadi ${nextActive ? 'Aktif' : 'Nonaktif'}.`,
       });
+      await fetchPhenomena();
     } catch (err: unknown) {
       console.error('Toggle active error:', err);
-      // Rollback on error
       setPhenomena((prev) =>
         prev.map((p) =>
           p.phenomenon_id === item.phenomenon_id ? { ...p, is_active: item.is_active } : p
         )
       );
-      const errMsg = err instanceof Error ? err.message : 'Gagal memperbarui status fenomena.';
-      setNotification({ type: 'error', message: errMsg });
+      setNotification({
+        type: 'error',
+        message: formatSupabaseError(err, 'Gagal memperbarui status fenomena'),
+      });
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -302,17 +330,29 @@ export default function AdminPhenomenaPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem || !formData.phenomenon_id) return;
-    if (!formData.judul.trim() || !formData.deskripsi_edukatif.trim()) return;
+
+    setModalError(null);
+
+    if (!formData.judul.trim()) {
+      setModalError('Judul fenomena astronomi wajib diisi.');
+      return;
+    }
+
+    if (!formData.deskripsi_edukatif.trim()) {
+      setModalError('Deskripsi lengkap materi fenomena wajib diisi.');
+      return;
+    }
 
     try {
       setSaving(true);
       setNotification(null);
 
+      // Planet dan tipe animasi dikunci sesuai struktur 3D asli dari database
       const payload = {
-        planet_id: formData.planet_id,
+        planet_id: editingItem.planet_id,
         judul: formData.judul.trim(),
         tombol_aksi_label: formData.tombol_aksi_label.trim() || 'Putar Simulasi Fenomena',
-        tipe_animasi: formData.tipe_animasi,
+        tipe_animasi: editingItem.tipe_animasi,
         deskripsi_edukatif: formData.deskripsi_edukatif.trim(),
         konfigurasi_visual: compiledVisualConfig,
         is_active: formData.is_active,
@@ -322,16 +362,14 @@ export default function AdminPhenomenaPage() {
         .from('phenomena')
         .update(payload)
         .eq('phenomenon_id', formData.phenomenon_id)
-        .select()
+        .select('phenomenon_id')
         .single();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error('Data fenomena tidak terbarui di database.');
+      }
 
-      setPhenomena((prev) =>
-        prev.map((item) =>
-          item.phenomenon_id === formData.phenomenon_id ? (data as Phenomenon) : item
-        )
-      );
       setNotification({
         type: 'success',
         message: `Simulasi "${payload.judul}" berhasil diperbarui di Supabase.`,
@@ -339,16 +377,22 @@ export default function AdminPhenomenaPage() {
 
       setModalOpen(false);
       setEditingItem(null);
+      setModalError(null);
+      await fetchPhenomena();
     } catch (err: unknown) {
       console.error('Error saving phenomenon:', err);
-      setNotification({
-        type: 'error',
-        message: 'Gagal menyimpan perubahan simulasi fenomena.',
-      });
+      setModalError(
+        formatSupabaseError(
+          err,
+          'Gagal menyimpan perubahan simulasi fenomena ke database Supabase'
+        )
+      );
     } finally {
       setSaving(false);
     }
   };
+
+  const activeFilterTags = [topSearchQuery.trim(), searchQuery.trim()].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -406,7 +450,7 @@ export default function AdminPhenomenaPage() {
       {/* Filter Bar (Matching Mockup A04) */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Search Input */}
+          {/* Search Input Lokal */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -414,8 +458,18 @@ export default function AdminPhenomenaPage() {
               placeholder="Cari nama fenomena..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-9 pr-8 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Bersihkan pencarian fenomena"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Planet Dropdown */}
@@ -434,7 +488,12 @@ export default function AdminPhenomenaPage() {
         </div>
 
         {/* Filtered Badge */}
-        <div className="shrink-0 flex items-center justify-end">
+        <div className="shrink-0 flex items-center justify-end gap-2">
+          {topQ && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              Header: "{topSearchQuery.trim()}"
+            </span>
+          )}
           <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
             {filteredPhenomena.length} Fenomena Terdaftar
           </span>
@@ -520,9 +579,10 @@ export default function AdminPhenomenaPage() {
                           <button
                             type="button"
                             onClick={() => handleToggleActive(item)}
+                            disabled={togglingId === item.phenomenon_id}
                             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                               isActive ? 'bg-emerald-500' : 'bg-slate-300'
-                            } cursor-pointer`}
+                            } ${togglingId === item.phenomenon_id ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}
                             title={`Klik untuk ${isActive ? 'menonaktifkan' : 'mengaktifkan'} fenomena`}
                           >
                             <span
@@ -566,7 +626,7 @@ export default function AdminPhenomenaPage() {
           <span>
             Menampilkan {filteredPhenomena.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
             {Math.min(currentPage * itemsPerPage, filteredPhenomena.length)} dari {filteredPhenomena.length} fenomena
-            {effectiveQuery && ` (difilter dari "${effectiveQuery}")`}
+            {activeFilterTags.length > 0 && ` (difilter: "${activeFilterTags.join('", "')}")`}
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -603,7 +663,7 @@ export default function AdminPhenomenaPage() {
         </div>
       </div>
 
-      {/* Edit Modal (Tanpa Tambah / Hapus) */}
+      {/* Edit Modal (Planet & Tipe Animasi Terkunci, Notifikasi Error di Dalam Modal) */}
       {modalOpen && editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -626,6 +686,7 @@ export default function AdminPhenomenaPage() {
                 onClick={() => {
                   setModalOpen(false);
                   setEditingItem(null);
+                  setModalError(null);
                 }}
                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
@@ -635,6 +696,21 @@ export default function AdminPhenomenaPage() {
 
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4">
+              {/* Error Banner di Dalam Modal */}
+              {modalError && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-red-800">
+                  <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">{modalError}</div>
+                  <button
+                    type="button"
+                    onClick={() => setModalError(null)}
+                    className="text-red-400 hover:text-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Status Visibilitas Fenomena */}
               <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
                 <div>
@@ -674,49 +750,48 @@ export default function AdminPhenomenaPage() {
                 </div>
               </div>
 
-              {/* Grid Baris 1: Planet & Tipe Animasi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Planet Terkait
-                  </label>
-                  <select
-                    value={formData.planet_id}
-                    onChange={(e) => setFormData({ ...formData, planet_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
-                  >
-                    {PLANET_OPTIONS.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Grid Baris 1: Planet & Tipe Animasi (DIKUNCI / READ-ONLY) */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1">
+                      <Lock className="h-3 w-3 text-slate-400" />
+                      <span>Planet Terkait (Terkunci)</span>
+                    </label>
+                    <select
+                      value={formData.planet_id}
+                      disabled
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-100 text-slate-500 font-medium cursor-not-allowed"
+                    >
+                      {PLANET_OPTIONS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tipe Animasi Simulasi
-                  </label>
-                  <select
-                    value={formData.tipe_animasi}
-                    onChange={(e) => {
-                      const nextType = e.target.value as AnimationType;
-                      const defSub = ANIMATION_TYPES.find((t) => t.id === nextType)?.defaultSubtitle || '';
-                      setFormData({
-                        ...formData,
-                        tipe_animasi: nextType,
-                        subtitle: defSub,
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
-                  >
-                    {ANIMATION_TYPES.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-1">
+                      <Lock className="h-3 w-3 text-slate-400" />
+                      <span>Tipe Animasi Simulasi (Terkunci)</span>
+                    </label>
+                    <select
+                      value={formData.tipe_animasi}
+                      disabled
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-100 text-slate-500 font-medium cursor-not-allowed"
+                    >
+                      {ANIMATION_TYPES.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+                <p className="text-[11px] text-slate-500">
+                  Planet terkait dan tipe animasi dikunci otomatis karena skenario optik 3D sudah terikat pada kode masing-masing planet.
+                </p>
               </div>
 
               {/* Judul & Label Tombol HUD */}
@@ -919,6 +994,7 @@ export default function AdminPhenomenaPage() {
                   onClick={() => {
                     setModalOpen(false);
                     setEditingItem(null);
+                    setModalError(null);
                   }}
                   className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
                 >
