@@ -21,10 +21,10 @@ dist-ssr
 !.env.local.example
 
 # Private Docs, Supabase Seeds & Internal Admin SQL
-docs/
-supabase/
+/docs/
+/supabase/
 src/app/admin/structure.sql
-structure.sql
+/structure.sql
 
 # Editor directories and files
 .vscode/*
