@@ -164,8 +164,6 @@ interface ValidatedHistoryImportRow {
   karakteristik_fisik: string;
   deskripsi: string;
   gambar_url: string;
-  koordinat_lat: number;
-  koordinat_lng: number;
   sumber_referensi: string;
 }
 
@@ -431,18 +429,6 @@ export default function AdminHistoryPage() {
     setSaving(true);
     setNotification(null);
 
-    const rawLat = formData.koordinat_lat;
-    const rawLng = formData.koordinat_lng;
-    const parsedLat =
-      rawLat !== undefined && rawLat !== null && !Number.isNaN(Number(rawLat))
-        ? Number(rawLat)
-        : 0;
-    const parsedLng =
-      rawLng !== undefined && rawLng !== null && !Number.isNaN(Number(rawLng))
-        ? Number(rawLng)
-        : 0;
-    const lat = parsedLat >= -90 && parsedLat <= 90 ? parsedLat : 0;
-    const lng = parsedLng >= -180 && parsedLng <= 180 ? parsedLng : 0;
     const resolvedPlanetId = formData.planet_id || editingEvent?.planet_id || 'earth';
     const defaultEraForPlanet =
       resolvedPlanetId === 'earth' ? EARTH_ERA_OPTIONS[0] : 'Sejarah Geologi';
@@ -462,8 +448,6 @@ export default function AdminHistoryPage() {
             karakteristik_fisik: formData.karakteristik_fisik?.trim() || '',
             deskripsi: formData.deskripsi.trim(),
             gambar_url: formData.gambar_url?.trim() || '',
-            koordinat_lat: lat,
-            koordinat_lng: lng,
             sumber_referensi: formData.sumber_referensi?.trim() || '',
           })
           .select('event_id')
@@ -503,8 +487,6 @@ export default function AdminHistoryPage() {
               formData.gambar_url !== undefined
                 ? formData.gambar_url?.trim() || ''
                 : editingEvent.gambar_url || '',
-            koordinat_lat: lat,
-            koordinat_lng: lng,
             sumber_referensi:
               formData.sumber_referensi !== undefined
                 ? formData.sumber_referensi?.trim() || ''
@@ -767,8 +749,6 @@ export default function AdminHistoryPage() {
         karakteristik_fisik: karakteristikFisik,
         deskripsi,
         gambar_url: String(raw.gambar_url ?? '').trim(),
-        koordinat_lat: 0,
-        koordinat_lng: 0,
         sumber_referensi: String(raw.sumber_referensi ?? '').trim(),
       };
       validRows.push(validated);

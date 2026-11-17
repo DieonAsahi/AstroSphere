@@ -28,7 +28,8 @@ describe('Master Fallback Dataset v3 Integrity (List -> Detail)', () => {
 
     for (const slug of slugs) {
       const planet = FALLBACK_PLANETS[slug];
-      expect(planet.ringkasan_cepat).toContain('Selamat datang di');
+      expect(planet.urutan_planet).toBeGreaterThanOrEqual(1);
+      expect(planet.suhu_rata_c.length).toBeGreaterThan(0);
       expect(planet.deskripsi_materi.length).toBeGreaterThan(80);
       expect(planet.is_active).toBe(true);
     }

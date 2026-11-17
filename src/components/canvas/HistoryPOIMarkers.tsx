@@ -12,10 +12,12 @@ interface HistoryPOIMarkersProps {
   planetRotationY: number;
 }
 
-// Konversi koordinat bola (Lat°, Lng°) ke koordinat Kartesius 3D (x, y, z)
-function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
-  const phi = ((90 - lat) * Math.PI) / 180;
-  const theta = ((lng + 180) * Math.PI) / 180;
+// Distribusi merata Fibonacci Sphere untuk meletakkan titik POI di permukaan bola 3D secara prosedural
+function getFibonacciSpherePoint(index: number, total: number, radius: number): THREE.Vector3 {
+  const safeTotal = Math.max(1, total);
+  const phi = Math.acos(1 - (2 * (index + 0.5)) / safeTotal);
+  const goldenRatio = (1 + Math.sqrt(5)) / 2;
+  const theta = (2 * Math.PI * index) / goldenRatio;
 
   const x = -radius * Math.sin(phi) * Math.cos(theta);
   const y = radius * Math.cos(phi);
@@ -26,9 +28,13 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
 
 function SinglePoiPin({
   event,
+  index,
+  total,
   planetRadius,
 }: {
   event: HistoryEvent;
+  index: number;
+  total: number;
   planetRadius: number;
 }) {
   const activePoi = useSceneStore((state) => state.activePoi);
@@ -36,14 +42,10 @@ function SinglePoiPin({
 
   const isSelected = activePoi?.event_id === event.event_id;
 
-  // Letakkan pin sedikit di atas permukaan bola
+  // Letakkan pin di atas permukaan bola menggunakan Fibonacci Sphere distribution
   const position = useMemo(() => {
-    return latLngToVector3(
-      Number(event.koordinat_lat ?? 0),
-      Number(event.koordinat_lng ?? 0),
-      planetRadius * 1.04
-    );
-  }, [event.koordinat_lat, event.koordinat_lng, planetRadius]);
+    return getFibonacciSpherePoint(index, total, planetRadius * 1.04);
+  }, [index, total, planetRadius]);
 
   return (
     <group position={position}>
@@ -115,10 +117,12 @@ export function HistoryPOIMarkers({
 
   return (
     <group rotation={[0, planetRotationY, 0]}>
-      {filteredEvents.map((event) => (
+      {filteredEvents.map((event, idx) => (
         <SinglePoiPin
           key={event.event_id}
           event={event}
+          index={idx}
+          total={filteredEvents.length}
           planetRadius={planetRadius}
         />
       ))}

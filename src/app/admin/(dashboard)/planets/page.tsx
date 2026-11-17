@@ -17,44 +17,15 @@ import {
   RotateCw,
   Sun,
   Compass,
-  ShieldCheck,
+  Thermometer,
 } from 'lucide-react';
 import { supabase } from '../../../../lib/supabase/client';
 import { formatSupabaseError } from '../../../../lib/supabase/adminAuth';
 import type { Planet } from '../../../../types/database';
 
-// Format rotasi aksial ramah siswa & astronomi
-function formatRotationPeriod(planetId: string, hours: number): string {
-  switch (planetId) {
-    case 'mercury':
-      return '58,6 hari';
-    case 'venus':
-      return '243,0 hari (Retrograde)';
-    case 'earth':
-      return '23j 56m 04s';
-    case 'mars':
-      return '24j 37m 22s';
-    case 'jupiter':
-      return '09j 55m 30s';
-    case 'saturn':
-      return '10j 33m 38s';
-    case 'uranus':
-      return '-17j 14m (Retrograde)';
-    case 'neptune':
-      return '16j 06m 36s';
-    default:
-      if (hours < 0) {
-        return `${Math.abs(hours).toFixed(1)}j (Retrograde)`;
-      }
-      return hours >= 24
-        ? `${(hours / 24).toFixed(1)} hari`
-        : `${hours.toFixed(1)} jam`;
-  }
-}
-
-// Warna lingkaran angka orbit sesuai tema A02
-function getOrbitBadgeStyle(orbit: number) {
-  switch (orbit) {
+// Warna badge urutan planet dari Matahari (1 sampai 8)
+function getPlanetBadgeStyle(urutan: number) {
+  switch (urutan) {
     case 1:
       return 'bg-slate-100 text-slate-700 border-slate-300';
     case 2:
@@ -78,101 +49,68 @@ function getOrbitBadgeStyle(orbit: number) {
 
 interface PlanetFormState {
   planet_id: string;
-  urutan_orbit: string;
   urutan_planet: string;
   nama: string;
   kategori_planet: NonNullable<Planet['kategori_planet']>;
   diameter_km: string;
   perbandingan_bumi: string;
-  rotation_period_hours: string;
   periode_rotasi: string;
   subteks_rotasi: string;
-  orbital_period_days: string;
   periode_orbit: string;
   subteks_orbit: string;
-  axial_tilt_deg: string;
   kemiringan_sumbu: string;
+  suhu_rata_c: string;
   rentang_suhu: string;
   usia_planet: string;
   subteks_usia: string;
   judul_rotasi: string;
   deskripsi_rotasi: string;
   deskripsi_materi: string;
-  ringkasan_cepat: string;
-  sumber_referensi: string;
-  aset_model_url: string;
-  tekstur_url: string;
-  warna_atmosfer_hex: string;
-  skala_visual: string;
-  batas_zona_radius: string;
-  kecepatan_jelajah_nyaman: string;
   is_active: boolean;
 }
 
 const EMPTY_PLANET_FORM: PlanetFormState = {
   planet_id: '',
-  urutan_orbit: '1',
   urutan_planet: '1',
   nama: '',
   kategori_planet: 'TERRESTRIAL',
   diameter_km: '10000',
   perbandingan_bumi: '1.00x Standar',
-  rotation_period_hours: '24',
   periode_rotasi: '24 Jam',
   subteks_rotasi: '1 Hari Sideris',
-  orbital_period_days: '365',
   periode_orbit: '365 Hari',
   subteks_orbit: '1 Tahun Kalender',
-  axial_tilt_deg: '0',
   kemiringan_sumbu: '0°',
+  suhu_rata_c: '15°C',
   rentang_suhu: '15°C (Rata-rata)',
   usia_planet: '~4.5 Miliar Tahun',
   subteks_usia: 'Terbentuk bersama Tata Surya',
   judul_rotasi: 'Rotasi Standar',
   deskripsi_rotasi: '',
   deskripsi_materi: '',
-  ringkasan_cepat: '',
-  sumber_referensi: 'NASA Planetary Fact Sheet',
-  aset_model_url: '/models/planets/earth.glb',
-  tekstur_url: '',
-  warna_atmosfer_hex: '#38bdf8',
-  skala_visual: '1',
-  batas_zona_radius: '35',
-  kecepatan_jelajah_nyaman: '15',
   is_active: true,
 };
 
 function toPlanetFormState(planet: Planet): PlanetFormState {
   return {
     planet_id: planet.planet_id,
-    urutan_orbit: String(planet.urutan_orbit ?? 1),
     urutan_planet: String(planet.urutan_planet ?? planet.urutan_orbit ?? 1),
     nama: planet.nama ?? '',
     kategori_planet: planet.kategori_planet ?? 'TERRESTRIAL',
     diameter_km: String(planet.diameter_km ?? 0),
     perbandingan_bumi: planet.perbandingan_bumi ?? '',
-    rotation_period_hours: String(planet.rotation_period_hours ?? 24),
     periode_rotasi: planet.periode_rotasi ?? '',
     subteks_rotasi: planet.subteks_rotasi ?? '',
-    orbital_period_days: String(planet.orbital_period_days ?? 365),
     periode_orbit: planet.periode_orbit ?? '',
     subteks_orbit: planet.subteks_orbit ?? '',
-    axial_tilt_deg: String(planet.axial_tilt_deg ?? 0),
     kemiringan_sumbu: planet.kemiringan_sumbu ?? '',
+    suhu_rata_c: planet.suhu_rata_c ?? '',
     rentang_suhu: planet.rentang_suhu ?? '',
     usia_planet: planet.usia_planet ?? '',
     subteks_usia: planet.subteks_usia ?? '',
     judul_rotasi: planet.judul_rotasi ?? '',
     deskripsi_rotasi: planet.deskripsi_rotasi ?? '',
     deskripsi_materi: planet.deskripsi_materi ?? '',
-    ringkasan_cepat: planet.ringkasan_cepat ?? '',
-    sumber_referensi: planet.sumber_referensi ?? '',
-    aset_model_url: planet.aset_model_url ?? '/models/planets/earth.glb',
-    tekstur_url: planet.tekstur_url ?? '',
-    warna_atmosfer_hex: planet.warna_atmosfer_hex ?? '#38bdf8',
-    skala_visual: String(planet.skala_visual ?? 1.0),
-    batas_zona_radius: String(planet.batas_zona_radius ?? 35),
-    kecepatan_jelajah_nyaman: String(planet.kecepatan_jelajah_nyaman ?? 15.0),
     is_active: planet.is_active !== false,
   };
 }
@@ -207,7 +145,7 @@ export default function AdminPlanetsPage() {
       const { data, error } = await supabase
         .from('planets')
         .select('*')
-        .order('urutan_orbit', { ascending: true });
+        .order('urutan_planet', { ascending: true });
 
       if (error) throw error;
       setPlanets((data || []) as Planet[]);
@@ -285,7 +223,7 @@ export default function AdminPlanetsPage() {
 
       if (error) throw error;
       if (!data) {
-        throw new Error('Status planet tidak terbarui di database (akses RLS ditolak).');
+        throw new Error('Status planet tidak terbarui di database.');
       }
 
       setNotification({
@@ -313,37 +251,30 @@ export default function AdminPlanetsPage() {
 
     setModalNotification(null);
 
-    // Validasi string & numerik secara eksplisit
-    const orbitNum = Number(formData.urutan_orbit);
+    const orderNum = Number(formData.urutan_planet);
     const diameterNum = Number(formData.diameter_km);
-    const rotationNum = Number(formData.rotation_period_hours);
-    const orbitalNum = Number(formData.orbital_period_days);
-    const tiltNum = Number(formData.axial_tilt_deg);
-    const scaleNum = Number(formData.skala_visual);
-    const radiusNum = Number(formData.batas_zona_radius);
-    const speedNum = Number(formData.kecepatan_jelajah_nyaman);
 
     if (!formData.nama.trim()) {
       setModalNotification({ type: 'error', message: 'Nama resmi planet wajib diisi.' });
       return;
     }
 
-    if (!Number.isInteger(orbitNum) || orbitNum < 1) {
+    if (!Number.isInteger(orderNum) || orderNum < 1) {
       setModalNotification({
         type: 'error',
-        message: 'Urutan orbit harus berupa bilangan bulat minimal 1.',
+        message: 'Urutan planet harus berupa bilangan bulat minimal 1 (ke-1 sampai ke-8).',
       });
       return;
     }
 
-    // Cegah bentrok urutan_orbit sebelum kirim ke database
+    // Cegah bentrok urutan_planet dengan planet lain
     const conflictPlanet = planets.find(
-      (p) => p.planet_id !== editingPlanet.planet_id && p.urutan_orbit === orbitNum
+      (p) => p.planet_id !== editingPlanet.planet_id && p.urutan_planet === orderNum
     );
     if (conflictPlanet) {
       setModalNotification({
         type: 'error',
-        message: `Urutan orbit #${orbitNum} sudah dipakai oleh planet "${conflictPlanet.nama}". Pilih angka urutan lain.`,
+        message: `Urutan ke-${orderNum} dari Matahari sudah dipakai oleh planet "${conflictPlanet.nama}". Pilih angka urutan lain.`,
       });
       return;
     }
@@ -351,67 +282,7 @@ export default function AdminPlanetsPage() {
     if (formData.diameter_km.trim() === '' || Number.isNaN(diameterNum) || diameterNum <= 0) {
       setModalNotification({
         type: 'error',
-        message: 'Diameter khatulistiwa harus lebih besar dari 0 km.',
-      });
-      return;
-    }
-
-    if (
-      formData.rotation_period_hours.trim() === '' ||
-      Number.isNaN(rotationNum) ||
-      rotationNum === 0
-    ) {
-      setModalNotification({
-        type: 'error',
-        message: 'Periode rotasi tidak boleh kosong atau 0 (gunakan negatif untuk retrograde).',
-      });
-      return;
-    }
-
-    if (
-      formData.orbital_period_days.trim() === '' ||
-      Number.isNaN(orbitalNum) ||
-      orbitalNum <= 0
-    ) {
-      setModalNotification({
-        type: 'error',
-        message: 'Periode orbit / revolusi harus lebih besar dari 0 hari.',
-      });
-      return;
-    }
-
-    if (formData.axial_tilt_deg.trim() === '' || Number.isNaN(tiltNum)) {
-      setModalNotification({
-        type: 'error',
-        message: 'Kemiringan sumbu rotasi harus berupa angka yang valid (boleh 0).',
-      });
-      return;
-    }
-
-    if (formData.skala_visual.trim() === '' || Number.isNaN(scaleNum) || scaleNum <= 0) {
-      setModalNotification({
-        type: 'error',
-        message: 'Skala ukuran visual 3D harus lebih besar dari 0.',
-      });
-      return;
-    }
-
-    if (formData.batas_zona_radius.trim() === '' || Number.isNaN(radiusNum) || radiusNum <= 0) {
-      setModalNotification({
-        type: 'error',
-        message: 'Radius batas zona masuk harus lebih besar dari 0.',
-      });
-      return;
-    }
-
-    if (
-      formData.kecepatan_jelajah_nyaman.trim() === '' ||
-      Number.isNaN(speedNum) ||
-      speedNum <= 0
-    ) {
-      setModalNotification({
-        type: 'error',
-        message: 'Kecepatan jelajah nyaman harus lebih besar dari 0 km/s.',
+        message: 'Diameter ekuator harus lebih besar dari 0 km.',
       });
       return;
     }
@@ -419,7 +290,7 @@ export default function AdminPlanetsPage() {
     if (!formData.deskripsi_materi.trim()) {
       setModalNotification({
         type: 'error',
-        message: 'Deskripsi utama planet wajib diisi.',
+        message: 'Deskripsi ringkasan utama planet (PLY-02) wajib diisi.',
       });
       return;
     }
@@ -431,34 +302,23 @@ export default function AdminPlanetsPage() {
       const { data, error } = await supabase
         .from('planets')
         .update({
-          urutan_orbit: orbitNum,
-          urutan_planet: Number(formData.urutan_planet) || orbitNum,
+          urutan_planet: orderNum,
           nama: formData.nama.trim(),
           kategori_planet: formData.kategori_planet,
           diameter_km: diameterNum,
           perbandingan_bumi: formData.perbandingan_bumi.trim(),
-          rotation_period_hours: rotationNum,
           periode_rotasi: formData.periode_rotasi.trim(),
           subteks_rotasi: formData.subteks_rotasi.trim(),
-          orbital_period_days: orbitalNum,
           periode_orbit: formData.periode_orbit.trim(),
           subteks_orbit: formData.subteks_orbit.trim(),
-          axial_tilt_deg: tiltNum,
           kemiringan_sumbu: formData.kemiringan_sumbu.trim(),
+          suhu_rata_c: formData.suhu_rata_c.trim(),
           rentang_suhu: formData.rentang_suhu.trim(),
           usia_planet: formData.usia_planet.trim(),
           subteks_usia: formData.subteks_usia.trim(),
           judul_rotasi: formData.judul_rotasi.trim(),
           deskripsi_rotasi: formData.deskripsi_rotasi.trim(),
           deskripsi_materi: formData.deskripsi_materi.trim(),
-          ringkasan_cepat: formData.ringkasan_cepat.trim(),
-          sumber_referensi: formData.sumber_referensi.trim() || null,
-          aset_model_url: formData.aset_model_url.trim() || editingPlanet.aset_model_url,
-          tekstur_url: formData.tekstur_url.trim() || null,
-          warna_atmosfer_hex: formData.warna_atmosfer_hex || '#38bdf8',
-          skala_visual: scaleNum,
-          batas_zona_radius: radiusNum,
-          kecepatan_jelajah_nyaman: speedNum,
           is_active: formData.planet_id === 'earth' ? true : formData.is_active,
           updated_at: new Date().toISOString(),
         })
@@ -489,7 +349,7 @@ export default function AdminPlanetsPage() {
     }
   };
 
-  // Filter berdasarkan search query top bar (M-01)
+  // Filter berdasarkan search query top bar
   const filteredPlanets = useMemo(() => {
     if (!searchQuery.trim()) return planets;
     const q = searchQuery.toLowerCase().trim();
@@ -501,52 +361,54 @@ export default function AdminPlanetsPage() {
     );
   }, [planets, searchQuery]);
 
-  // Reset page saat filter berubah
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
+  // Pagination logic
   const totalPages = Math.max(1, Math.ceil(filteredPlanets.length / itemsPerPage));
   const paginatedPlanets = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredPlanets.slice(start, start + itemsPerPage);
   }, [filteredPlanets, currentPage, itemsPerPage]);
 
-  const activePlanetCount = useMemo(
-    () => planets.filter((p) => p.is_active !== false).length,
-    [planets]
-  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const activePlanetCount = planets.filter((p) => p.is_active !== false).length;
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Card Sesuai Gambar A02 (Tanpa Tombol Tambah Planet) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* 1. Header & Quick Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Data Planet
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Kelola parameter sains, tekstur/model 3D, ringkasan materi, dan status visibilitas planet tata surya.
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+              Kelola Planet Tata Surya
+            </h1>
+            <span className="rounded-full bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 border border-blue-200">
+              Katalog Observasi PLY-02
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Data ilmiah katalog observasi dan ringkasan astronomis yang ditampilkan pada layar siswa PLY-02. Visual 3D dirender otomatis dengan Procedural Shader.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
               setRefreshing(true);
               fetchPlanets();
             }}
-            disabled={refreshing}
-            className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors"
-            title="Segarkan data planet"
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
+            <span>Segarkan</span>
           </button>
         </div>
       </div>
 
-      {/* Notification Banner */}
+      {/* Feedback Banner Global */}
       {notification && (
         <div
           className={`flex items-start gap-2.5 rounded-xl border p-4 text-xs font-medium ${
@@ -571,7 +433,7 @@ export default function AdminPlanetsPage() {
         </div>
       )}
 
-      {/* 2. Table Card Sesuai Gambar A02 dengan Kolom STATUS */}
+      {/* 2. Table Card dengan Kolom Sesuai Desain PLY-02 */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         {/* Table Top Header */}
         <div className="p-5 flex items-center justify-between border-b border-slate-100">
@@ -588,7 +450,7 @@ export default function AdminPlanetsPage() {
           </div>
 
           <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-            Standar IAU &amp; JPL Horizons
+            Standar Kurikulum Astronomi &amp; NASA
           </span>
         </div>
 
@@ -597,9 +459,11 @@ export default function AdminPlanetsPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200 text-[11px] uppercase tracking-wider">
               <tr>
-                <th className="px-6 py-3.5">NAMA PLANET</th>
-                <th className="px-6 py-3.5">DIAMETER</th>
+                <th className="px-6 py-3.5">URUTAN &amp; NAMA</th>
+                <th className="px-6 py-3.5">KATEGORI</th>
+                <th className="px-6 py-3.5">DIAMETER EKUATOR</th>
                 <th className="px-6 py-3.5">PERIODE ROTASI</th>
+                <th className="px-6 py-3.5">SUHU RATA-RATA</th>
                 <th className="px-6 py-3.5">STATUS</th>
                 <th className="px-6 py-3.5 text-right">AKSI</th>
               </tr>
@@ -607,16 +471,16 @@ export default function AdminPlanetsPage() {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      <span>Memuat data planet tata surya...</span>
+                      <span>Memuat data planet dari Supabase...</span>
                     </div>
                   </td>
                 </tr>
               ) : paginatedPlanets.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-10 text-center text-slate-400">
                     Tidak ada planet yang cocok dengan pencarian "{searchQuery}".
                   </td>
                 </tr>
@@ -624,54 +488,77 @@ export default function AdminPlanetsPage() {
                 paginatedPlanets.map((planet) => {
                   const isEarth = planet.planet_id === 'earth';
                   const isActive = planet.is_active !== false;
+                  const urutanDisplay = planet.urutan_planet ?? planet.urutan_orbit ?? 1;
 
                   return (
                     <tr
                       key={planet.planet_id}
                       className="hover:bg-slate-50/60 transition-colors"
                     >
-                      {/* Nama Planet & Urutan Orbit */}
+                      {/* Urutan & Nama Planet */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold border shrink-0 ${getOrbitBadgeStyle(
-                              planet.urutan_orbit
+                            className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold border shrink-0 ${getPlanetBadgeStyle(
+                              urutanDisplay
                             )}`}
+                            title={`Planet ke-${urutanDisplay} dari Matahari`}
                           >
-                            {planet.urutan_orbit}
+                            {urutanDisplay}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 text-sm">
-                              {planet.nama}
-                            </span>
-                            {isEarth && (
-                              <span className="rounded bg-blue-100 text-blue-700 font-medium text-[10px] px-1.5 py-0.5 border border-blue-200">
-                                Home
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 text-sm">
+                                {planet.nama}
                               </span>
-                            )}
+                              {isEarth && (
+                                <span className="rounded bg-blue-100 text-blue-700 font-medium text-[10px] px-1.5 py-0.5 border border-blue-200">
+                                  Home
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-400">
+                              Planet ke-{urutanDisplay} dari Matahari
+                            </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* Diameter */}
-                      <td className="px-6 py-4 font-mono text-xs">
-                        <span
-                          className={
-                            isEarth
-                              ? 'text-blue-600 font-bold'
-                              : 'text-slate-700 font-medium'
-                          }
-                        >
-                          {Number(planet.diameter_km).toLocaleString('id-ID')} km
+                      {/* Kategori */}
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] uppercase font-bold rounded bg-slate-100 text-slate-700 px-2 py-0.5 border border-slate-200">
+                          {planet.kategori_planet}
                         </span>
                       </td>
 
+                      {/* Diameter Ekuator */}
+                      <td className="px-6 py-4">
+                        <div className="font-mono text-xs font-semibold text-slate-900">
+                          {Number(planet.diameter_km).toLocaleString('id-ID')} km
+                        </div>
+                        <div className="text-[11px] text-cyan-600 font-medium">
+                          {planet.perbandingan_bumi || '-'}
+                        </div>
+                      </td>
+
                       {/* Periode Rotasi */}
-                      <td className="px-6 py-4 font-medium text-slate-600">
-                        {formatRotationPeriod(
-                          planet.planet_id,
-                          Number(planet.rotation_period_hours)
-                        )}
+                      <td className="px-6 py-4">
+                        <div className="text-xs font-medium text-slate-800">
+                          {planet.periode_rotasi || '-'}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {planet.subteks_rotasi || '-'}
+                        </div>
+                      </td>
+
+                      {/* Suhu Rata-rata */}
+                      <td className="px-6 py-4">
+                        <div className="text-xs font-bold text-slate-900">
+                          {planet.suhu_rata_c || '-'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate max-w-[140px]" title={planet.rentang_suhu}>
+                          {planet.rentang_suhu || '-'}
+                        </div>
                       </td>
 
                       {/* Switch Toggle Status Aktif / Nonaktif */}
@@ -708,20 +595,18 @@ export default function AdminPlanetsPage() {
 
                       {/* Tombol Aksi */}
                       <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center gap-2 justify-end">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(planet)}
-                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                              isEarth
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
-                                : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 shadow-sm'
-                            }`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                            <span>Ubah Data</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(planet)}
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                            isEarth
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                              : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 shadow-sm'
+                          }`}
+                        >
+                          <Pencil className="h-3 w-3" />
+                          <span>Ubah Data</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -731,7 +616,7 @@ export default function AdminPlanetsPage() {
           </table>
         </div>
 
-        {/* Table Footer with Functional Pagination (M-02) */}
+        {/* Table Footer with Pagination */}
         <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <span>
             Menampilkan {filteredPlanets.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
@@ -752,7 +637,7 @@ export default function AdminPlanetsPage() {
                 key={num}
                 type="button"
                 onClick={() => setCurrentPage(num)}
-                className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
+                className={`h-7 w-7 rounded-lg text-xs font-semibold transition-colors ${
                   currentPage === num
                     ? 'bg-blue-600 text-white'
                     : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -773,34 +658,40 @@ export default function AdminPlanetsPage() {
         </div>
       </div>
 
-      {/* 3. Modal Form: Ubah Data Planet (Tanpa Tambah / Hapus) */}
+      {/* 3. Modal Edit Data Planet & Pratinjau PLY-02 */}
       {editingPlanet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
                   <Globe className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Ubah Data Planet: {formData.nama || editingPlanet.nama}
+                    Ubah Data Planet: {editingPlanet.nama}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Konfigurasi parameter sains, teks pembuka, aset 3D, dan visibilitas planet
+                    Katalog Observasi Astronomis Layar Siswa (PLY-02)
                   </p>
                 </div>
               </div>
+
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Notifikasi Dalam Modal (Terlihat Jelas di Atas Backdrop) */}
+            {/* Modal Notification */}
             {modalNotification && (
               <div
                 className={`mt-4 flex items-start gap-2.5 rounded-xl border p-3.5 text-xs font-medium ${
@@ -815,51 +706,41 @@ export default function AdminPlanetsPage() {
                   <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
                 )}
                 <div className="flex-1">{modalNotification.message}</div>
-                <button
-                  type="button"
-                  onClick={() => setModalNotification(null)}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             )}
 
-            {/* Toggle Tab Form Edit vs Pratinjau Layar Siswa */}
-            <div className="mt-4 grid grid-cols-2 rounded-xl bg-slate-100 p-1 border border-slate-200">
+            {/* View Mode Toggle: Form Edit vs Pratinjau Layar Siswa (PLY-02) */}
+            <div className="mt-4 flex items-center justify-start gap-2 border-b border-slate-100 pb-3">
               <button
                 type="button"
                 onClick={() => setModalViewMode('EDIT')}
-                className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   modalViewMode === 'EDIT'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <Pencil className="h-3.5 w-3.5" />
-                <span>Form Edit Data</span>
+                <span>Formulir Pengelola</span>
               </button>
               <button
                 type="button"
                 onClick={() => setModalViewMode('PREVIEW')}
-                className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   modalViewMode === 'PREVIEW'
-                    ? 'bg-slate-900 text-cyan-300 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-cyan-600 text-white shadow-xs'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <Eye className="h-3.5 w-3.5" />
-                <span>Pratinjau Layar Siswa</span>
+                <span>Pratinjau Layar Siswa (PLY-02)</span>
               </button>
             </div>
 
             <form onSubmit={handleSave} noValidate className="mt-5 space-y-4">
               {modalViewMode === 'PREVIEW' && (() => {
-                const rotHours = Number(formData.rotation_period_hours) || 0;
-                const isRetrograde = rotHours < 0 || formData.judul_rotasi.toLowerCase().includes('retrograd');
-                const orbDays = Number(formData.orbital_period_days) || 0;
-                const orbYears = (orbDays / 365.25).toFixed(2);
                 const diameterVal = Number(formData.diameter_km) || 0;
+                const isRetrograde = formData.judul_rotasi.toLowerCase().includes('retrograd') || formData.subteks_rotasi.toLowerCase().includes('retrograd');
 
                 return (
                   <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5 text-white shadow-xl space-y-4">
@@ -875,7 +756,7 @@ export default function AdminPlanetsPage() {
                               {formData.nama || 'Nama Planet'}
                             </h4>
                             <span className="text-[11px] font-mono rounded bg-slate-800 px-2 py-0.5 text-slate-300">
-                              Orbit #{formData.urutan_orbit || '1'} (Ke-{formData.urutan_planet || formData.urutan_orbit || '1'})
+                              Planet ke-{formData.urutan_planet || '1'} dari Matahari
                             </span>
                             <span className="text-[10px] uppercase font-bold rounded bg-cyan-500/20 text-cyan-300 px-2 py-0.5 border border-cyan-500/30">
                               {formData.kategori_planet}
@@ -886,47 +767,34 @@ export default function AdminPlanetsPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-5 w-5 rounded-full border border-white/20 shadow-md shrink-0"
-                          style={{ backgroundColor: formData.warna_atmosfer_hex || '#38bdf8' }}
-                          title="Warna pendar atmosfer"
-                        />
-                      </div>
                     </div>
 
                     {/* Badge Procedural 3D Shader */}
                     <div className="flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-950/30 px-3.5 py-2 text-xs text-cyan-200">
-                      <span
-                        className="h-3 w-3 rounded-full shrink-0 animate-pulse"
-                        style={{ backgroundColor: formData.warna_atmosfer_hex || '#38bdf8' }}
-                      />
+                      <span className="h-3 w-3 rounded-full shrink-0 bg-cyan-400 animate-pulse" />
                       <span className="font-semibold text-cyan-300">Procedural 3D Shader:</span>
                       <span className="text-cyan-100/90 text-[11px]">
-                        Dirender otomatis dengan Simplex Noise 3 Lapisan &amp; Hamburan Atmosfer Mie (Tanpa file tekstur gambar).
+                        Dirender dinamis dengan rumus matematika 3D Simplex Noise &amp; Hamburan Atmosfer Mie di kartu grafis pemain.
                       </span>
                     </div>
 
-                    {/* Ringkasan Cepat / Teks Opening */}
-                    {formData.ringkasan_cepat && (
-                      <div className="relative overflow-hidden rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-indigo-950/40 p-3.5">
-                        <div className="absolute top-0 left-0 h-full w-1 bg-gradient-to-b from-cyan-400 to-indigo-500" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block mb-1">
-                          Sekilas Pengenalan Planet (Opening Teks)
-                        </span>
-                        <p className="text-xs font-medium text-cyan-100 italic leading-relaxed">
-                          "{formData.ringkasan_cepat}"
-                        </p>
+                    {/* Kotak Ringkasan Utama Planet (PLY-02) */}
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Ringkasan Planet
+                      </span>
+                      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3.5 text-xs text-slate-200 leading-relaxed text-justify">
+                        {formData.deskripsi_materi || 'Deskripsi utama planet belum diisi...'}
                       </div>
-                    )}
+                    </div>
 
                     {/* Grid 6 Kotak Data Ilmiah PLY-02 */}
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                        Katalog Observasi Astronomis (Grid 6 Parameter Ilmiah)
+                        Data Ilmiah (Katalog Observasi)
                       </span>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        {/* 1. Diameter Khatulistiwa */}
+                        {/* 1. Diameter Ekuator */}
                         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
                           <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1">
                             <Maximize2 className="h-3 w-3 text-cyan-400" />
@@ -947,10 +815,10 @@ export default function AdminPlanetsPage() {
                             <span>Periode Rotasi</span>
                           </div>
                           <div className="font-mono text-sm font-bold text-white">
-                            {formData.periode_rotasi || formatRotationPeriod(formData.planet_id, Number(formData.rotation_period_hours))}
+                            {formData.periode_rotasi || '-'}
                           </div>
                           <div className="text-[10px] text-indigo-300 font-medium mt-0.5">
-                            {formData.subteks_rotasi || `${Math.abs(rotHours).toLocaleString('id-ID')} Jam`}
+                            {formData.subteks_rotasi || '-'}
                           </div>
                         </div>
 
@@ -961,10 +829,10 @@ export default function AdminPlanetsPage() {
                             <span>Periode Orbit</span>
                           </div>
                           <div className="font-mono text-sm font-bold text-white">
-                            {formData.periode_orbit || `${orbDays.toLocaleString('id-ID')} Hari`}
+                            {formData.periode_orbit || '-'}
                           </div>
                           <div className="text-[10px] text-amber-300 font-medium mt-0.5">
-                            {formData.subteks_orbit || `${orbYears} Tahun Bumi`}
+                            {formData.subteks_orbit || '-'}
                           </div>
                         </div>
 
@@ -975,24 +843,24 @@ export default function AdminPlanetsPage() {
                             <span>Kemiringan Sumbu</span>
                           </div>
                           <div className="font-mono text-sm font-bold text-white">
-                            {formData.kemiringan_sumbu || `${Number(formData.axial_tilt_deg).toFixed(2)}°`}
+                            {formData.kemiringan_sumbu || '-'}
                           </div>
                           <div className="text-[10px] text-emerald-300 font-medium mt-0.5">
-                            Axial Tilt Poros
+                            Kemiringan Poros
                           </div>
                         </div>
 
-                        {/* 5. Rentang Suhu */}
+                        {/* 5. Suhu Rata-Rata */}
                         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
                           <div className="flex items-center gap-1 text-[10px] text-slate-400 mb-1">
-                            <Globe className="h-3 w-3 text-rose-400" />
-                            <span>Rentang Suhu</span>
+                            <Thermometer className="h-3 w-3 text-rose-400" />
+                            <span>Suhu Rata-Rata</span>
                           </div>
-                          <div className="font-mono text-xs font-bold text-white truncate" title={formData.rentang_suhu}>
-                            {formData.rentang_suhu || 'Kondisi Termal'}
+                          <div className="font-mono text-sm font-bold text-white">
+                            {formData.suhu_rata_c || '-'}
                           </div>
-                          <div className="text-[10px] text-rose-300 font-medium mt-0.5">
-                            Suhu Rata-rata
+                          <div className="text-[10px] text-rose-300 font-medium mt-0.5 truncate" title={formData.rentang_suhu}>
+                            {formData.rentang_suhu || '-'}
                           </div>
                         </div>
 
@@ -1003,16 +871,16 @@ export default function AdminPlanetsPage() {
                             <span>Usia Planet</span>
                           </div>
                           <div className="font-mono text-sm font-bold text-white">
-                            {formData.usia_planet || '~4.5 Miliar Tahun'}
+                            {formData.usia_planet || '-'}
                           </div>
                           <div className="text-[10px] text-purple-300 font-medium mt-0.5 truncate" title={formData.subteks_usia}>
-                            {formData.subteks_usia || 'Evolusi Tata Surya'}
+                            {formData.subteks_usia || '-'}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Callout Status & Dinamika Rotasi */}
+                    {/* Kotak Arah & Dinamika Rotasi */}
                     <div className={`rounded-xl border p-3.5 space-y-1 ${
                       isRetrograde
                         ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
@@ -1025,27 +893,8 @@ export default function AdminPlanetsPage() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-200 leading-relaxed pl-6">
-                        {formData.deskripsi_rotasi ||
-                          `${formData.nama} berputar pada sumbunya dengan periode ${formData.periode_rotasi || `${formData.rotation_period_hours} Jam`}.`}
+                        {formData.deskripsi_rotasi || '-'}
                       </p>
-                    </div>
-
-                    {/* Rangkuman Materi */}
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                        Materi Edukasi Komprehensif (Layar PLY-02)
-                      </span>
-                      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3.5 text-xs text-slate-300 leading-relaxed text-justify">
-                        {formData.deskripsi_materi || 'Deskripsi utama planet belum diisi...'}
-                      </div>
-                    </div>
-
-                    {/* Referensi */}
-                    <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-300">
-                      <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
-                      <span>
-                        Data diverifikasi berdasarkan {formData.sumber_referensi || 'NASA Planetary Fact Sheet'}.
-                      </span>
                     </div>
                   </div>
                 );
@@ -1145,14 +994,15 @@ export default function AdminPlanetsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Urutan Orbit (≥ 1) <span className="text-red-500">*</span>
+                        Urutan Planet dari Matahari (1 s/d 8) <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
                         min={1}
+                        max={8}
                         step={1}
-                        value={formData.urutan_orbit ?? ''}
-                        onChange={(e) => setFormData({ ...formData, urutan_orbit: e.target.value, urutan_planet: e.target.value })}
+                        value={formData.urutan_planet ?? ''}
+                        onChange={(e) => setFormData({ ...formData, urutan_planet: e.target.value })}
                         required
                         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none font-mono"
                       />
@@ -1160,22 +1010,42 @@ export default function AdminPlanetsPage() {
                   </div>
                 </div>
 
-                {/* Bagian 2: Katalog Observasi Astronomis (Layar Siswa PLY-02) */}
+                {/* Bagian 2: Ringkasan Utama Planet (PLY-02) */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                    2. Ringkasan Utama Planet (PLY-02)
+                  </span>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Deskripsi Ringkasan Planet <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={formData.deskripsi_materi}
+                      onChange={(e) => setFormData({ ...formData, deskripsi_materi: e.target.value })}
+                      placeholder="Penjelasan sains astronomi utama yang ditampilkan di kotak Ringkasan Planet layar PLY-02..."
+                      required
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs text-slate-900 focus:border-blue-600 focus:outline-none leading-relaxed"
+                    />
+                  </div>
+                </div>
+
+                {/* Bagian 3: Data Ilmiah (Katalog Observasi PLY-02) */}
                 <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-700">
-                      2. Katalog Observasi Astronomis (Layar Siswa PLY-02)
+                      3. Data Ilmiah (6 Kotak Katalog Observasi PLY-02)
                     </span>
                     <span className="text-[10px] bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded border border-blue-200">
-                      12 Parameter Ilmiah
+                      6 Parameter Ilmiah
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Diameter & Perbandingan Bumi */}
+                    {/* 1. Diameter Khatulistiwa & Perbandingan Bumi */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Diameter Khatulistiwa (km) <span className="text-red-500">*</span>
+                        1. Diameter Ekuator (km) <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
@@ -1189,21 +1059,21 @@ export default function AdminPlanetsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Perbandingan Ukuran Bumi (PLY-02 Subteks)
+                        Subteks Perbandingan Bumi (PLY-02)
                       </label>
                       <input
                         type="text"
                         value={formData.perbandingan_bumi}
                         onChange={(e) => setFormData({ ...formData, perbandingan_bumi: e.target.value })}
-                        placeholder="misal: 0.38x Bumi / 11.21x Bumi"
+                        placeholder="misal: 0.38x Bumi / 1.00x Standar"
                         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                       />
                     </div>
 
-                    {/* Periode Rotasi Teks & Subteks */}
+                    {/* 2. Periode Rotasi & Subteks */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Label Periode Rotasi (Tampilan PLY-02)
+                        2. Periode Rotasi (Label PLY-02)
                       </label>
                       <input
                         type="text"
@@ -1215,7 +1085,7 @@ export default function AdminPlanetsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Subteks Rotasi (PLY-02)
+                        Subteks Periode Rotasi (PLY-02)
                       </label>
                       <input
                         type="text"
@@ -1226,25 +1096,10 @@ export default function AdminPlanetsPage() {
                       />
                     </div>
 
-                    {/* Nilai Numerik Rotasi (Kalkulasi 3D) */}
+                    {/* 3. Periode Orbit & Subteks */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Rotasi Numerik (Jam — Negatif untuk Retrograde) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={formData.rotation_period_hours ?? ''}
-                        onChange={(e) => setFormData({ ...formData, rotation_period_hours: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none font-mono"
-                      />
-                    </div>
-
-                    {/* Periode Orbit Teks & Subteks */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Label Periode Orbit (Tampilan PLY-02)
+                        3. Periode Orbit (Label PLY-02)
                       </label>
                       <input
                         type="text"
@@ -1256,7 +1111,7 @@ export default function AdminPlanetsPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Subteks Orbit (PLY-02)
+                        Subteks Periode Orbit (PLY-02)
                       </label>
                       <input
                         type="text"
@@ -1267,51 +1122,36 @@ export default function AdminPlanetsPage() {
                       />
                     </div>
 
-                    {/* Nilai Numerik Orbit (Kalkulasi 3D) */}
-                    <div>
+                    {/* 4. Kemiringan Sumbu */}
+                    <div className="sm:col-span-2">
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Orbit Numerik (Hari Revolusi) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min={0.1}
-                        step="any"
-                        value={formData.orbital_period_days ?? ''}
-                        onChange={(e) => setFormData({ ...formData, orbital_period_days: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none font-mono"
-                      />
-                    </div>
-
-                    {/* Kemiringan Sumbu & Rentang Suhu */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Label Kemiringan Sumbu (PLY-02)
+                        4. Kemiringan Sumbu (Label PLY-02)
                       </label>
                       <input
                         type="text"
                         value={formData.kemiringan_sumbu}
                         onChange={(e) => setFormData({ ...formData, kemiringan_sumbu: e.target.value })}
-                        placeholder="misal: 0.034° / 23.44°"
+                        placeholder="misal: 0.034° / 23.44° / 177.3°"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* 5. Suhu Rata-rata & Rentang Suhu */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        5. Suhu Rata-Rata (PLY-02 Utama)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.suhu_rata_c}
+                        onChange={(e) => setFormData({ ...formData, suhu_rata_c: e.target.value })}
+                        placeholder="misal: 167°C / 15°C / -65°C / 464°C"
                         className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kemiringan Poros Numerik (Derajat) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={formData.axial_tilt_deg ?? ''}
-                        onChange={(e) => setFormData({ ...formData, axial_tilt_deg: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Rentang Suhu Permukaan (PLY-02)
+                        Rentang Suhu Permukaan (PLY-02 Subteks)
                       </label>
                       <input
                         type="text"
@@ -1322,10 +1162,10 @@ export default function AdminPlanetsPage() {
                       />
                     </div>
 
-                    {/* Usia Planet & Subteks Usia */}
+                    {/* 6. Usia Planet & Subteks Usia */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Usia Planet (PLY-02)
+                        6. Usia Planet (PLY-02 Utama)
                       </label>
                       <input
                         type="text"
@@ -1348,222 +1188,67 @@ export default function AdminPlanetsPage() {
                       />
                     </div>
                   </div>
-
-                  {/* Callout Dinamika Rotasi */}
-                  <div className="pt-2 border-t border-blue-200/60 space-y-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Judul Status Dinamika Rotasi (PLY-02 Callout)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.judul_rotasi}
-                        onChange={(e) => setFormData({ ...formData, judul_rotasi: e.target.value })}
-                        placeholder="misal: Rotasi Sangat Lambat / Rotasi Retrograd Unik / Rotasi Prograd Ideal"
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Deskripsi Dinamika Rotasi (PLY-02 Callout)
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formData.deskripsi_rotasi}
-                        onChange={(e) => setFormData({ ...formData, deskripsi_rotasi: e.target.value })}
-                        placeholder="Penjelasan keunikan putaran poros planet bagi durasi hari dan kondisi siang-malam..."
-                        className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                      />
-                    </div>
-                  </div>
                 </div>
 
-                {/* Bagian 3: Teks Pembuka & Materi Sains */}
+                {/* Bagian 4: Arah & Dinamika Rotasi */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
                   <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                    3. Materi Edukasi &amp; Teks Pembuka
+                    4. Kotak Arah &amp; Dinamika Rotasi (PLY-02)
                   </span>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Teks Opening / Sambutan Pertama (Saat Pemain Menemukan Planet)
+                      Judul Status Dinamika Rotasi
                     </label>
                     <input
                       type="text"
-                      value={formData.ringkasan_cepat}
-                      onChange={(e) => setFormData({ ...formData, ringkasan_cepat: e.target.value })}
-                      placeholder="misal: Selamat datang di Bumi! Planet samudra biru tempat tinggal kita..."
+                      value={formData.judul_rotasi}
+                      onChange={(e) => setFormData({ ...formData, judul_rotasi: e.target.value })}
+                      placeholder="misal: Rotasi Sangat Lambat / Rotasi Retrograd Unik / Rotasi Prograd Ideal"
                       className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                     />
                   </div>
-
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Deskripsi Utama Materi Sains <span className="text-red-500">*</span>
+                      Deskripsi Dinamika Rotasi
                     </label>
                     <textarea
-                      rows={3}
-                      value={formData.deskripsi_materi}
-                      onChange={(e) => setFormData({ ...formData, deskripsi_materi: e.target.value })}
-                      placeholder="Penjelasan komprehensif sains astronomi..."
-                      required
-                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                      rows={2}
+                      value={formData.deskripsi_rotasi}
+                      onChange={(e) => setFormData({ ...formData, deskripsi_rotasi: e.target.value })}
+                      placeholder="Penjelasan keunikan arah dan efek rotasi bagi durasi hari dan kondisi siang-malam planet..."
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Sumber Referensi Ilmiah
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.sumber_referensi}
-                      onChange={(e) => setFormData({ ...formData, sumber_referensi: e.target.value })}
-                      placeholder="misal: NASA Planetary Fact Sheet"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Bagian 4: Teknologi Render 3D & Navigasi */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
-                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                    4. Teknologi Render 3D &amp; Navigasi Jelajah
-                  </span>
-
-                  {/* Banner Procedural 3D Shader (Menggantikan Wajib Upload Tekstur) */}
-                  <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs">
-                    <span
-                      className="h-4 w-4 rounded-full mt-0.5 border border-emerald-400 shrink-0"
-                      style={{ backgroundColor: formData.warna_atmosfer_hex || '#38bdf8' }}
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold text-emerald-900">
-                        Dirender otomatis dengan Procedural 3D Shader (Simplex Noise &amp; Atmosfer Mie)
-                      </p>
-                      <p className="text-[11px] text-emerald-700 mt-0.5">
-                        Permukaan planet dirender dinamis via shader GPU tanpa keharusan mengunggah tekstur gambar .jpg/.png.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Tekstur URL (Opsional / Legacy) */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      URL Tekstur Gambar (Opsional / Fallback Legacy)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.tekstur_url}
-                      onChange={(e) => setFormData({ ...formData, tekstur_url: e.target.value })}
-                      placeholder="/textures/planets/earth.webp (opsional)"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none font-mono"
-                    />
-                  </div>
-
-                  {/* Model 3D */}
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      URL Model 3D (.glb / .gltf)
-                    </label>
-                    <div className="relative">
-                      <Box className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={formData.aset_model_url}
-                        onChange={(e) => setFormData({ ...formData, aset_model_url: e.target.value })}
-                        placeholder="/models/planets/earth.glb"
-                        className="w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Grid Parameter Visual */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Warna Pendar Atmosfer (Hex)
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={formData.warna_atmosfer_hex || '#38bdf8'}
-                          onChange={(e) => setFormData({ ...formData, warna_atmosfer_hex: e.target.value })}
-                          className="h-8 w-10 cursor-pointer rounded-lg border border-slate-300 p-0.5 bg-white"
-                        />
-                        <input
-                          type="text"
-                          value={formData.warna_atmosfer_hex}
-                          onChange={(e) => setFormData({ ...formData, warna_atmosfer_hex: e.target.value })}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 font-mono focus:border-blue-600 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Skala Ukuran Visual 3D
-                      </label>
-                      <input
-                        type="number"
-                        min={0.05}
-                        step="any"
-                        value={formData.skala_visual ?? ''}
-                        onChange={(e) => setFormData({ ...formData, skala_visual: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Radius Batas Zona Masuk
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        step="any"
-                        value={formData.batas_zona_radius ?? ''}
-                        onChange={(e) => setFormData({ ...formData, batas_zona_radius: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Kecepatan Jelajah Nyaman (km/s)
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        step="any"
-                        value={formData.kecepatan_jelajah_nyaman ?? ''}
-                        onChange={(e) =>
-                          setFormData({ ...formData, kecepatan_jelajah_nyaman: e.target.value })
-                        }
-                        required
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Tombol Simpan */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  disabled={saving}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
                 >
                   Batal
                 </button>
-
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
                 >
-                  <Save className="h-4 w-4" />
-                  <span>{saving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                  {saving ? (
+                    <>
+                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      <span>Simpan Perubahan</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

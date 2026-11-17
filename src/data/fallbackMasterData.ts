@@ -8,7 +8,6 @@ import type { Planet, HistoryEvent, Phenomenon, Question } from '@/types/databas
 export const FALLBACK_PLANETS: Record<string, Planet> = {
   "mercury": {
     "planet_id": "mercury",
-    "urutan_orbit": 1,
     "urutan_planet": 1,
     "nama": "Merkurius",
     "kategori_planet": "TERRESTRIAL",
@@ -22,26 +21,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "0.24 Tahun Bumi",
     "axial_tilt_deg": 0.034,
     "kemiringan_sumbu": "0.034°",
+    "suhu_rata_c": "167°C",
     "rentang_suhu": "-180°C s/d 430°C",
     "usia_planet": "~4.5 Miliar Tahun",
     "subteks_usia": "Terbentuk bersama Tata Surya",
     "judul_rotasi": "Rotasi Sangat Lambat",
     "deskripsi_rotasi": "Merkurius memerlukan 59 hari Bumi untuk satu putaran poros, menghasilkan siang dan malam yang sangat ekstrem.",
     "deskripsi_materi": "Saat pesawatmu berhenti di hadapan Merkurius, kamu sedang menatap dunia batuan abu-abu yang penuh kawah tumbukan dan memiliki inti besi cair raksasa (mencapai 85% radius planet). Karena hampir tidak memiliki atmosfer untuk menahan kalor, suhu siang harinya membara hingga 430°C sedangkan sisi malamnya membeku hingga -180°C. Pendinginan inti besinya membuat permukaan planet ini mengerut dan melahirkan tebing-tebing patahan setinggi 3 km, sementara dasar kawah kutubnya yang gelap abadi menyimpan es air murni.",
-    "ringkasan_cepat": "Selamat datang di Merkurius! Planet batuan terkecil dan terdekat dari Matahari dengan tebing kerutan raksasa serta es abadi di kawah kutubnya.",
-    "sumber_referensi": "NASA Fact Sheet",
-    "aset_model_url": "/models/planets/mercury.glb",
-    "tekstur_url": "/textures/planets/mercury.webp",
-    "warna_atmosfer_hex": "#94a3b8",
-    "skala_visual": 0.8,
-    "batas_zona_radius": 80.0,
-    "kecepatan_jelajah_nyaman": 12.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "venus": {
     "planet_id": "venus",
-    "urutan_orbit": 2,
     "urutan_planet": 2,
     "nama": "Venus",
     "kategori_planet": "TERRESTRIAL",
@@ -55,26 +46,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "0.62 Tahun Bumi",
     "axial_tilt_deg": 177.36,
     "kemiringan_sumbu": "177.3°",
+    "suhu_rata_c": "464°C",
     "rentang_suhu": "465°C Konstan",
     "usia_planet": "~4.5 Miliar Tahun",
     "subteks_usia": "Terbentuk bersama Tata Surya",
     "judul_rotasi": "Rotasi Retrograd Unik",
     "deskripsi_rotasi": "Venus berputar berlawanan arah dengan mayoritas planet; matahari terbit dari barat dan tenggelam di timur.",
     "deskripsi_materi": "Dari balik jendela pesawat, Venus tampak berkilau kuning keemasan karena diselimuti awan asam sulfat pekat dan atmosfer karbon dioksida bertekanan 90 kali Bumi. Efek rumah kaca ekstrem membuat suhu permukaannya mencapai 465°C—cukup panas untuk melelehkan timbal. Uniknya, Venus berputar searah jarum jam (retrograde) dengan sangat lambat sehingga satu hari di Venus lebih lama daripada satu tahunnya, dan di balik awannya berdiri pegunungan tinggi bersalju logam serta ribuan gunung berapi.",
-    "ringkasan_cepat": "Selamat datang di Venus! Planet terpanas di Tata Surya yang berputar terbalik (retrograde) di balik selimut awan asam sulfat tebal.",
-    "sumber_referensi": "NASA Fact Sheet",
-    "aset_model_url": "/models/planets/venus.glb",
-    "tekstur_url": "/textures/planets/venus.webp",
-    "warna_atmosfer_hex": "#f59e0b",
-    "skala_visual": 0.95,
-    "batas_zona_radius": 95.0,
-    "kecepatan_jelajah_nyaman": 14.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "earth": {
     "planet_id": "earth",
-    "urutan_orbit": 3,
     "urutan_planet": 3,
     "nama": "Bumi",
     "kategori_planet": "TERRESTRIAL",
@@ -88,26 +71,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "1 Tahun Kalender",
     "axial_tilt_deg": 23.44,
     "kemiringan_sumbu": "23.44°",
+    "suhu_rata_c": "15°C",
     "rentang_suhu": "15°C (Rata-rata)",
     "usia_planet": "~4.54 Miliar Tahun",
     "subteks_usia": "Radiometrik Batuan",
     "judul_rotasi": "Rotasi Prograd Ideal",
     "deskripsi_rotasi": "Kemiringan sumbu 23.4° menciptakan 4 musim dinamis dan iklim stabil yang menopang biosfer kehidupan.",
     "deskripsi_materi": "Bumi tampak bagaikan kelereng biru bercorak awan putih dengan 71% permukaan tertutup samudra air cair. Pergerakan lempeng tektoniknya melahirkan pegunungan tertinggi, gunung api bawah laut, dan palung samudra terdalam. Dilindungi oleh perisai medan magnet (magnetosfer) serta lapisan ozon di stratosfer, Bumi menyimpan jejak sejarah panjang mulai dari zaman dinosaurus, manusia purba, monumen peradaban kuno dan sejarah Islam, penjelajahan samudra, hingga bentang hutan dan gurun raksasa.",
-    "ringkasan_cepat": "Selamat datang di Bumi! Planet samudra biru tempat tinggal kita, satu-satunya dunia di Tata Surya yang menopang kehidupan dan sejarah peradaban.",
-    "sumber_referensi": "NASA Earth Data",
-    "aset_model_url": "/models/planets/earth.glb",
-    "tekstur_url": "/textures/planets/earth.webp",
-    "warna_atmosfer_hex": "#38bdf8",
-    "skala_visual": 1.0,
-    "batas_zona_radius": 100.0,
-    "kecepatan_jelajah_nyaman": 15.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "mars": {
     "planet_id": "mars",
-    "urutan_orbit": 4,
     "urutan_planet": 4,
     "nama": "Mars",
     "kategori_planet": "TERRESTRIAL",
@@ -121,26 +96,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "1.88 Tahun Bumi",
     "axial_tilt_deg": 25.19,
     "kemiringan_sumbu": "25.19°",
+    "suhu_rata_c": "-65°C",
     "rentang_suhu": "-60°C (Rata-rata)",
     "usia_planet": "~4.6 Miliar Tahun",
     "subteks_usia": "Dikonfirmasi Zirkon",
     "judul_rotasi": "Siklus Hari Mirip Bumi",
     "deskripsi_rotasi": "Durasi sol Mars hampir identik dengan Bumi, dengan kemiringan sumbu yang juga memicu perubahan musim kutub es.",
     "deskripsi_materi": "Permukaan Mars tampak merah jingga karena lapisan mineral oksida besi (karat) yang menyelimuti batuan dan gurunnya. Meski diameternya hanya separuh Bumi, Mars memiliki bentang alam raksasa yang jauh melampaui Bumi: gunung berapi perisai tertinggi di Tata Surya (Olympus Mons setinggi 21,9 km), sistem ngarai patahan Valles Marineris sepanjang 4.000 km, tudung es di kedua kutubnya, serta lembah sungai kering yang membuktikan bahwa Mars dulunya memiliki danau air cair.",
-    "ringkasan_cepat": "Selamat datang di Mars! Planet Merah berdebu oksida besi yang menjadi rumah bagi gunung berapi dan ngarai terbesar di Tata Surya.",
-    "sumber_referensi": "NASA Mars Data",
-    "aset_model_url": "/models/planets/mars.glb",
-    "tekstur_url": "/textures/planets/mars.webp",
-    "warna_atmosfer_hex": "#ef4444",
-    "skala_visual": 0.85,
-    "batas_zona_radius": 90.0,
-    "kecepatan_jelajah_nyaman": 14.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "jupiter": {
     "planet_id": "jupiter",
-    "urutan_orbit": 5,
     "urutan_planet": 5,
     "nama": "Jupiter",
     "kategori_planet": "GAS_GIANT",
@@ -154,26 +121,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "4.333 Hari Bumi",
     "axial_tilt_deg": 3.13,
     "kemiringan_sumbu": "3.13°",
+    "suhu_rata_c": "-110°C",
     "rentang_suhu": "-110°C (Puncak Awan)",
     "usia_planet": "~4.6 Miliar Tahun",
     "subteks_usia": "Planet Tertua",
     "judul_rotasi": "Rotasi Ekstrem Cepat",
     "deskripsi_rotasi": "Putaran kurang dari 10 jam menciptakan gaya sentrifugal masif yang meratakan kutub dan membentuk sabuk badai zonal.",
     "deskripsi_materi": "Jupiter adalah raksasa gas terbesar di Tata Surya (berdiameter 11 kali Bumi) tanpa daratan padat. Seluruh permukaannya yang terlihat adalah sabuk dan zona awan amonia warna-warni yang diputar oleh rotasi super cepat (hanya 9 jam 55 menit per hari). Di belahan selatannya berputar Bintik Merah Raksasa, badai antisiklon abadi yang lebih besar dari planet Bumi, sementara jauh di kedalamannya terdapat lautan hidrogen metalik cair pembangkit medan magnet dan aurora raksasa.",
-    "ringkasan_cepat": "Selamat datang di Jupiter! Raja planet raksasa gas yang berputar paling cepat dengan Badai Bintik Merah Raksasa seukuran Bumi.",
-    "sumber_referensi": "NASA Jupiter Data",
-    "aset_model_url": "/models/planets/jupiter.glb",
-    "tekstur_url": "/textures/planets/jupiter.webp",
-    "warna_atmosfer_hex": "#d97706",
-    "skala_visual": 1.5,
-    "batas_zona_radius": 150.0,
-    "kecepatan_jelajah_nyaman": 18.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "saturn": {
     "planet_id": "saturn",
-    "urutan_orbit": 6,
     "urutan_planet": 6,
     "nama": "Saturnus",
     "kategori_planet": "GAS_GIANT",
@@ -187,26 +146,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "10.759 Hari Bumi",
     "axial_tilt_deg": 26.73,
     "kemiringan_sumbu": "26.73°",
+    "suhu_rata_c": "-140°C",
     "rentang_suhu": "-140°C (Lapisan Awan)",
     "usia_planet": "~4.5 Miliar Tahun",
     "subteks_usia": "Sezaman dengan Jupiter",
     "judul_rotasi": "Rotasi Cepat & Cincin Megah",
     "deskripsi_rotasi": "Kecepatan rotasi tinggi memicu badai heksagonal di kutub utara dan menjaga dinamika cincin partikel es.",
     "deskripsi_materi": "Saturnus memukau setiap penjelajah antariksa dengan sistem tujuh cincin es murninya yang membentang selebar 282.000 km namun ketebalannya hanya puluhan meter. Planet raksasa gas ini memiliki massa jenis sangat rendah (0,687 g/cm³)—lebih ringan dari air. Di kutub utaranya berputar arus jet berbentuk segi enam sempurna (Hexagon) selebar dua kali Bumi, dikelilingi lebih dari seratus satelit alami termasuk Titan yang berdanau metana cair.",
-    "ringkasan_cepat": "Selamat datang di Saturnus! Permata Tata Surya yang dikelilingi mahkota cincin es berkilauan selebar 282.000 kilometer.",
-    "sumber_referensi": "NASA Saturn Data",
-    "aset_model_url": "/models/planets/saturn.glb",
-    "tekstur_url": "/textures/planets/saturn.webp",
-    "warna_atmosfer_hex": "#eab308",
-    "skala_visual": 1.35,
-    "batas_zona_radius": 140.0,
-    "kecepatan_jelajah_nyaman": 17.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "uranus": {
     "planet_id": "uranus",
-    "urutan_orbit": 7,
     "urutan_planet": 7,
     "nama": "Uranus",
     "kategori_planet": "ICE_GIANT",
@@ -220,26 +171,18 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "30.687 Hari Bumi",
     "axial_tilt_deg": 97.77,
     "kemiringan_sumbu": "97.77°",
+    "suhu_rata_c": "-195°C",
     "rentang_suhu": "-195°C s/d -224°C",
     "usia_planet": "~4.5 Miliar Tahun",
     "subteks_usia": "Raksasa Es",
     "judul_rotasi": "Rotasi Menggelinding Ekstrem",
     "deskripsi_rotasi": "Sumbu kemiringan 98 derajat membuat Uranus berputar miring menyamping, seolah-olah menggelinding di bidang orbitnya.",
     "deskripsi_materi": "Uranus adalah raksasa es dengan atmosfer dingin (-224°C) yang tampak biru-kehijauan lembut karena gas metana menyerap spektrum cahaya merah Matahari. Keunikan utamanya adalah poros rotasinya yang rebah 97,77°, membuat planet ini menggelinding miring bersama 13 cincin gelap vertikalnya. Di bawah atmosfernya terdapat mantel es fluida bertekanan jutaan atmosfer yang memisahkan atom karbon dari metana menjadi hujan kristal berlian.",
-    "ringkasan_cepat": "Selamat datang di Uranus! Raksasa es biru-kehijauan yang berputar miring 97,77° dan menyimpan fenomena hujan berlian di kedalaman mantelnya.",
-    "sumber_referensi": "NASA Uranus Data",
-    "aset_model_url": "/models/planets/uranus.glb",
-    "tekstur_url": "/textures/planets/uranus.webp",
-    "warna_atmosfer_hex": "#2dd4bf",
-    "skala_visual": 1.15,
-    "batas_zona_radius": 120.0,
-    "kecepatan_jelajah_nyaman": 16.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   },
   "neptune": {
     "planet_id": "neptune",
-    "urutan_orbit": 8,
     "urutan_planet": 8,
     "nama": "Neptunus",
     "kategori_planet": "ICE_GIANT",
@@ -253,20 +196,13 @@ export const FALLBACK_PLANETS: Record<string, Planet> = {
     "subteks_orbit": "60.190 Hari Bumi",
     "axial_tilt_deg": 28.32,
     "kemiringan_sumbu": "28.32°",
+    "suhu_rata_c": "-200°C",
     "rentang_suhu": "-201°C (Beku Abadi)",
     "usia_planet": "~4.5 Miliar Tahun",
     "subteks_usia": "Batas Tata Surya",
     "judul_rotasi": "Rotasi Cepat & Supersonik",
     "deskripsi_rotasi": "Kombinasi rotasi cepat dan panas internal memicu angin supersonik tercepat di Tata Surya hingga 2.100 km/jam.",
     "deskripsi_materi": "Berada di tepian dingin Tata Surya (30 kali jarak Bumi ke Matahari), Neptunus menampilkan warna biru kobalt yang pekat dengan sapuan awan kristal es metana putih. Panas dari dalam intinya memicu angin tercepat di Tata Surya yang menembus kecepatan supersonik 2.100 km/jam serta pusaran badai Bintik Gelap Besar. Seperti Uranus, tekanan ekstrem di mantel es dalamnya memampatkan karbon menjadi hujan kristal berlian murni.",
-    "ringkasan_cepat": "Selamat datang di Neptunus! Dunia raksasa es terjauh berwarna biru samudra pekat dengan badai angin supersonik 2.100 km/jam dan hujan berlian.",
-    "sumber_referensi": "NASA Neptune Data",
-    "aset_model_url": "/models/planets/neptune.glb",
-    "tekstur_url": "/textures/planets/neptune.webp",
-    "warna_atmosfer_hex": "#3b82f6",
-    "skala_visual": 1.1,
-    "batas_zona_radius": 120.0,
-    "kecepatan_jelajah_nyaman": 16.0,
     "is_active": true,
     "updated_at": "2026-11-12T00:00:00.000Z"
   }
@@ -286,9 +222,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Belahan Utara Merkurius • Diameter 1.550 km • Dikelilingi Pegunungan 2 km",
       "gambar_url": "/images/poi/mercury-caloris-basin.webp",
       "deskripsi": "Sekitar 3,9 miliar tahun lalu, asteroid berdiameter 100 km menghantam Merkurius dan membentuk Cekungan Caloris selebar 1.550 km. Gelombang kejutnya menembus inti planet dan meremukkan permukaan di sisi seberang planet.",
-      "sumber_referensi": "NASA Caloris Basin",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -303,9 +236,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Belahan Selatan Merkurius • Tinggi 3 km • Panjang 1.000 km",
       "gambar_url": "/images/poi/mercury-enterprise-rupes.webp",
       "deskripsi": "Seiring mendinginnya inti besi raksasa Merkurius selama miliaran tahun, diameter planet ini menyusut sekitar 14 km. Kerak luarnya terlipat dan patah membentuk tebing raksasa Enterprise Rupes sepanjang 1.000 km.",
-      "sumber_referensi": "NASA Mercury",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -320,9 +250,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kutub Utara Merkurius • Suhu -180°C • Temuan Wahana MESSENGER",
       "gambar_url": "/images/poi/mercury-polar-ice.webp",
       "deskripsi": "Meskipun siang hari di khatulistiwa Merkurius mencapai 430°C, kemiringan porosnya yang hampir 0° membuat dasar kawah Prokofiev di kutub utara tidak pernah tersentuh sinar Matahari, mengawetkan miliaran ton es air murni.",
-      "sumber_referensi": "NASA MESSENGER",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -337,9 +264,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Belahan Selatan Merkurius • Diameter 715 km • Usia ~3,9 Miliar Tahun",
       "gambar_url": "/images/poi/mercury-rembrandt-basin.webp",
       "deskripsi": "Cekungan tumbukan raksasa di belahan selatan Merkurius yang dasarnya dipenuhi aliran lava basal purba dan pola patahan tektonik menyerupai jeruji roda.",
-      "sumber_referensi": "NASA Mercury Atlas",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -356,9 +280,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Dataran Tinggi Ishtar Terra • Tinggi 11 km • Lebar 797 km",
       "gambar_url": "/images/poi/venus-maxwell-montes.webp",
       "deskripsi": "Maxwell Montes adalah pegunungan tertinggi di Venus (11 km). Di puncaknya yang lebih sejuk dibanding dataran rendah, uap mineral timbal sulfida dan bismut sulfida mengembun menjadi lapisan 'salju logam' yang memantulkan sinyal radar dengan sangat terang.",
-      "sumber_referensi": "NASA Maxwell Montes",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -373,9 +294,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Wilayah Atla Regio, Venus • Tinggi 8 km • Kaldera 28×31 km",
       "gambar_url": "/images/poi/venus-maat-mons.webp",
       "deskripsi": "Miliaran tahun lalu Venus diduga sempat memiliki lautan dangkal, namun letusan gunung-gunung berapi raksasa seperti Maat Mons memuntahkan karbon dioksida masif yang memicu efek rumah kaca tak terkendali dan menguapkan seluruh airnya.",
-      "sumber_referensi": "NASA Magellan",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -390,9 +308,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Alpha Regio, Venus • Diameter Kubah ~25 km • Tekanan 90 Bar",
       "gambar_url": "/images/poi/venus-pancake-domes.webp",
       "deskripsi": "Formasi geologis unik di Venus berupa deretan kubah gunung berapi berbentuk bundar pipih mirip kue panekuk selebar 25 km yang terbentuk dari keluarnya lava silika kental di bawah tekanan atmosfer 90 bar.",
-      "sumber_referensi": "NASA Venus Domes",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -407,9 +322,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Permukaan Venus • Suhu 465°C • Tekanan 90 Kali Bumi",
       "gambar_url": "/images/poi/venus-venera9-surface.webp",
       "deskripsi": "Wahana berlapis titanium Venera 9 berhasil menembus awan asam sulfat dan mendarat di lereng berbatu Venus, mengirimkan foto pertama permukaan planet lain sebelum instrumennya lumpuh oleh panas 465°C.",
-      "sumber_referensi": "NASA Venera Archive",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -426,9 +338,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kanada Barat Laut • Usia 4,03 Miliar Tahun",
       "gambar_url": "/images/poi/earth-01-acasta-gneiss.webp",
       "deskripsi": "Singkapan batuan Acasta Gneiss di Kanada adalah bukti fisik kerak benua tertua yang masih bertahan di Bumi, terbentuk saat Bumi purba baru saja mendingin dari lautan magma cair.",
-      "sumber_referensi": "NASA Earth Geology",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -443,9 +352,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Australia Barat • Usia 3,5 Miliar Tahun",
       "gambar_url": "/images/poi/earth-02-stromatolites.webp",
       "deskripsi": "Stromatolit adalah struktur batuan hidup yang dibentuk mikroba sianobakteri purba sejak 3,5 miliar tahun lalu. Melalui fotosintesis, mikroba inilah yang pertama kali mengisi atmosfer Bumi dengan gas oksigen.",
-      "sumber_referensi": "NASA Astrobiology",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -460,9 +366,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Pegunungan Rocky, Kanada • ~508 Juta Tahun Lalu",
       "gambar_url": "/images/poi/earth-03-burgess-shale.webp",
       "deskripsi": "Lapisan batuan Burgess Shale merekam peristiwa Ledakan Kambrium (508 juta tahun lalu) ketika sebagian besar kelompok hewan laut bercangkang dan bertulang belakang pertama kali muncul serentak.",
-      "sumber_referensi": "Earth Paleontology",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -477,9 +380,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Siberia Selatan, Rusia • Kedalaman 1.642 Meter • Usia ~25 Juta Tahun",
       "gambar_url": "/images/poi/earth-08-lake-baikal.webp",
       "deskripsi": "Terbentuk dari rekahan lempeng benua berusia 25 juta tahun, Danau Baikal adalah danau terdalam dan tertua di dunia yang menampung 20% air tawar cair di permukaan Bumi.",
-      "sumber_referensi": "Earth Hydrology",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -494,9 +394,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Ethiopia–Mozambik, Afrika Timur • Panjang 6.000 km",
       "gambar_url": "/images/poi/earth-09-great-rift-valley.webp",
       "deskripsi": "Sistem lembah patahan tektonik raksasa sepanjang 6.000 km yang membelah benua Afrika secara perlahan dan melahirkan deretan danau dalam serta gunung berapi purba.",
-      "sumber_referensi": "African Rift Geology",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -511,9 +408,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Arizona, Amerika Serikat • Panjang 446 km • Dalam 1,8 km",
       "gambar_url": "/images/poi/earth-10-grand-canyon.webp",
       "deskripsi": "Lembah ngarai curam yang diukir aliran Sungai Colorado selama jutaan tahun, menyingkap lapisan batuan warna-warni yang merekam sejarah geologi Bumi sepanjang 2 miliar tahun.",
-      "sumber_referensi": "USGS Grand Canyon",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -528,9 +422,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kepulauan Hawaii, Pasifik • Tinggi Total 10.210 m (6.000 m di Bawah Laut)",
       "gambar_url": "/images/poi/earth-11-mauna-kea.webp",
       "deskripsi": "Jika diukur dari kakinya di dasar Samudra Pasifik (sedalam 6.000 m) hingga puncaknya di atas laut (4.207 m), Gunung Mauna Kea memiliki tinggi total 10.210 meter—lebih tinggi 1,4 km dibanding Gunung Everest!",
-      "sumber_referensi": "USGS Mauna Kea",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -545,9 +436,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Daratan Tunggal Purba • ~230 Juta Tahun Lalu",
       "gambar_url": "/images/poi/earth-pangaea-triassic.webp",
       "deskripsi": "Sekitar 230 juta tahun lalu pada Zaman Trias, seluruh benua di Bumi masih menyatu menjadi satu superbenua raksasa bernama Pangaea, tempat dinosaurus awal mulai muncul dan beradaptasi.",
-      "sumber_referensi": "Triassic Pangaea",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -562,9 +450,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Formasi Morrison, Amerika Utara • ~150 Juta Tahun Lalu",
       "gambar_url": "/images/poi/earth-05-morrison-dinosaurs.webp",
       "deskripsi": "Pada Zaman Jura (~150 juta tahun lalu), benua mulai terpisah dan iklim hangat menyuburkan hutan konifer serta pakis raksasa yang menjadi habitat dinosaurus herbivora raksasa seperti Brachiosaurus.",
-      "sumber_referensi": "Jurassic Era",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -579,9 +464,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Patagonia, Argentina • Panjang 37 m • Bobot ~70 Ton",
       "gambar_url": "/images/poi/earth-04-argentinosaurus.webp",
       "deskripsi": "Pada Zaman Kapur, daratan Amerika Selatan dihuni oleh dinosaurus pemakan tumbuhan terbesar sepanjang masa seperti Argentinosaurus dan Patagotitan, berdampingan dengan munculnya tumbuhan berbunga pertama di Bumi.",
-      "sumber_referensi": "Cretaceous Patagonia",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -596,9 +478,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Amerika Utara & Asia • ~68 Juta Tahun Lalu",
       "gambar_url": "/images/poi/earth-cretaceous-trex.webp",
       "deskripsi": "Menjelang akhir Zaman Kapur (~68 juta tahun lalu), daratan Bumi dihuni dinosaurus ikonik seperti Triceratops dan T-Rex sementara dinosaurus berbulu mulai berevolusi menjadi nenek moyang burung modern.",
-      "sumber_referensi": "Late Cretaceous",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -613,9 +492,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Semenanjung Yucatán, Meksiko • Diameter Kawah 180 km • ~66 Juta Lalu",
       "gambar_url": "/images/poi/earth-06-chicxulub-crater.webp",
       "deskripsi": "Sekitar 66 juta tahun lalu, asteroid selebar 10–15 km menghantam Meksiko dan membentuk Kawah Chicxulub selebar 180 km. Debu tebal menutup sinar Matahari sehingga mengakhiri era dinosaurus non-unggas dan membuka jalan bagi mamalia.",
-      "sumber_referensi": "NASA JPL Chicxulub",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -630,9 +506,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Perbatasan Nepal–Tibet • Tinggi 8.848,86 mdpl • Terbentuk ~50 Juta Lalu",
       "gambar_url": "/images/poi/earth-07-mount-everest.webp",
       "deskripsi": "Setelah zaman dinosaurus berakhir (~50 juta tahun lalu), Lempeng India bergerak ke utara dan bertabrakan dengan Lempeng Eurasia, melipat kerak Bumi menjadi Pegunungan Himalaya dan puncak tertinggi Gunung Everest.",
-      "sumber_referensi": "NASA Earth Tectonics",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -647,9 +520,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Sumatera Utara, Indonesia • Panjang 100 km • Lebar 30 km • ~74.000 SM",
       "gambar_url": "/images/poi/earth-12-lake-toba.webp",
       "deskripsi": "Sekitar 74.000 tahun lalu, letusan supervolcano Toba memuntahkan material vulkanik terbesar dalam 2 juta tahun terakhir dan membentuk kaldera raksasa Danau Toba sepanjang 100 km.",
-      "sumber_referensi": "Toba Caldera",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -664,9 +534,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Serengeti, Tanzania • Panjang 48 km • ~1,8 Juta Tahun Lalu",
       "gambar_url": "/images/poi/earth-13-olduvai-gorge.webp",
       "deskripsi": "Lembah curam di Afrika Timur tempat ditemukannya fosil hominid awal dan perkakas batu pukul tertua yang menandai dimulainya Zaman Batu dalam sejarah manusia.",
-      "sumber_referensi": "Olduvai Paleo",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -681,9 +548,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Sragen & Karanganyar, Jawa Tengah • Luas 56 km² • ~1,5 Juta Tahun Lalu",
       "gambar_url": "/images/poi/earth-14-sangiran-fossil.webp",
       "deskripsi": "Kubah Sangiran menyimpan lebih dari separuh temuan fosil Homo erectus di dunia beserta alat serpih batu yang menceritakan adaptasi manusia purba di Nusantara.",
-      "sumber_referensi": "Sangiran Early Man",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -698,9 +562,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Ngawi, Jawa Timur • Ditemukan Tahun 1891 • Usia ~500.000 Tahun",
       "gambar_url": "/images/poi/earth-15-trinil-bengawan-solo.webp",
       "deskripsi": "Lokasi bersejarah penemuan fosil Pithecanthropus erectus di tepi Sungai Bengawan Solo yang menjadi tonggak penting ilmu paleoantropologi dunia.",
-      "sumber_referensi": "Trinil Site",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -715,9 +576,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Beijing, Tiongkok • Usia ~700.000 Tahun",
       "gambar_url": "/images/poi/earth-16-zhoukoudian-fire.webp",
       "deskripsi": "Lapisan abu tebal di dalam gua kapur Zhoukoudian membuktikan bahwa manusia purba telah mampu mengendalikan api untuk menghangatkan diri dan memasak.",
-      "sumber_referensi": "Zhoukoudian Site",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -732,9 +590,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Leang Tedongnge, Sulawesi Selatan • Usia >45.500 Tahun",
       "gambar_url": "/images/poi/earth-17-maros-pangkep-cave.webp",
       "deskripsi": "Lukisan cadas babi hutan dan cap tangan manusia menggunakan pigmen oker merah di gua kapur Sulawesi Selatan yang diakui sebagai karya seni Zaman Batu tertua di dunia.",
-      "sumber_referensi": "Sulawesi Cave Art",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -749,9 +604,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Dordogne, Prancis • Usia ~17.000 Tahun",
       "gambar_url": "/images/poi/earth-18-lascaux-cave.webp",
       "deskripsi": "Dinding gua bawah tanah yang dipenuhi ratusan lukisan kuda, rusa, dan bison zaman es karya manusia Paleolitikum Akhir.",
-      "sumber_referensi": "Lascaux Cave",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -766,9 +618,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Şanlıurfa, Turki • Berat Pilar 10–20 Ton • ~9600 SM",
       "gambar_url": "/images/poi/earth-19-gobekli-tepe.webp",
       "deskripsi": "Lingkaran pilar batu kapur berbentuk huruf T seberat 10–20 ton yang dibangun oleh masyarakat di penghujung Zaman Batu, ribuan tahun sebelum Piramida Giza.",
-      "sumber_referensi": "Gobekli Tepe",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -783,9 +632,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Bulan Sabit Subur (Jericho & Anatolia) • ~8500 SM",
       "gambar_url": "/images/poi/earth-20-fertile-crescent.webp",
       "deskripsi": "Titik balik sejarah manusia ketika masyarakat mulai bercocok tanam gandum, menjinakkan ternak, dan mendirikan kota batu permanen pertama.",
-      "sumber_referensi": "Neolithic Revolution",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -800,9 +646,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Wiltshire, Inggris • Berat Batu ~25 Ton • ~3000 SM",
       "gambar_url": "/images/poi/earth-21-stonehenge.webp",
       "deskripsi": "Susunan batu sarsen raksasa seberat 25 ton yang disejajarkan masyarakat Zaman Batu Akhir dengan arah terbitnya Matahari pada titik balik musim panas.",
-      "sumber_referensi": "Stonehenge",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -817,9 +660,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Cianjur, Jawa Barat • 5 Teras Punden Berundak",
       "gambar_url": "/images/poi/earth-22-gunung-padang.webp",
       "deskripsi": "Warisan zaman batu besar di Indonesia berupa teras batu kolom vulkanik heksagonal di Gunung Padang dan patung-patung batu megalit di Lembah Bada.",
-      "sumber_referensi": "Indonesian Megaliths",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -834,9 +674,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Lembah Eufrat–Tigris, Irak • ~3500 SM",
       "gambar_url": "/images/poi/earth-23-mesopotamia-babylon.webp",
       "deskripsi": "Peradaban kota pertama di dunia yang menemukan roda, tulisan aksara paku di tablet tanah liat, serta sistem pembagian waktu 60 menit dan 60 detik yang masih kita pakai hingga kini.",
-      "sumber_referensi": "Mesopotamia",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -851,9 +688,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Giza, Kairo, Mesir • Tinggi Awal 146,6 m • ~2560 SM",
       "gambar_url": "/images/poi/earth-24-pyramids-giza.webp",
       "deskripsi": "Satu-satunya dari Tujuh Keajaiban Dunia Kuno yang masih berdiri hingga hari ini. Disusun dari 2,3 juta blok batu kapur dan granit dengan presisi arah mata angin yang menakjubkan.",
-      "sumber_referensi": "Great Pyramid of Giza",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -868,9 +702,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Lembah Sungai Indus, Pakistan • ~2500 SM",
       "gambar_url": "/images/poi/earth-25-mohenjo-daro.webp",
       "deskripsi": "Kota kuno berpola jalan kisi-kisi (grid) yang sudah dilengkapi rumah bertingkat, pemandian umum besar, dan saluran drainase tertutup di setiap rumah.",
-      "sumber_referensi": "Indus Valley",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -885,9 +716,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Masjidil Haram, Makkah • Batu Granit Sekitar Haram • Tinggi ~13 m",
       "gambar_url": "/images/poi/earth-26-makkah-kaaba.webp",
       "deskripsi": "Ka'bah (Baitullah) adalah kiblat umat Islam sedunia hingga saat ini. Menurut Islam (QS. Al-Baqarah: 127), fondasi Ka'bah ditinggikan kembali oleh Nabi Ibrahim AS bersama Nabi Ismail AS menggunakan batu-batu granit kokoh dari perbukitan sekitar Makkah, dilengkapi Hajar Aswad, Maqam Ibrahim, serta Sumur Zamzam.",
-      "sumber_referensi": "Makkah Kaaba",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -902,9 +730,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kota Tua Al-Quds (Yerusalem) • Kompleks 14,4 Hektare",
       "gambar_url": "/images/poi/earth-27-masjid-al-aqsa.webp",
       "deskripsi": "Kompleks bersejarah tempat berdirinya Masjidil Aqsa yang menjadi kiblat pertama umat Islam sebelum Ka'bah serta titik perjalanan spiritual Isra' Mi'raj Nabi Muhammad SAW.",
-      "sumber_referensi": "Al-Quds History",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -919,9 +744,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Athena & Alexandria • Keliling Bumi ~40.000 km • 447–240 SM",
       "gambar_url": "/images/poi/earth-28-athens-acropolis.webp",
       "deskripsi": "Pusat peradaban Yunani Klasik tempat lahirnya geometri serta keberhasilan Eratosthenes (240 SM) menghitung keliling bola Bumi hanya bermodal bayangan tongkat dan sinar Matahari.",
-      "sumber_referensi": "Classical Greece",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -936,9 +758,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Tiongkok Utara & Xi'an • Panjang 21.196 km • ~220 SM",
       "gambar_url": "/images/poi/earth-29-great-wall-china.webp",
       "deskripsi": "Jaringan benteng batu terpanjang buatan manusia yang melintasi pegunungan dan gurun Tiongkok utara, disertai makam 8.000 patung prajurit Terakota di Xi'an.",
-      "sumber_referensi": "Great Wall of China",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -953,9 +772,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Ma'an, Yordania • Tinggi Al-Khazneh 39 m • ~100 SM",
       "gambar_url": "/images/poi/earth-30-petra-jordan.webp",
       "deskripsi": "Kota perdagangan kafilah yang dipahat langsung pada dinding tebing batu pasir merah muda lengkap dengan sistem pipa air bersih di tengah gurun.",
-      "sumber_referensi": "Petra Jordan",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -970,9 +786,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Roma, Italia • Kapasitas 50.000 Penonton • Tahun 80 M",
       "gambar_url": "/images/poi/earth-31-roman-colosseum.webp",
       "deskripsi": "Ikon arsitektur Romawi kuno yang dibangun dengan beton abu vulkanik (pozzolana) tahan air laut sehingga tetap berdiri kokoh selama hampir 2.000 tahun.",
-      "sumber_referensi": "Roman Colosseum",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -987,9 +800,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Jabal Nur, Makkah • Tinggi Bukit 634 m • Tahun 610 M",
       "gambar_url": "/images/poi/earth-32-gua-hira.webp",
       "deskripsi": "Gua di puncak Jabal Nur tempat Nabi Muhammad SAW menerima wahyu pertama QS. Al-Alaq: 1–5 yang dimulai dengan kata 'Iqra' (Bacalah), menjadi titik awal peradaban ilmu dalam Islam.",
-      "sumber_referensi": "Jabal Nur",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1004,9 +814,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Madinah Al-Munawwarah • Tahun 1 Hijriah (622 M)",
       "gambar_url": "/images/poi/earth-33-masjid-nabawi.webp",
       "deskripsi": "Peristiwa hijrah ke Madinah pada 622 M yang menandai tahun pertama Kalender Hijriah serta penyusunan Piagam Madinah sebagai konstitusi masyarakat majemuk yang damai.",
-      "sumber_referensi": "Madinah History",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1021,9 +828,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Yucatán, Meksiko • Tinggi 30 m • 365 Anak Tangga • ~750 M",
       "gambar_url": "/images/poi/earth-34-chichen-itza.webp",
       "deskripsi": "Piramida suku Maya yang dirancang mengikuti pergerakan Matahari: memiliki 365 anak tangga sesuai jumlah hari dalam setahun dan menampilkan bayangan ular saat ekuinoks.",
-      "sumber_referensi": "Chichen Itza",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1038,9 +842,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Magelang, Jawa Tengah • 2 Juta Balok Batu • Tinggi 35 m • ~800 M",
       "gambar_url": "/images/poi/earth-35-candi-borobudur.webp",
       "deskripsi": "Mahakarya arsitektur Nusantara abad ke-8 hingga ke-9 yang disusun dari 2 juta balok batu andesit menggunakan teknik sambungan kunci batu tanpa semen.",
-      "sumber_referensi": "Borobudur",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1055,9 +856,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Baghdad, Irak • Al-Khwarizmi & Ibnu Al-Haytham • ~830 M",
       "gambar_url": "/images/poi/earth-36-house-of-wisdom.webp",
       "deskripsi": "Pusat keilmuan dunia abad ke-9 tempat Al-Khwarizmi merumuskan Aljabar & Algoritma (dasar komputer modern) serta Ibnu Al-Haytham meletakkan dasar metode ilmiah dan kamera obscura.",
-      "sumber_referensi": "House of Wisdom",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1072,9 +870,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Fez, Maroko • Didirikan Tahun 859 M • Rekor UNESCO",
       "gambar_url": "/images/poi/earth-37-al-qarawiyyin.webp",
       "deskripsi": "Didirikan oleh Fatimah al-Fihri pada 859 M dan diakui UNESCO serta Guinness World Records sebagai perguruan tinggi tertua di dunia yang masih beroperasi hingga sekarang.",
-      "sumber_referensi": "Al-Qarawiyyin",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1089,9 +884,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "L'Anse aux Meadows, Kanada • Tahun ~1000 M • Situs UNESCO",
       "gambar_url": "/images/poi/earth-viking-vinland.webp",
       "deskripsi": "Sekitar tahun 1000 M, penjelajah Viking asal Nordik yang dipimpin Leif Erikson berlayar melintasi Samudra Atlantik Utara dan mendirikan permukiman di L'Anse aux Meadows (Kanada)—menjadi bangsa Eropa pertama yang menginjakkan kaki di Benua Amerika, 500 tahun sebelum Columbus!",
-      "sumber_referensi": "Parks Canada Viking Site",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1106,9 +898,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Siem Reap, Kamboja • Luas 162,6 Hektare • ~1150 M",
       "gambar_url": "/images/poi/earth-38-angkor-wat.webp",
       "deskripsi": "Kompleks bangunan batu pasir terbesar di dunia yang dikelilingi jaringan kanal dan waduk penyimpanan air raksasa untuk mengairi pertanian masyarakat Khmer.",
-      "sumber_referensi": "Angkor Wat",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1123,9 +912,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Trowulan, Jawa Timur & Maluku • Abad ke-14 (1350 M)",
       "gambar_url": "/images/poi/earth-39-majapahit-spice.webp",
       "deskripsi": "Pusat peradaban maritim Nusantara yang menghubungkan kepulauan penghasil cengkih dan pala di Maluku dengan jalur perdagangan damai Asia dan Timur Tengah.",
-      "sumber_referensi": "Majapahit Maritime",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1140,9 +926,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Semarang, Malaka & Samudra Hindia • 1405–1433 M",
       "gambar_url": "/images/poi/earth-zheng-he-voyage.webp",
       "deskripsi": "Antara 1405–1433, Laksamana Cheng Ho memimpin armada kapal kayu raksasa melintasi Samudra Hindia dan singgah di berbagai pelabuhan Nusantara (Samudera Pasai, Palembang, Semarang) untuk mempererat perdagangan dan diplomasi damai.",
-      "sumber_referensi": "Maritime Silk Road",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1157,9 +940,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Samarkand, Uzbekistan • Radius Sekstan 40 m • Tahun 1420 M",
       "gambar_url": "/images/poi/earth-40-ulugh-beg.webp",
       "deskripsi": "Observatorium raksasa abad ke-15 yang berhasil menyusun katalog 1.018 bintang dan mengukur panjang satu tahun Bumi dengan selisih kurang dari satu menit dibanding satelit modern.",
-      "sumber_referensi": "Ulugh Beg",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1174,9 +954,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Pegunungan Andes, Peru • Ketinggian 2.430 mdpl • ~1450 M",
       "gambar_url": "/images/poi/earth-41-machu-picchu.webp",
       "deskripsi": "Kota batu peradaban Inca di punggung curam Pegunungan Andes yang dipahat presisi tanpa semen sehingga tahan terhadap guncangan gempa bumi.",
-      "sumber_referensi": "Machu Picchu",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1191,9 +968,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Mainz, Jerman • Tahun 1455 M",
       "gambar_url": "/images/poi/earth-gutenberg-press.webp",
       "deskripsi": "Penemuan mesin cetak bergerak oleh Johannes Gutenberg membuat buku ilmu pengetahuan dapat dicetak cepat dan terjangkau, mendorong lahirnya zaman pencerahan dan sains modern.",
-      "sumber_referensi": "Gutenberg Press",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1208,9 +982,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kepulauan Karibia, Amerika • 12 Oktober 1492",
       "gambar_url": "/images/poi/earth-columbus-1492.webp",
       "deskripsi": "Pada 12 Oktober 1492, pelayaran samudra Christopher Columbus tiba di Kepulauan Karibia (Benua Amerika), membuka pertukaran tanaman pangan global (seperti cokelat, kentang, jagung, dan tomat) antara Benua Amerika dan seluruh dunia.",
-      "sumber_referensi": "Age of Discovery",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1225,9 +996,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Selat Magellan & Maluku • Tahun 1519–1522",
       "gambar_url": "/images/poi/earth-magellan-1519.webp",
       "deskripsi": "Pelayaran yang dimulai tahun 1519 dan selesai tahun 1522 oleh Juan Sebastián Elcano ini menjadi pelayaran pertama dalam sejarah yang berhasil mengelilingi seluruh bola Bumi melalui jalur laut.",
-      "sumber_referensi": "First Circumnavigation",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1242,9 +1010,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Toruń, Polandia • Tahun 1543",
       "gambar_url": "/images/poi/earth-42-copernicus-galileo.webp",
       "deskripsi": "Pada 1543, Nicolaus Copernicus menerbitkan teori ilmiah bahwa Bumi dan planet-planet berputar mengelilingi Matahari (Heliosentris), mengubah cara pandang manusia terhadap alam semesta.",
-      "sumber_referensi": "Copernican Revolution",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1259,9 +1024,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Eropa & Dunia • Oktober 1582",
       "gambar_url": "/images/poi/earth-gregorian-calendar.webp",
       "deskripsi": "Diperkenalkan pada Oktober 1582 untuk menyempurnakan perhitungan tahun kabisat agar kalender selalu selaras dengan peredaran Bumi mengelilingi Matahari; kalender inilah yang dipakai secara internasional saat ini.",
-      "sumber_referensi": "Gregorian Calendar",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1276,9 +1038,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Middelburg, Belanda • Zacharias Janssen • Tahun 1590",
       "gambar_url": "/images/poi/earth-first-microscope.webp",
       "deskripsi": "Penemuan mikroskop gabungan pertama di akhir abad ke-16 membuka mata ilmuwan untuk pertama kalinya melihat sel tumbuhan, bakteri, dan dunia mikroskopis yang tak tampak mata telanjang.",
-      "sumber_referensi": "History of Microscope",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1293,9 +1052,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Cape York, Australia • Kapal Duyfken • Tahun 1606",
       "gambar_url": "/images/poi/earth-australia-1606.webp",
       "deskripsi": "Meski penduduk asli Aborigin telah menghuni Australia selama puluhan ribu tahun, pelaut Belanda Willem Janszoon dengan kapal Duyfken pada 1606 mencatat pendaratan Eropa pertama yang terdokumentasi di pesisir Australia.",
-      "sumber_referensi": "Australia Exploration",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1310,9 +1066,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Padua & Pisa, Italia • Tahun 1609",
       "gambar_url": "/images/poi/earth-galileo-telescope.webp",
       "deskripsi": "Pada 1609, Galileo Galilei mengarahkan teleskop buatannya ke langit malam dan untuk pertama kalinya melihat kawah di Bulan, cincin Saturnus, serta 4 bulan yang mengorbit Jupiter.",
-      "sumber_referensi": "Galileo Telescope",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1327,9 +1080,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Tasmania & Selandia Baru • Tahun 1642",
       "gambar_url": "/images/poi/earth-tasman-1642.webp",
       "deskripsi": "Pelayaran penjelajahan Abel Tasman pada 1642–1643 memetakan wilayah Tasmania, Selandia Baru, dan Fiji di belahan Bumi selatan.",
-      "sumber_referensi": "Abel Tasman",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1344,9 +1094,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Agra, India • Tinggi Kubah 73 m • Selesai Tahun 1653",
       "gambar_url": "/images/poi/earth-43-taj-mahal.webp",
       "deskripsi": "Monumen marmer putih Makrana yang selesai dibangun pada 1653 dengan simetri arsitektur geometris sempurna dan menjadi salah satu Situs Warisan Dunia paling terkenal hingga kini.",
-      "sumber_referensi": "Taj Mahal",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1361,9 +1108,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Cambridge, Inggris • Buku Principia • Tahun 1687",
       "gambar_url": "/images/poi/earth-newton-gravity.webp",
       "deskripsi": "Isaac Newton merumuskan Hukum Gravitasi dan tiga Hukum Gerak pada 1687 yang menjelaskan mengapa apel jatuh ke tanah sekaligus mengapa Bulan dan planet-planet tetap berada di orbitnya.",
-      "sumber_referensi": "Newton Principia",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1378,9 +1122,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Skotlandia & Inggris • Tahun 1769",
       "gambar_url": "/images/poi/earth-steam-engine-1769.webp",
       "deskripsi": "Penyempurnaan mesin uap oleh James Watt pada 1769 memicu Revolusi Industri pertama, melahirkan kereta api uap, kapal uap, dan pabrik modern yang mengubah wajah kehidupan manusia.",
-      "sumber_referensi": "Industrial Revolution",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1395,9 +1136,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Botany Bay, Australia • Kapal HMS Endeavour • April 1770",
       "gambar_url": "/images/poi/earth-cook-australia-1770.webp",
       "deskripsi": "Pada April 1770, pelayar dan kartografer James Cook mendarat di Botany Bay serta memetakan seluruh garis pantai timur Benua Australia dan Karang Penghalang Besar (Great Barrier Reef).",
-      "sumber_referensi": "Endeavour 1770",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1412,9 +1150,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Paris, Prancis • 21 November 1783",
       "gambar_url": "/images/poi/earth-montgolfier-1783.webp",
       "deskripsi": "Pada 21 November 1783, manusia untuk pertama kalinya berhasil terbang bebas di udara menggunakan balon udara panas rancangan Montgolfier bersaudara di langit Paris.",
-      "sumber_referensi": "First Balloon Flight",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1429,9 +1164,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Gloucestershire, Inggris • Tahun 1796",
       "gambar_url": "/images/poi/earth-jenner-vaccine-1796.webp",
       "deskripsi": "Pada 1796, dokter Edward Jenner mengembangkan vaksin pertama untuk melindungi manusia dari penyakit cacar, yang di kemudian hari menyelamatkan ratusan juta nyawa di seluruh dunia.",
-      "sumber_referensi": "History of Vaccines",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1446,9 +1178,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Italia & Afrika Utara • Luas Sahara 9,2 Juta km² • Tahun 1800",
       "gambar_url": "/images/poi/earth-44-sahara-desert.webp",
       "deskripsi": "Tahun 1800 ditandai penemuan baterai listrik pertama oleh Alessandro Volta yang memungkinkan aliran listrik stabil, di abad yang sama ekspedisi ilmiah mulai memetakan Gurun Sahara (padang pasir panas terluas 9,2 juta km²).",
-      "sumber_referensi": "Volta & Sahara",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1463,9 +1192,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kutub Selatan Bumi • Luas 14,2 Juta km² • Suhu -89,2°C • 1820",
       "gambar_url": "/images/poi/earth-45-antarctica-ice.webp",
       "deskripsi": "Pada tahun 1820, ekspedisi maritim pertama kali melihat daratan utama Benua Antartika—gurun dingin terbesar di Bumi yang menyimpan 70% air tawar dunia dalam bentuk lapisan es.",
-      "sumber_referensi": "Antarctica 1820",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1480,9 +1206,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Amerika Selatan (9 Negara) • Luas 5,5 Juta km²",
       "gambar_url": "/images/poi/earth-46-amazon-rainforest.webp",
       "deskripsi": "Eksplorasi botani abad ke-19 menyingkap kekayaan luar biasa Hutan Hujan Amazon—hutan tropis terbesar di planet Bumi yang menampung 10% spesies makhluk hidup dunia.",
-      "sumber_referensi": "Amazon Basin",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1497,9 +1220,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Mesir • Panjang 193 km • Dibuka November 1869",
       "gambar_url": "/images/poi/earth-suez-canal-1869.webp",
       "deskripsi": "Dibuka pada November 1869, Terusan Suez membelah tanah genting Mesir untuk menghubungkan Laut Tengah dan Laut Merah, memangkas waktu pelayaran kapal dagang antara Eropa dan Asia hingga berminggu-minggu.",
-      "sumber_referensi": "Suez Canal 1869",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1514,9 +1234,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Amerika Serikat • Alexander Graham Bell (1876) & Edison (1879)",
       "gambar_url": "/images/poi/earth-telephone-bulb.webp",
       "deskripsi": "Penemuan telepon pada 1876 memungkinkan suara manusia dikirim melintasi kabel jarak jauh untuk pertama kalinya, disusul penyempurnaan lampu pijar listrik praktis pada 1879.",
-      "sumber_referensi": "Communication History",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1531,9 +1248,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Selat Sunda, Indonesia • 27 Agustus 1883",
       "gambar_url": "/images/poi/earth-49-krakatau-volcano.webp",
       "deskripsi": "Letusan dahsyat Gunung Krakatau pada 27 Agustus 1883 menghasilkan suara terdahsyat dalam sejarah modern dan gelombang tekanan udara yang mengelilingi Bumi tujuh kali, lalu melahirkan gunung baru Anak Krakatau.",
-      "sumber_referensi": "Krakatau 1883",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1548,9 +1262,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Jerman & Italia • Röntgen & Marconi • Tahun 1895",
       "gambar_url": "/images/poi/earth-xray-radio-1895.webp",
       "deskripsi": "Penemuan sinar-X (1895) memungkinkan dokter melihat tulang di dalam tubuh tanpa operasi, bersamaan dengan penemuan telegraf radio tanpa kabel oleh Marconi.",
-      "sumber_referensi": "X-Ray & Radio",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1565,9 +1276,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kitty Hawk, North Carolina • 17 Desember 1903",
       "gambar_url": "/images/poi/earth-54-wright-flyer.webp",
       "deskripsi": "Pada 17 Desember 1903, Orville dan Wilbur Wright menerbangkan pesawat bermotor pertama yang terkendali di Kitty Hawk, membuka era penerbangan sipil dan antariksa.",
-      "sumber_referensi": "Wright Flyer 1903",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1582,9 +1290,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Samudra Atlantik Utara (~530 km Tenggara Newfoundland) • 15 April 1912",
       "gambar_url": "/images/poi/earth-titanic-1912.webp",
       "deskripsi": "Pada pelayaran perdananya dari Southampton ke New York, kapal penumpang terbesar masa itu—RMS Titanic—menabrak gunung es pada malam 14 April 1912 dan tenggelam pada pukul 02.20 dini hari tanggal 15 April 1912 di Samudra Atlantik Utara. Peristiwa duka ini merenggut lebih dari 1.500 nyawa dari ~2.220 penumpang dan mendorong aturan keselamatan maritim internasional (SOLAS) yang mewajibkan sekoci cukup untuk semua penumpang serta patroli gunung es.",
-      "sumber_referensi": "NOAA RMS Titanic",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1599,9 +1304,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Panama, Amerika Tengah • Panjang 82 km • 15 Agustus 1914",
       "gambar_url": "/images/poi/earth-panama-canal-1914.webp",
       "deskripsi": "Resmi dibuka pada 15 Agustus 1914, Terusan Panama menghubungkan Samudra Atlantik dan Samudra Pasifik menggunakan pintu air (locks) raksasa sehingga kapal tidak perlu lagi memutari ujung selatan Benua Amerika.",
-      "sumber_referensi": "Panama Canal 1914",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1616,9 +1318,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "London, Inggris • Tahun 1928",
       "gambar_url": "/images/poi/earth-penicillin-1928.webp",
       "deskripsi": "Pada 1928, ilmuwan Alexander Fleming menemukan jamur Penicillium yang mampu membunuh bakteri berbahaya—melahirkan era antibiotik modern yang menyelamatkan jutaan nyawa manusia.",
-      "sumber_referensi": "Penicillin 1928",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1633,9 +1332,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Jakarta & San Francisco • 17 Agustus & 24 Oktober 1945",
       "gambar_url": "/images/poi/earth-55-indonesia-un-1945.webp",
       "deskripsi": "Tahun 1945 menjadi tonggak sejarah perdamaian dan kemerdekaan: Bangsa Indonesia memproklamasikan kemerdekaannya pada 17 Agustus 1945, dan pada 24 Oktober 1945 Perserikatan Bangsa-Bangsa (PBB / United Nations) resmi berdiri di San Francisco untuk menjaga perdamaian dunia, hak asasi manusia, pendidikan (UNESCO), dan kesehatan global (WHO).",
-      "sumber_referensi": "1945 Indonesia & UN",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1650,9 +1346,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Samudra Pasifik Barat • Kedalaman 10.984 Meter • 23 Januari 1960",
       "gambar_url": "/images/poi/earth-53-mariana-trench.webp",
       "deskripsi": "Pada 23 Januari 1960, Jacques Piccard dan Don Walsh menyelam hingga dasar Challenger Deep di Palung Mariana sedalam 10.984 meter—titik terdalam kerak Bumi yang pernah dicapai manusia hingga saat ini.",
-      "sumber_referensi": "Mariana Trench 1960",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1667,9 +1360,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kennedy Space Center & Bulan • Juli 1969",
       "gambar_url": "/images/poi/earth-57-apollo-11.webp",
       "deskripsi": "Setelah Yuri Gagarin mengorbit Bumi pada 1961, misi Apollo 11 NASA meluncur dengan roket Saturn V pada Juli 1969 dan berhasil mendaratkan Neil Armstrong serta Buzz Aldrin di permukaan Bulan.",
-      "sumber_referensi": "Apollo 11 NASA",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1684,9 +1374,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Jenewa, Swiss • Tahun 1989",
       "gambar_url": "/images/poi/earth-58-cern-web.webp",
       "deskripsi": "Pada 1989, Tim Berners-Lee menciptakan World Wide Web (WWW) di laboratorium CERN yang memungkinkan seluruh pelajar dan masyarakat di berbagai belahan Bumi bertukar ilmu melalui internet.",
-      "sumber_referensi": "CERN WWW 1989",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1701,9 +1388,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Orbit Rendah Bumi (400 km) • Kecepatan 28.000 km/jam • 1998",
       "gambar_url": "/images/poi/earth-59-iss-station.webp",
       "deskripsi": "Sejak modul pertamanya diluncurkan pada 1998, ISS menjadi laboratorium riset ilmiah terbesar di luar angkasa yang dihuni bergantian oleh astronot dari berbagai negara.",
-      "sumber_referensi": "NASA ISS",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1718,9 +1402,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Konsorsium Sains Global • April 2003",
       "gambar_url": "/images/poi/earth-human-genome-2003.webp",
       "deskripsi": "Pada April 2003, ilmuwan dunia merampungkan pemetaan 3 miliar pasangan basa DNA manusia yang membuka kemajuan pesat di bidang kedokteran dan biologi modern.",
-      "sumber_referensi": "Human Genome 2003",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1735,9 +1416,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Pulau Spitsbergen, Norwegia • Tahun 2008",
       "gambar_url": "/images/poi/earth-svalbard-2008.webp",
       "deskripsi": "Dibangun jauh di dalam gunung es abadi Kutub Utara pada 2008 sebagai brankas cadangan benih tanaman pangan seluruh negara di Bumi untuk menjaga ketahanan pangan generasi mendatang.",
-      "sumber_referensi": "Svalbard Vault",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1752,9 +1430,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Paris & Markas PBB • Tahun 2015",
       "gambar_url": "/images/poi/earth-sdg-paris-2015.webp",
       "deskripsi": "Pada 2015, seluruh negara anggota PBB menyepakati 17 Tujuan Pembangunan Berkelanjutan (SDGs)—termasuk SDG 4 Pendidikan Berkualitas—dan Perjanjian Iklim Paris untuk menjaga suhu Bumi tetap layak huni.",
-      "sumber_referensi": "UN SDGs 2015",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1769,9 +1444,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Titik Lagrange L2 (1,5 Juta km) • Desember 2021",
       "gambar_url": "/images/poi/earth-60-svalbard-jwst.webp",
       "deskripsi": "Diluncurkan pada Desember 2021, Teleskop James Webb menggunakan cermin emas selebar 6,5 meter untuk memotret galaksi-galaksi tertua dan meneliti atmosfer planet jauh di luar Tata Surya.",
-      "sumber_referensi": "NASA James Webb",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -1788,9 +1460,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Dataran Tinggi Tharsis, Mars • Tinggi 21,9 km • Lebar Kaki 600 km",
       "gambar_url": "/images/poi/mars-olympus-mons.webp",
       "deskripsi": "Olympus Mons menjulang setinggi 21,9 km (hampir 3 kali tinggi Gunung Everest) dengan lebar kaki gunung 600 km. Gunung ini tumbuh sedemikian raksasa karena kerak lempeng Mars tidak bergerak, sehingga titik panas magma terus menumpuk lava di satu titik selama ratusan juta tahun.",
-      "sumber_referensi": "NASA Mars Volcanoes",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1805,9 +1474,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Ekuator Mars • Panjang 4.000 km • Lebar 200 km • Dalam 7 km",
       "gambar_url": "/images/poi/mars-valles-marineris.webp",
       "deskripsi": "Saat dataran vulkanik Tharsis membengkak akibat desakan magma dari dalam Mars, kerak planet di sebelah timurnya robek dan runtuh membentuk Valles Marineris—ngarai sepanjang 4.000 km dan sedalam 7 km yang lima kali lebih dalam dari Grand Canyon.",
-      "sumber_referensi": "USGS Valles Marineris",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1822,9 +1488,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kutub Utara Mars • Diameter 1.000 km • Ketebalan Es 3 km",
       "gambar_url": "/images/poi/mars-polar-icecap.webp",
       "deskripsi": "Kubah lapisan es berlapis selebar 1.000 km dan setebal 3 km di kutub utara Mars yang tersusun atas es air permanen dan selimut karbon dioksida beku yang menyublim saat musim panas dan memicu angin badai debu.",
-      "sumber_referensi": "NASA Mars Polar Cap",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1839,9 +1502,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kawah Gale & Gunung Sharp, Mars • Diameter 154 km • Misi 2012",
       "gambar_url": "/images/poi/mars-gale-crater-curiosity.webp",
       "deskripsi": "Lapisan batuan lempung dan mineral sulfat di kaki Gunung Sharp di dalam Kawah Gale membuktikan bahwa sekitar 3,5 miliar tahun lalu Mars memiliki iklim lebih hangat dengan sungai dan danau air cair yang tenang.",
-      "sumber_referensi": "NASA Curiosity Map",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1856,9 +1516,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kawah Jezero, Mars • Diameter 45 km • Misi Mars 2020 (2021)",
       "gambar_url": "/images/poi/mars-jezero-perseverance.webp",
       "deskripsi": "Citra satelit dan sampel batuan di Kawah Jezero memperlihatkan bentuk kipas delta sungai purba yang dulunya mengalir masuk ke kawah danau, tempat rover Perseverance mencari jejak fosil mikroba.",
-      "sumber_referensi": "NASA Perseverance Map",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -1875,9 +1532,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Belahan Selatan Jupiter • Diameter >16.000 km • Angin 680 km/jam",
       "gambar_url": "/images/poi/jupiter-great-red-spot.webp",
       "deskripsi": "Bintik Merah Raksasa adalah badai antisiklon bertekanan tinggi terbesar di Tata Surya yang telah berputar tanpa henti selama ratusan tahun. Karena Jupiter tidak memiliki daratan padat untuk menggesek angin, badai seukuran Bumi ini terus bertahan dengan kecepatan angin hingga 680 km/jam.",
-      "sumber_referensi": "NASA Great Red Spot",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1892,9 +1546,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Interior & Kutub Utara Jupiter • Aurora Terkuat • Misi Juno",
       "gambar_url": "/images/poi/jupiter-polar-cyclones.webp",
       "deskripsi": "Di bawah awan amonia Jupiter, tekanan jutaan atmosfer memampatkan gas hidrogen menjadi cairan logam penghantar listrik yang membangkitkan medan magnet raksasa dan memicu aurora permanen di atas 8 pusaran badai siklon kutub.",
-      "sumber_referensi": "NASA Juno Science",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1909,9 +1560,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Orbit Satelit Galilea Jupiter • >400 Gunung Api Aktif • Voyager 1",
       "gambar_url": "/images/poi/jupiter-io-volcano.webp",
       "deskripsi": "Tarikan gravitasi tarik-ulur antara Jupiter dan bulan-bulan Galilea lainnya meremas bagian dalam bulan Io hingga meleleh, menjadikannya objek dengan ratusan gunung berapi paling aktif di Tata Surya.",
-      "sumber_referensi": "NASA Voyager Jupiter",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1926,9 +1574,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Satelit Europa, Jupiter • Kedalaman Laut ~100 km • 2x Air Bumi",
       "gambar_url": "/images/poi/jupiter-europa-ocean.webp",
       "deskripsi": "Di bawah lapisan es retak-retak permukaan bulan Europa yang mengorbit Jupiter, tersimpan samudra air cair global sedalam 100 km yang jumlah airnya mencapai dua kali lipat total seluruh air laut di Bumi.",
-      "sumber_referensi": "NASA Europa Science",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -1945,9 +1590,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Ekuator Saturnus • Lebar 282.000 km • Tebal 10–100 Meter",
       "gambar_url": "/images/poi/saturn-rings-cassini.webp",
       "deskripsi": "Cincin Saturnus terbentuk sekitar 100 juta tahun lalu ketika sebuah bulan es purba mendekat melewati batas gravitasi Roche Saturnus dan terkoyak menjadi miliaran bongkahan es murni, dengan celah Divisi Cassini selebar 4.800 km yang disapu oleh gravitasi bulan Mimas.",
-      "sumber_referensi": "NASA Saturn Rings",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1962,9 +1604,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kutub Utara Saturnus • Lebar 29.000 km • Angin 350 km/jam",
       "gambar_url": "/images/poi/saturn-north-hexagon.webp",
       "deskripsi": "Di kutub utara Saturnus berputar arus jet atmosfer berbentuk segi enam geometris selebar 29.000 km (dua kali diameter Bumi) dengan kecepatan angin 350 km/jam yang tetap mempertahankan bentuk heksagonalnya selama puluhan tahun.",
-      "sumber_referensi": "NASA Saturn Hexagon",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1979,9 +1618,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Satelit Titan, Saturnus • Suhu -179°C • Pendaratan Huygens 2005",
       "gambar_url": "/images/poi/saturn-titan-lakes.webp",
       "deskripsi": "Bulan terbesar Saturnus, Titan, memiliki atmosfer nitrogen tebal dan suhu -179°C di mana gas metana dan etana mencair membentuk awan, hujan, sungai, hingga lautan hidrokarbon seperti Kraken Mare.",
-      "sumber_referensi": "NASA Huygens Titan",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -1996,9 +1632,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Kutub Selatan Enceladus • Celah Tiger Stripes • Misi Cassini",
       "gambar_url": "/images/poi/saturn-enceladus-plumes.webp",
       "deskripsi": "Wahana Cassini terbang menembus semburan geyser raksasa di kutub selatan bulan Enceladus dan menemukan uap air asin, molekul organik, serta partikel silika dari ventilasi hidrotermal hangat di dasar laut bawah esnya.",
-      "sumber_referensi": "NASA Enceladus",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -2015,9 +1648,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Mantel Es Uranus (Kedalaman 8.000 km) • Tekanan 6 Juta Bar",
       "gambar_url": "/images/poi/uranus-diamond-rain.webp",
       "deskripsi": "Pada kedalaman sekitar 8.000 km di bawah awan biru-kehijauan Uranus, tekanan 6 juta atmosfer dan suhu ribuan derajat memecah molekul metana (CH4) serta memampatkan atom karbonnya menjadi kristal berlian padat yang menghujani bagian dalam planet.",
-      "sumber_referensi": "NASA Diamond Rain",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -2032,9 +1662,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Sistem Uranus • Kemiringan 97,77° • Musim Kutub 42 Tahun",
       "gambar_url": "/images/poi/uranus-axial-tilt.webp",
       "deskripsi": "Para astronom menduga sebuah protoplanet seukuran dua kali Bumi menabrak Uranus di masa awal Tata Surya, menggulingkan poros rotasinya hingga rebah 97,77° beserta 13 cincin gelap dan orbit bulan-bulannya.",
-      "sumber_referensi": "NASA Uranus",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -2049,9 +1676,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Satelit Miranda, Uranus • Tinggi Tebing 20 km • Voyager 2",
       "gambar_url": "/images/poi/uranus-miranda-verona-rupes.webp",
       "deskripsi": "Voyager 2 memotret Verona Rupes di permukaan bulan Miranda milik Uranus, sebuah tebing patahan es vertikal setinggi 20 km (dua kali kedalaman Palung Mariana). Karena gravitasi Miranda sangat lemah, batu yang dijatuhkan dari puncaknya butuh waktu 12 menit untuk menyentuh dasar!",
-      "sumber_referensi": "NASA Miranda Cliff",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ],
@@ -2068,9 +1692,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Mantel Superionik Neptunus • Tekanan Jutaan Atmosfer",
       "gambar_url": "/images/poi/neptune-diamond-rain.webp",
       "deskripsi": "Di dalam mantel es Neptunus yang bertekanan jutaan kali atmosfer Bumi, molekul hidrokarbon metana terpecah menjadi berlian murni yang tenggelam menuju inti planet. Gesekan jatuhnya hujan berlian ini ikut menyumbang panas internal Neptunus.",
-      "sumber_referensi": "NASA Diamond Rain",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -2085,9 +1706,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Atmosfer Neptunus • Kecepatan Angin >2.100 km/jam • Voyager 2",
       "gambar_url": "/images/poi/neptune-great-dark-spot.webp",
       "deskripsi": "Panas internal Neptunus menggerakkan pusaran badai antisiklon seukuran Bumi (Great Dark Spot) dengan hembusan angin tercepat di Tata Surya yang mencapai 2.100 km/jam, didampingi awan es metana putih tinggi bernama 'Scooter'.",
-      "sumber_referensi": "NASA Neptune Winds",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -2102,9 +1720,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Satelit Triton, Neptunus • Suhu -235°C • Semburan 8 km",
       "gambar_url": "/images/poi/neptune-triton-geysers.webp",
       "deskripsi": "Bulan terbesar Neptunus, Triton, mengorbit berlawanan arah rotasi planet (retrograde) dan memiliki gunung berapi es aktif yang menyemburkan tiang gas nitrogen cair serta debu organik gelap setinggi 8 km di suhu -235°C.",
-      "sumber_referensi": "NASA Triton Geysers",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     },
     {
@@ -2119,9 +1734,6 @@ export const FALLBACK_HISTORY_EVENTS: Record<string, HistoryEvent[]> = {
       "karakteristik_fisik": "Observatorium Berlin • Tahun 1846 • Urbain Le Verrier & Johann Galle",
       "gambar_url": "/images/poi/neptune-mathematical-discovery.webp",
       "deskripsi": "Neptunus adalah planet pertama dalam sejarah yang keberadaannya diprediksi terlebih dahulu lewat perhitungan matematika gangguan gravitasi orbit Uranus oleh Urbain Le Verrier dan John Couch Adams sebelum akhirnya terlihat di teleskop pada 23 September 1846.",
-      "sumber_referensi": "NASA Neptune Discovery",
-      "koordinat_lat": 0,
-      "koordinat_lng": 0,
       "created_at": "2026-11-12T00:00:00.000Z"
     }
   ]

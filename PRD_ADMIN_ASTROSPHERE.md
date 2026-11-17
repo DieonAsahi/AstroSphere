@@ -108,40 +108,31 @@ Berikut adalah skema aktual PostgreSQL di `admin_structure.sql` yang disinkronka
 | `password_hash` | `TEXT` | Nullable | Kolom kompatibilitas migrasi skema lama |
 | `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Waktu pendaftaran whitelist |
 
-### 3.2 `public.planets` (Master 8 Planet Tata Surya)
+### 3.2 `public.planets` (Master 8 Planet Tata Surya — Skema Bersih PLY-02)
 | Kolom | Tipe Data | Constraint / Default | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `planet_id` | `TEXT` | `PRIMARY KEY` | Slug planet (`mercury`, `venus`, `earth`, `mars`, `jupiter`, `saturn`, `uranus`, `neptune`) |
-| `urutan_orbit` | `INT` | `NOT NULL UNIQUE CHECK (urutan_orbit >= 1)` | Urutan posisi orbit dari Matahari |
+| `urutan_planet` | `INT` | `NOT NULL UNIQUE CHECK (urutan_planet >= 1)` | Urutan posisi planet dari Matahari (1–8) |
 | `nama` | `TEXT` | `NOT NULL` | Nama resmi planet dalam Bahasa Indonesia |
 | `kategori_planet` | `TEXT` | `NOT NULL DEFAULT 'TERRESTRIAL' CHECK (kategori_planet IN ('TERRESTRIAL', 'GAS_GIANT', 'ICE_GIANT'))` | Klasifikasi planet |
 | `diameter_km` | `NUMERIC` | `NOT NULL` | Diameter khatulistiwa (km) |
-| `rotation_period_hours` | `NUMERIC` | `NOT NULL` | Periode rotasi (jam; negatif untuk retrograde) |
-| `orbital_period_days` | `NUMERIC` | `NOT NULL` | Periode revolusi mengelilingi Matahari (hari) |
-| `axial_tilt_deg` | `NUMERIC` | `NOT NULL DEFAULT 0` | Kemiringan sumbu rotasi (derajat) |
-| `deskripsi_materi` | `TEXT` | `NOT NULL DEFAULT ''` | Penjelasan lengkap karakteristik planet |
-| `ringkasan_cepat` | `TEXT` | `NOT NULL DEFAULT ''` | Teks pembuka singkat saat siswa tiba di planet |
-| `sumber_referensi` | `TEXT` | `DEFAULT 'NASA Planetary Fact Sheet'`, nullable | Sumber rujukan ilmiah |
-| `aset_model_url` | `TEXT` | `NOT NULL DEFAULT '/models/planets/earth.glb'` | Path/URL legacy model 3D (`.glb`/`.gltf`) |
-| `tekstur_url` | `TEXT` | Nullable | Path/URL legacy tekstur permukaan planet (kini dirender Procedural 3D Shader) |
-| `warna_atmosfer_hex` | `TEXT` | `NOT NULL DEFAULT '#38bdf8'` | Kode warna hex pendar atmosfer & aksen visual |
-| `skala_visual` | `NUMERIC` | `NOT NULL DEFAULT 1.0` | Faktor skala 3D planet |
-| `batas_zona_radius` | `NUMERIC` | `NOT NULL DEFAULT 100.0` | Radius batas zona masuk orbit planet |
-| `kecepatan_jelajah_nyaman` | `NUMERIC` | `NOT NULL DEFAULT 15.0` | Kecepatan jelajah kamera/pesawat (km/s) |
-| `urutan_planet` | `TEXT` | `NOT NULL DEFAULT ''` | Label urutan planet PLY-02 (misal: `"Planet ke-3 dari Matahari"`) |
-| `perbandingan_bumi` | `TEXT` | `NOT NULL DEFAULT ''` | Skala perbandingan Bumi (misal: `"1.00x ukuran Bumi (Dasar Perbandingan)"`) |
-| `periode_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Format ramah periode rotasi (misal: `"23 jam 56 menit"`) |
-| `subteks_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks arah rotasi (misal: `"Arah Barat ke Timur (Normal)"`) |
-| `periode_orbit` | `TEXT` | `NOT NULL DEFAULT ''` | Format ramah periode orbit (misal: `"365,25 hari"`) |
-| `subteks_orbit` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks kecepatan orbit (misal: `"Kecepatan rata-rata 29,78 km/s"`) |
-| `kemiringan_sumbu` | `TEXT` | `NOT NULL DEFAULT ''` | Kemiringan sumbu teks PLY-02 (misal: `"23,44°"`) |
-| `rentang_suhu` | `TEXT` | `NOT NULL DEFAULT ''` | Rentang suhu ekstrem/rata-rata (misal: `"-88°C s/d +58°C"`) |
-| `usia_planet` | `TEXT` | `NOT NULL DEFAULT ''` | Usia planet sains (misal: `"4,54 Miliar Tahun"`) |
-| `subteks_usia` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks stabilitas usia (misal: `"Terbentuk bersamaan dengan Tata Surya"`) |
-| `judul_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Judul dinamika rotasi PLY-02 (misal: `"Dinamika Rotasi & Pergantian Siang-Malam"`) |
-| `deskripsi_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Penjelasan dinamika rotasi & pergantian musim PLY-02 |
+| `perbandingan_bumi` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks perbandingan ukuran terhadap Bumi (misal: `"~0,53 x Bumi"`) |
+| `periode_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Nilai ramah periode rotasi (misal: `"24,6 jam"`) |
+| `subteks_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks rotasi (misal: `"1 Sol (Mars)"`) |
+| `periode_orbit` | `TEXT` | `NOT NULL DEFAULT ''` | Nilai ramah periode revolusi orbit (misal: `"687 hari"`) |
+| `subteks_orbit` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks periode orbit (misal: `"1,88 tahun Bumi"`) |
+| `kemiringan_sumbu` | `TEXT` | `NOT NULL DEFAULT ''` | Derajat kemiringan sumbu rotasi (misal: `"25,2°"`) |
+| `suhu_rata_c` | `TEXT` | `NOT NULL DEFAULT ''` | Nilai utama suhu permukaan (misal: `"-63°C"`) |
+| `rentang_suhu` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks rentang suhu ekstrem (misal: `"-140°C s/d 20°C"`) |
+| `usia_planet` | `TEXT` | `NOT NULL DEFAULT ''` | Nilai estimasi usia astronomis (misal: `"~4,5 Miliar Tahun"`) |
+| `subteks_usia` | `TEXT` | `NOT NULL DEFAULT ''` | Subteks usia (misal: `"Terbentuk bersama Tata Surya"`) |
+| `judul_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Judul bagian rotasi & sumbu (misal: `"Mirip Ritme Bumi"`) |
+| `deskripsi_rotasi` | `TEXT` | `NOT NULL DEFAULT ''` | Penjelasan dinamika rotasi & pergantian siang-malam |
+| `deskripsi_materi` | `TEXT` | `NOT NULL DEFAULT ''` | Teks ringkasan utama materi kurikulum sains planet |
 | `is_active` | `BOOLEAN` | `NOT NULL DEFAULT true` | Status visibilitas planet di modul pemain |
-| `updated_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Waktu pembaruan terakhir (dipakai widget Dashboard) |
+| `updated_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Waktu pembaruan terakhir |
+
+> **Catatan Pembersihan Skema 3D:** Kolom visual usang (`aset_model_url`, `tekstur_url`, `warna_atmosfer_hex`, `skala_visual`, `batas_zona_radius`, `kecepatan_jelajah_nyaman`) serta kolom duplikat (`urutan_orbit`, `ringkasan_cepat`, `sumber_referensi`) telah dihapus dari skema aktif karena planet dirender penuh secara prosedural (Procedural 3D Shader) dan tampilan publik PLY-02 hanya membutuhkan 1 kotak ringkasan utama.
 
 ### 3.3 `public.ships` (Master Pesawat Hanggar / Target Ekonomi Poin)
 | Kolom | Tipe Data | Constraint / Default | Keterangan |
@@ -155,24 +146,24 @@ Berikut adalah skema aktual PostgreSQL di `admin_structure.sql` yang disinkronka
 | `aset_model_url` | `TEXT` | `NOT NULL` | Path model 3D pesawat |
 | `deskripsi` | `TEXT` | `NOT NULL` | Deskripsi pesawat |
 
-### 3.4 `public.history_events` (Linimasa Sejarah & POI)
+### 3.4 `public.history_events` (Linimasa Sejarah & POI — Skema Bersih PLY-03 & PLY-04)
 | Kolom | Tipe Data | Constraint / Default | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `event_id` | `UUID` | `PRIMARY KEY DEFAULT gen_random_uuid()` | ID unik peristiwa |
 | `planet_id` | `TEXT` | `NOT NULL REFERENCES public.planets(planet_id) ON DELETE CASCADE` | Relasi ke planet |
 | `era_label` | `TEXT` | `NOT NULL DEFAULT 'Sejarah & Bentang Alam'` | 6 Zaman Baku Bumi atau topik bahasan planet lain |
 | `tahun_kejadian` | `INT` | `NOT NULL` | Tahun kejadian (negatif untuk SM / prasejarah) |
-| `kategori_poi` | `TEXT` | `NOT NULL DEFAULT 'Titik Observasi & Sejarah'` | Kategori pengamatan/sejarah (mendukung kategori deskriptif kaya seperti `Kawah Tumbukan & Kaldera Terbesar`, `Situs Geologi Purba`, dll.) |
-| `judul` | `TEXT` | `NOT NULL` | Judul singkat kartu daftar (List Card) |
-| `ringkasan_singkat` | `TEXT` | `NOT NULL DEFAULT ''` | Ringkasan 1 kalimat untuk tampilan List Card |
-| `nama_wahana` | `TEXT` | Nullable | Wahana antariksa, ekspedisi, institusi, atau tokoh terkait untuk Modal Detail PLY-04 (misal: `"Mariner 10 & MESSENGER (NASA)"`, `"Sir Edmund Hillary & Tenzing Norgay"`) |
-| `karakteristik_fisik` | `TEXT` | `NOT NULL DEFAULT ''` | Fakta karakteristik fisik, dimensi, ketinggian/kedalaman, atau lokasi spesifik PLY-04 (misal: `"Belahan Utara Merkurius • Diameter 1.550 km"`, `"Pegunungan Himalaya, Nepal/Tibet • Ketinggian 8.848,86 mdpl"`) |
-| `deskripsi` | `TEXT` | `NOT NULL` | Penjelasan lengkap naratif untuk Modal Detail PLY-04 |
+| `kategori_poi` | `TEXT` | `NOT NULL DEFAULT 'Titik Observasi & Sejarah'` | Kategori pengamatan/sejarah deskriptif kaya (`Kawah Tumbukan & Kaldera Terbesar`, dll.) |
+| `judul` | `TEXT` | `NOT NULL` | Judul singkat kartu daftar (List Card PLY-03) |
+| `ringkasan_singkat` | `TEXT` | `NOT NULL DEFAULT ''` | Ringkasan 1 kalimat untuk tampilan List Card PLY-03 |
+| `nama_wahana` | `TEXT` | Nullable | Wahana antariksa, ekspedisi, institusi, atau tokoh terkait untuk Modal Detail PLY-04 |
+| `karakteristik_fisik` | `TEXT` | `NOT NULL DEFAULT ''` | Karakteristik fisik, dimensi, atau lokasi spesifik PLY-04 |
+| `deskripsi` | `TEXT` | `NOT NULL` | Penjelasan naratif komprehensif untuk Modal Detail PLY-04 |
 | `gambar_url` | `TEXT` | `DEFAULT ''`, nullable | URL foto/ilustrasi peristiwa |
-| `koordinat_lat` | `NUMERIC` | Nullable, `DEFAULT 0`, `CHECK (koordinat_lat IS NULL OR (koordinat_lat BETWEEN -90 AND 90))` | Lintang opsional |
-| `koordinat_lng` | `NUMERIC` | Nullable, `DEFAULT 0`, `CHECK (koordinat_lng IS NULL OR (koordinat_lng BETWEEN -180 AND 180))` | Bujur opsional |
 | `sumber_referensi` | `TEXT` | `DEFAULT ''`, nullable | Sumber referensi ilmiah |
 | `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Timestamp pembuatan |
+
+> **Catatan Penempatan 3D Pin POI:** Kolom `koordinat_lat` dan `koordinat_lng` telah dihapus dari basis data. Penempatan pin POI pada permukaan bola 3D di kanvas kini menggunakan algoritma matematis Fibonacci Sphere yang terdistribusi secara presisi dan estetis.
 
 - **Indeks:** `idx_history_planet_year ON public.history_events (planet_id, tahun_kejadian)`
 
@@ -251,7 +242,7 @@ Berikut adalah skema aktual PostgreSQL di `admin_structure.sql` yang disinkronka
 - **Quick Search Helper Banner:** Muncul saat Admin mengetik di Search Bar Header, menampilkan jumlah planet aktif yang cocok dan tautan cepat ke `/admin/planets`, `/admin/history`, serta `/admin/quizzes`.
 - **Widget 1 — Validator Ekonomi Poin & Kesiapan Gamifikasi:**
   - Menghitung otomatis `SUM(bobot_poin)` dari `public.questions` **khusus untuk planet berstatus `is_active !== false`**.
-  - Membandingkan nilai tersebut terhadap target **`TARGET_HANGAR_POINTS = 1.000 Poin`** (`300p Orion Glider + 700p Nova Voyager`; sedangkan Astra Scout gratis `0p`). *(Catatan: pada dataset seed penuh 8 planet aktif, total poin kuis tersedia mencapai 1.600 poin sehingga melebihi ambang minimal 1.000 poin).*
+  - Membandingkan nilai tersebut terhadap target dinamis dari basis data (**`SUM(harga_poin)` dari tabel `public.ships`**, yaitu `1.000 Poin` dari `300p Orion Glider + 700p Nova Voyager`; Astra Scout gratis `0p`). Nilai ini dibaca secara dinamis tanpa hardcode. *(Catatan: pada dataset seed penuh 8 planet aktif, total poin kuis tersedia mencapai 1.600 poin sehingga melebihi ambang minimal 1.000 poin).*
   - Status **Hijau (`>= 1.000`)**: *"Ekonomi Seimbang: Total {X} Poin tersedia di planet aktif, cukup untuk membuka seluruh pesawat Hanggar."*
   - Status **Kuning (`< 1.000`)**: *"Perhatian: Total poin di planet aktif hanya {X} Poin, kurang dari 1.000 Poin untuk membuka semua pesawat."* + tombol CTA **`Tambah Bobot Soal`** → `/admin/quizzes`.
   - Dilengkapi **Progress Bar** persentase (`0–100%`) terhadap `1.000 Poin`.
@@ -288,36 +279,24 @@ Berikut adalah skema aktual PostgreSQL di `admin_structure.sql` yang disinkronka
       6. *Usia Planet:* nilai `usia_planet` + `subteks_usia`.
     - **Callout Dinamika Rotasi:** Judul dinamis (`judul_rotasi`) dan penjelasan komprehensif rotasi & musim (`deskripsi_rotasi`).
     - Deskripsi materi komprehensif (`deskripsi_materi`) dan rujukan ilmiah (`sumber_referensi`).
-  - **Form Edit Fields & Validasi Eksplisit:**
+  - **Form Edit Fields & Validasi Eksplisit (Bebas Kolom Mubazir 3D):**
     - Toggle `is_active` (terkunci aktif jika `planet_id === 'earth'`).
-    - `planet_id` (disabled / terkunci).
-    - `nama` (wajib tidak kosong).
-    - `kategori_planet` (`TERRESTRIAL`, `GAS_GIANT`, `ICE_GIANT`).
-    - `urutan_orbit` (integer `>= 1`, dicek di client agar tidak bentrok dengan planet lain + unique constraint DB).
-    - `diameter_km` (`> 0`).
-    - `rotation_period_hours` (`!== 0`, negatif diizinkan untuk retrograde).
-    - `orbital_period_days` (`> 0`).
-    - `axial_tilt_deg` (angka valid, boleh `0`).
-    - `warna_atmosfer_hex` (color picker + input teks hex, default `#38bdf8`).
-    - **12 Kolom Katalog Pengamatan & Sains (`PLY-02`):**
-      - `urutan_planet`: Label urutan posisi orbit (misal: `"Planet ke-3 dari Matahari"`).
-      - `perbandingan_bumi`: Rasio perbandingan ukuran terhadap Bumi (misal: `"1.00x ukuran Bumi (Dasar Perbandingan)"`).
-      - `periode_rotasi`: Durasi rotasi ramah siswa (misal: `"23 jam 56 menit"`).
-      - `subteks_rotasi`: Arah atau dinamika rotasi (misal: `"Arah Barat ke Timur (Normal)"`).
-      - `periode_orbit`: Durasi revolusi ramah siswa (misal: `"365,25 hari"`).
-      - `subteks_orbit`: Kecepatan orbit rata-rata (misal: `"Kecepatan rata-rata 29,78 km/s"`).
-      - `kemiringan_sumbu`: Nilai derajat kemiringan (misal: `"23,44°"`).
-      - `rentang_suhu`: Suhu minimum s/d maksimum permukaan (misal: `"-88°C s/d +58°C"`).
-      - `usia_planet`: Estimasi usia astronomis (misal: `"4,54 Miliar Tahun"`).
-      - `subteks_usia`: Subteks stabilitas usia (misal: `"Terbentuk bersamaan dengan Tata Surya"`).
-      - `judul_rotasi`: Judul bagian rotasi `PLY-02` (misal: `"Dinamika Rotasi & Pergantian Siang-Malam"`).
-      - `deskripsi_rotasi`: Penjelasan sains tentang pergantian hari & musim akibat rotasi.
-    - `ringkasan_cepat` (teks sambutan pembuka saat pesawat tiba).
-    - `deskripsi_materi` (penjelasan lengkap materi sains planet, wajib diisi).
-    - `sumber_referensi` (rujukan ilmiah, misal: `"NASA Planetary Fact Sheet"`).
-    - `skala_visual` (`> 0`).
-    - `batas_zona_radius` (`> 0`).
-    - `kecepatan_jelajah_nyaman` (`> 0`).
+    - **Bagian 1: Identitas & Klasifikasi Planet:**
+      - `planet_id` (disabled / terkunci).
+      - `nama` (wajib tidak kosong).
+      - `kategori_planet` (`TERRESTRIAL`, `GAS_GIANT`, `ICE_GIANT`).
+      - `urutan_planet` (bilangan bulat `1–8`, urutan tunggal tanpa duplikasi `urutan_orbit`).
+    - **Bagian 2: Ringkasan Edukasi Utama (`PLY-02`):**
+      - `deskripsi_materi` (teks ringkasan utama materi kurikulum sains planet, wajib diisi).
+    - **Bagian 3: 6 Parameter Ilmiah & Rotasi Sumbu (`PLY-02`):**
+      - 1. Diameter: `diameter_km` (`> 0`) & `perbandingan_bumi` (misal: `"~0,53 x Bumi"`).
+      - 2. Rotasi: `periode_rotasi` (misal: `"24,6 jam"`) & `subteks_rotasi` (misal: `"1 Sol (Mars)"`).
+      - 3. Orbit: `periode_orbit` (misal: `"687 hari"`) & `subteks_orbit` (misal: `"1,88 tahun Bumi"`).
+      - 4. Kemiringan Sumbu: `kemiringan_sumbu` (misal: `"25,2°"`).
+      - 5. Suhu: `suhu_rata_c` (misal: `"-63°C"`) & `rentang_suhu` (misal: `"-140°C s/d 20°C"`).
+      - 6. Usia Planet: `usia_planet` (misal: `"~4,5 Miliar Tahun"`) & `subteks_usia` (misal: `"Terbentuk bersama Tata Surya"`).
+      - Dinamika Poros: `judul_rotasi` (misal: `"Mirip Ritme Bumi"`) & `deskripsi_rotasi` (penjelasan rotasi & musim).
+    - **Catatan Penghapusan Bagian 3D:** Bagian pengaturan model 3D & navigasi (`aset_model_url`, `tekstur_url`, `warna_atmosfer_hex`, `skala_visual`, `batas_zona_radius`, `kecepatan_jelajah_nyaman`) telah dibersihkan sepenuhnya dari form Admin.
 
 ### 4.5 Halaman Sejarah & POI (`/admin/history` — `src/app/admin/(dashboard)/history/page.tsx`)
 - **Hak Akses Penuh:** Tambah (`+ Tambah Peristiwa`), Ubah (`Ubah Data`), Hapus (`Trash2` di baris tabel maupun tombol `Hapus Peristiwa` di modal edit → memicu **Modal Konfirmasi Hapus Custom**), Export (CSV & JSON), dan Import Massal (`BulkImportModal`).
@@ -357,7 +336,7 @@ Berikut adalah skema aktual PostgreSQL di `admin_structure.sql` yang disinkronka
   - `gambar_url`: Opsional, input URL atau tombol `Upload Foto` ke bucket `astrosphere-assets/history/` (`.jpg`, `.jpeg`, `.png`, `.webp`, maks **5 MB**) + live thumbnail & tombol hapus gambar.
   - `deskripsi`: **Wajib** (penjelasan lengkap untuk Modal Detail `PLY-04`).
   - `sumber_referensi`: Opsional.
-  - *(Catatan internal payload: `koordinat_lat` dan `koordinat_lng` tidak ditampilkan sebagai field form Admin agar fokus pada arsitektur `List → Detail`; nilai yang dikirim ke DB dijaga valid dalam rentang `-90..90` & `-180..180` atau default `0`).*
+  - *(Catatan koordinat: Kolom `koordinat_lat` dan `koordinat_lng` telah dihapus sepenuhnya dari basis data; pin POI 3D pada kanvas kini diposisikan otomatis dengan algoritma Fibonacci Sphere).*
 - **Export & Import Massal (`BulkImportModal`):**
   - Export CSV (UTF-8 BOM, RFC-4180) & JSON mengikuti hasil filter aktif (mencakup kolom `karakteristik_fisik`).
   - Import Massal mendukung `.csv` (delimiter `,` atau `;`) dan `.json` dengan template siap unduh; kolom: `planet_id, era_label, tahun_kejadian, kategori_poi, judul, ringkasan_singkat, nama_wahana, karakteristik_fisik, deskripsi, gambar_url, sumber_referensi, [event_id opsional]`. Mendukung alias nama planet Indonesia/Inggris; jika `event_id` UUID valid terisi → `upsert`, jika kosong → `insert`.

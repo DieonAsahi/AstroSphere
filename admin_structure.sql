@@ -86,14 +86,32 @@ BEGIN
   END IF;
 END $$;
 
--- 2.2 Tabel Master Planet Tata Surya (A02 - Data Planet)
--- Blok Migrasi Aman untuk Kolom Baru & Penyesuaian Constraint Planets
-DO $$
+-- 2.2 Tabel Master Planet Tata Surya (A02 - Data Planet Sesuai PLY-02 & Procedural 3D Shader)
+-- Blok Migrasi Aman untuk Kolom Baru & Pembersihan Kolom Usang
+DO $
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'planets'
   ) THEN
+    -- Hapus kolom-kolom visual 3D & parameter lama yang tidak dipakai di PLY-02
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS urutan_orbit CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS rotation_period_hours CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS orbital_period_days CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS axial_tilt_deg CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS ringkasan_cepat CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS sumber_referensi CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS aset_model_url CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS tekstur_url CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS warna_atmosfer_hex CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS skala_visual CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS batas_zona_radius CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS kecepatan_jelajah_nyaman CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS jarak_matahari_au CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS gravitasi_ms2 CASCADE;
+    ALTER TABLE public.planets DROP COLUMN IF EXISTS jumlah_satelit CASCADE;
+
+    -- Tambahkan kolom-kolom resmi PLY-02 jika belum ada
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS urutan_planet INT NOT NULL DEFAULT 1;
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS perbandingan_bumi TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS periode_rotasi TEXT NOT NULL DEFAULT '';
@@ -101,77 +119,65 @@ BEGIN
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS periode_orbit TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS subteks_orbit TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS kemiringan_sumbu TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS suhu_rata_c TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS rentang_suhu TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS usia_planet TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS subteks_usia TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS judul_rotasi TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS deskripsi_rotasi TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS ringkasan_cepat TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS deskripsi_materi TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS sumber_referensi TEXT DEFAULT 'NASA Planetary Fact Sheet';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+
     BEGIN
+      ALTER TABLE public.planets DROP CONSTRAINT IF EXISTS planets_urutan_planet_check;
+      ALTER TABLE public.planets ADD CONSTRAINT planets_urutan_planet_check CHECK (urutan_planet >= 1);
       ALTER TABLE public.planets DROP CONSTRAINT IF EXISTS planets_urutan_orbit_check;
-      ALTER TABLE public.planets ADD CONSTRAINT planets_urutan_orbit_check CHECK (urutan_orbit >= 1);
     EXCEPTION WHEN others THEN
       NULL;
     END;
   END IF;
-END $$;
+END $;
 
 CREATE TABLE IF NOT EXISTS public.planets (
   planet_id TEXT PRIMARY KEY,
-  urutan_orbit INT NOT NULL UNIQUE CHECK (urutan_orbit >= 1),
-  urutan_planet INT NOT NULL DEFAULT 1,
+  urutan_planet INT NOT NULL UNIQUE CHECK (urutan_planet >= 1),
   nama TEXT NOT NULL,
   kategori_planet TEXT NOT NULL DEFAULT 'TERRESTRIAL' CHECK (kategori_planet IN ('TERRESTRIAL', 'GAS_GIANT', 'ICE_GIANT')),
   diameter_km NUMERIC NOT NULL,
   perbandingan_bumi TEXT NOT NULL DEFAULT '',
-  rotation_period_hours NUMERIC NOT NULL,
   periode_rotasi TEXT NOT NULL DEFAULT '',
   subteks_rotasi TEXT NOT NULL DEFAULT '',
-  orbital_period_days NUMERIC NOT NULL,
   periode_orbit TEXT NOT NULL DEFAULT '',
   subteks_orbit TEXT NOT NULL DEFAULT '',
-  axial_tilt_deg NUMERIC NOT NULL DEFAULT 0,
   kemiringan_sumbu TEXT NOT NULL DEFAULT '',
+  suhu_rata_c TEXT NOT NULL DEFAULT '',
   rentang_suhu TEXT NOT NULL DEFAULT '',
   usia_planet TEXT NOT NULL DEFAULT '',
   subteks_usia TEXT NOT NULL DEFAULT '',
   judul_rotasi TEXT NOT NULL DEFAULT '',
   deskripsi_rotasi TEXT NOT NULL DEFAULT '',
   deskripsi_materi TEXT NOT NULL DEFAULT '',
-  ringkasan_cepat TEXT NOT NULL DEFAULT '',
-  sumber_referensi TEXT DEFAULT 'NASA Planetary Fact Sheet',
-  aset_model_url TEXT NOT NULL DEFAULT '/models/planets/earth.glb',
-  tekstur_url TEXT,
-  warna_atmosfer_hex TEXT NOT NULL DEFAULT '#38bdf8',
-  skala_visual NUMERIC NOT NULL DEFAULT 1.0,
-  batas_zona_radius NUMERIC NOT NULL DEFAULT 100.0,
-  kecepatan_jelajah_nyaman NUMERIC NOT NULL DEFAULT 15.0,
   is_active BOOLEAN NOT NULL DEFAULT true,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2.3 Tabel Peristiwa Sejarah & Point of Interest (POI) (A03 - Sejarah & POI)
--- Blok Migrasi Aman untuk Gambar URL, Kolom Baru, & Fleksibilitas Koordinat
-DO $$
+-- 2.3 Tabel Peristiwa Sejarah & Point of Interest (POI) (A03 - Sesuai PLY-03 & PLY-04)
+-- Blok Migrasi Aman untuk Kolom Baru & Pembersihan Koordinat Usang
+DO $
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables 
     WHERE table_schema = 'public' AND table_name = 'history_events'
   ) THEN
-    -- Normalisasi koordinat longitude lama jika ada nilai > 180 atau < -180
-    UPDATE public.history_events SET koordinat_lng = COALESCE(koordinat_lng, 0);
-    UPDATE public.history_events SET koordinat_lat = COALESCE(koordinat_lat, 0);
-    UPDATE public.history_events SET koordinat_lng = koordinat_lng - 360 WHERE koordinat_lng > 180;
-    UPDATE public.history_events SET koordinat_lng = koordinat_lng + 360 WHERE koordinat_lng < -180;
+    -- Hapus kolom koordinat yang tidak dipakai di PLY-03 & PLY-04
+    ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lat_check;
+    ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lng_check;
+    ALTER TABLE public.history_events DROP COLUMN IF EXISTS koordinat_lat CASCADE;
+    ALTER TABLE public.history_events DROP COLUMN IF EXISTS koordinat_lng CASCADE;
 
     -- Tambahkan kolom era_label dan sumber_referensi jika belum ada
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS era_label TEXT NOT NULL DEFAULT 'Sejarah & Bentang Alam';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS sumber_referensi TEXT DEFAULT '';
-    
-    -- Tambahkan kolom gambar_url jika belum ada
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS gambar_url TEXT DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS ringkasan_singkat TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS karakteristik_fisik TEXT NOT NULL DEFAULT '';
@@ -179,18 +185,8 @@ BEGIN
     -- Lepas constraint check kategori lama agar mendukung penamaan kategori deskriptif
     ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_kategori_poi_check;
     ALTER TABLE public.history_events ALTER COLUMN kategori_poi SET DEFAULT 'Titik Observasi & Sejarah';
-
-    -- Jadikan koordinat_lat dan koordinat_lng opsional / nullable dengan default 0
-    ALTER TABLE public.history_events ALTER COLUMN koordinat_lat DROP NOT NULL;
-    ALTER TABLE public.history_events ALTER COLUMN koordinat_lng DROP NOT NULL;
-    ALTER TABLE public.history_events ALTER COLUMN koordinat_lat SET DEFAULT 0;
-    ALTER TABLE public.history_events ALTER COLUMN koordinat_lng SET DEFAULT 0;
-
-    -- Lepas constraint lama jika ada yang membatasi nilai secara tidak tepat
-    ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lng_check;
-    ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lat_check;
   END IF;
-END $$;
+END $;
 
 CREATE TABLE IF NOT EXISTS public.history_events (
   event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -204,23 +200,9 @@ CREATE TABLE IF NOT EXISTS public.history_events (
   karakteristik_fisik TEXT NOT NULL DEFAULT '',
   deskripsi TEXT NOT NULL,
   gambar_url TEXT DEFAULT '',
-  koordinat_lat NUMERIC DEFAULT 0,
-  koordinat_lng NUMERIC DEFAULT 0,
   sumber_referensi TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Terapkan constraint validasi koordinat astronomis yang fleksibel (bisa NULL atau valid)
-DO $$
-BEGIN
-  ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lat_check;
-  ALTER TABLE public.history_events ADD CONSTRAINT history_events_koordinat_lat_check CHECK (koordinat_lat IS NULL OR (koordinat_lat BETWEEN -90 AND 90));
-
-  ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lng_check;
-  ALTER TABLE public.history_events ADD CONSTRAINT history_events_koordinat_lng_check CHECK (koordinat_lng IS NULL OR (koordinat_lng BETWEEN -180 AND 180));
-EXCEPTION WHEN others THEN
-  NULL;
-END $$;
 
 CREATE INDEX IF NOT EXISTS idx_history_planet_year 
   ON public.history_events (planet_id, tahun_kejadian);

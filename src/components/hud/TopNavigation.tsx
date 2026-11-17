@@ -60,8 +60,8 @@ export function TopNavigation({ onOpenHangar, onOpenCloudSave }: TopNavigationPr
     try {
       const { data, error } = await supabase
         .from('planets')
-        .select('planet_id, nama, urutan_orbit, is_active')
-        .order('urutan_orbit', { ascending: true });
+        .select('planet_id, nama, urutan_planet, is_active')
+        .order('urutan_planet', { ascending: true });
 
       if (error) throw error;
       if (data && data.length > 0) {

@@ -21,7 +21,7 @@ import {
 import { supabase } from '../../../lib/supabase/client';
 import { formatSupabaseError } from '../../../lib/supabase/adminAuth';
 
-const TARGET_HANGAR_POINTS = 1000; // 300 Orion Glider + 700 Nova Voyager (PRD Bagian 9)
+const DEFAULT_TARGET_HANGAR_POINTS = 1000;
 
 interface DashboardStats {
   planetsTotal: number;
@@ -84,6 +84,7 @@ export default function AdminDashboardPage() {
     questions: 0,
   });
   const [activeTotalQuizPoints, setActiveTotalQuizPoints] = useState<number>(0);
+  const [targetHangarPoints, setTargetHangarPoints] = useState<number>(DEFAULT_TARGET_HANGAR_POINTS);
   const [incompletePlanets, setIncompletePlanets] = useState<IncompletePlanetAlert[]>([]);
   const [activePlanetsList, setActivePlanetsList] = useState<Array<{ planet_id: string; nama: string }>>([]);
   const [recentUpdates, setRecentUpdates] = useState<RecentUpdateItem[]>([]);
@@ -91,11 +92,11 @@ export default function AdminDashboardPage() {
   const loadDashboardStats = useCallback(async () => {
     setError(null);
     try {
-      const [planetsRes, historyRes, phenomenaRes, quizRes] = await Promise.all([
+      const [planetsRes, historyRes, phenomenaRes, quizRes, shipsRes] = await Promise.all([
         supabase
           .from('planets')
           .select('planet_id, nama, is_active, updated_at')
-          .order('urutan_orbit', { ascending: true }),
+          .order('urutan_planet', { ascending: true }),
         supabase
           .from('history_events')
           .select('event_id, planet_id, judul, created_at'),
@@ -105,6 +106,9 @@ export default function AdminDashboardPage() {
         supabase
           .from('questions')
           .select('question_id, planet_id, soal, bobot_poin, created_at'),
+        supabase
+          .from('ships')
+          .select('ship_id, nama, harga_poin'),
       ]);
 
       if (planetsRes.error) throw planetsRes.error;
@@ -116,6 +120,14 @@ export default function AdminDashboardPage() {
       const historyData = historyRes.data || [];
       const phenomenaData = phenomenaRes.data || [];
       const quizData = quizRes.data || [];
+      const shipsData = shipsRes.data || [];
+      const totalRequiredHangarPoints = shipsData.reduce(
+        (sum, s) => sum + (Number(s.harga_poin) || 0),
+        0
+      );
+      if (totalRequiredHangarPoints > 0) {
+        setTargetHangarPoints(totalRequiredHangarPoints);
+      }
 
       const activePlanets = planetsData.filter((p) => p.is_active !== false);
       const activePlanetIdSet = new Set(activePlanets.map((p) => p.planet_id));
@@ -405,10 +417,11 @@ export default function AdminDashboardPage() {
     );
   }, [activePlanetsList, trimmedQuery]);
 
-  const isEconomyBalanced = activeTotalQuizPoints >= TARGET_HANGAR_POINTS;
+  const effectiveTargetPoints = targetHangarPoints > 0 ? targetHangarPoints : DEFAULT_TARGET_HANGAR_POINTS;
+  const isEconomyBalanced = activeTotalQuizPoints >= effectiveTargetPoints;
   const economyPercent = Math.min(
     100,
-    Math.round((activeTotalQuizPoints / TARGET_HANGAR_POINTS) * 100)
+    Math.round((activeTotalQuizPoints / effectiveTargetPoints) * 100)
   );
   const hasInactiveModules = stats.planetsInactive > 0 || stats.phenomenaInactive > 0;
 
@@ -577,7 +590,7 @@ export default function AdminDashboardPage() {
                         : 'bg-white border-amber-300 text-amber-800'
                     }`}
                   >
-                    {activeTotalQuizPoints.toLocaleString('id-ID')} / 1.000 Poin
+                    {activeTotalQuizPoints.toLocaleString('id-ID')} / {effectiveTargetPoints.toLocaleString('id-ID')} Poin
                   </span>
                 </div>
                 <p
@@ -587,14 +600,14 @@ export default function AdminDashboardPage() {
                 >
                   {isEconomyBalanced
                     ? `Ekonomi Seimbang: Total ${activeTotalQuizPoints.toLocaleString('id-ID')} Poin tersedia di planet aktif, cukup untuk membuka seluruh pesawat Hanggar.`
-                    : `Perhatian: Total poin di planet aktif hanya ${activeTotalQuizPoints.toLocaleString('id-ID')} Poin, kurang dari 1.000 Poin untuk membuka semua pesawat.`}
+                    : `Perhatian: Total poin di planet aktif hanya ${activeTotalQuizPoints.toLocaleString('id-ID')} Poin, kurang dari ${effectiveTargetPoints.toLocaleString('id-ID')} Poin untuk membuka semua pesawat.`}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-[11px] text-slate-600 bg-white/90 border border-slate-200/80 rounded-lg px-2.5 py-1 font-medium">
-                Target: 300p (Orion) + 700p (Nova)
+                Target Hanggar: {effectiveTargetPoints.toLocaleString('id-ID')} Poin
               </span>
               {!isEconomyBalanced && (
                 <Link
