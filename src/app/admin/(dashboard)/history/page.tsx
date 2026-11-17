@@ -18,7 +18,6 @@ import {
   Eye,
   FileJson,
   FileSpreadsheet,
-  Rocket,
   History as HistoryIcon,
   Image as ImageIcon,
   Loader2,
@@ -123,12 +122,6 @@ function formatYearDisplay(year: number): string {
   return `${year} M`;
 }
 
-const VALID_POI_CATEGORIES: PoiCategory[] = [
-  'OBSERVATION',
-  'SURFACE_LANDING',
-  'ORBITAL_FLYBY',
-];
-
 const PLANET_ALIAS_MAP: Record<string, string> = {
   mercury: 'mercury',
   merkurius: 'mercury',
@@ -153,6 +146,7 @@ const HISTORY_EXPORT_HEADERS = [
   'judul',
   'ringkasan_singkat',
   'nama_wahana',
+  'karakteristik_fisik',
   'deskripsi',
   'gambar_url',
   'sumber_referensi',
@@ -167,6 +161,7 @@ interface ValidatedHistoryImportRow {
   judul: string;
   ringkasan_singkat: string;
   nama_wahana: string | null;
+  karakteristik_fisik: string;
   deskripsi: string;
   gambar_url: string;
   koordinat_lat: number;
@@ -178,10 +173,11 @@ const DEFAULT_EVENT: Partial<HistoryEvent> = {
   planet_id: 'earth',
   era_label: EARTH_ERA_OPTIONS[0],
   tahun_kejadian: new Date().getFullYear(),
-  kategori_poi: 'OBSERVATION',
+  kategori_poi: 'Titik Observasi & Sejarah',
   judul: '',
   ringkasan_singkat: '',
   nama_wahana: '',
+  karakteristik_fisik: '',
   deskripsi: '',
   gambar_url: '',
   sumber_referensi: '',
@@ -285,6 +281,7 @@ export default function AdminHistoryPage() {
         (ev.ringkasan_singkat && ev.ringkasan_singkat.toLowerCase().includes(q)) ||
         (ev.era_label && ev.era_label.toLowerCase().includes(q)) ||
         (ev.nama_wahana && ev.nama_wahana.toLowerCase().includes(q)) ||
+        (ev.karakteristik_fisik && ev.karakteristik_fisik.toLowerCase().includes(q)) ||
         (ev.deskripsi && ev.deskripsi.toLowerCase().includes(q)) ||
         (ev.sumber_referensi && ev.sumber_referensi.toLowerCase().includes(q)) ||
         ev.planet_id.toLowerCase().includes(q);
@@ -458,10 +455,11 @@ export default function AdminHistoryPage() {
             planet_id: resolvedPlanetId,
             era_label: (formData.era_label || '').trim() || defaultEraForPlanet,
             tahun_kejadian: parsedYear,
-            kategori_poi: (formData.kategori_poi || 'OBSERVATION') as PoiCategory,
+            kategori_poi: (formData.kategori_poi || 'Titik Observasi & Sejarah') as PoiCategory,
             judul: formData.judul.trim(),
             ringkasan_singkat: formData.ringkasan_singkat.trim(),
             nama_wahana: formData.nama_wahana?.trim() || null,
+            karakteristik_fisik: formData.karakteristik_fisik?.trim() || '',
             deskripsi: formData.deskripsi.trim(),
             gambar_url: formData.gambar_url?.trim() || '',
             koordinat_lat: lat,
@@ -489,13 +487,17 @@ export default function AdminHistoryPage() {
                 ? formData.era_label.trim() || defaultEraForPlanet
                 : editingEvent.era_label || defaultEraForPlanet,
             tahun_kejadian: parsedYear,
-            kategori_poi: (formData.kategori_poi || editingEvent.kategori_poi || 'OBSERVATION') as PoiCategory,
+            kategori_poi: (formData.kategori_poi || editingEvent.kategori_poi || 'Titik Observasi & Sejarah') as PoiCategory,
             judul: formData.judul.trim(),
             ringkasan_singkat: formData.ringkasan_singkat.trim(),
             nama_wahana:
               formData.nama_wahana !== undefined
                 ? formData.nama_wahana?.trim() || null
                 : editingEvent.nama_wahana,
+            karakteristik_fisik:
+              formData.karakteristik_fisik !== undefined
+                ? formData.karakteristik_fisik?.trim() || ''
+                : (editingEvent.karakteristik_fisik || ''),
             deskripsi: formData.deskripsi.trim(),
             gambar_url:
               formData.gambar_url !== undefined
@@ -592,6 +594,7 @@ export default function AdminHistoryPage() {
       judul: ev.judul,
       ringkasan_singkat: ev.ringkasan_singkat || '',
       nama_wahana: ev.nama_wahana || '',
+      karakteristik_fisik: ev.karakteristik_fisik || '',
       deskripsi: ev.deskripsi,
       gambar_url: ev.gambar_url || '',
       sumber_referensi: ev.sumber_referensi || '',
@@ -621,6 +624,7 @@ export default function AdminHistoryPage() {
       judul: ev.judul,
       ringkasan_singkat: ev.ringkasan_singkat || '',
       nama_wahana: ev.nama_wahana || '',
+      karakteristik_fisik: ev.karakteristik_fisik || '',
       deskripsi: ev.deskripsi,
       gambar_url: ev.gambar_url || '',
       sumber_referensi: ev.sumber_referensi || '',
@@ -640,11 +644,12 @@ export default function AdminHistoryPage() {
           event_id: '',
           planet_id: 'earth',
           era_label: 'Zaman Dinosaurus & Kapur',
-          tahun_kejadian: -6600,
-          kategori_poi: 'OBSERVATION',
+          tahun_kejadian: -66000000,
+          kategori_poi: 'Kawah Tumbukan & Kaldera Terbesar',
           judul: 'Kawah Asteroid Chicxulub',
           ringkasan_singkat: 'Kawah tumbukan raksasa yang mengakhiri era dinosaurus non-unggas di Bumi.',
-          nama_wahana: 'Semenanjung Yucatán, Meksiko • Diameter 180 km',
+          nama_wahana: 'Ekspedisi Geologi & Satelit',
+          karakteristik_fisik: 'Semenanjung Yucatán, Meksiko • Diameter 180 km',
           deskripsi:
             'Sekitar 66 juta tahun lalu, asteroid selebar 10–15 km menghantam Bumi dan membentuk Kawah Chicxulub serta memicu musim dingin global yang mengakhiri era dinosaurus non-unggas.',
           gambar_url: '/images/poi/earth-06-chicxulub.webp',
@@ -655,10 +660,11 @@ export default function AdminHistoryPage() {
           planet_id: 'earth',
           era_label: 'Zaman Modern (1500 – Sekarang)',
           tahun_kejadian: 1912,
-          kategori_poi: 'OBSERVATION',
+          kategori_poi: 'Pencapaian Manusia & Sejarah Dunia',
           judul: 'Tenggelamnya Kapal RMS Titanic',
           ringkasan_singkat: 'Pelayaran perdana kapal samudra terbesar yang menabrak gunung es Atlantik dan melahirkan hukum keselamatan maritim.',
-          nama_wahana: 'Samudra Atlantik Utara • Kedalaman 3.800 m',
+          nama_wahana: 'RMS Titanic (White Star Line)',
+          karakteristik_fisik: 'Samudra Atlantik Utara • Kedalaman 3.800 m',
           deskripsi:
             'Kapal uap penumpang termegah zamannya menabrak gunung es pada pelayaran perdana tahun 1912. Peristiwa ini mendorong pembentukan Konvensi Internasional Keselamatan Jiwa di Laut (SOLAS).',
           gambar_url: '/images/poi/earth-69-titanic.webp',
@@ -675,11 +681,12 @@ export default function AdminHistoryPage() {
         {
           planet_id: 'earth',
           era_label: 'Zaman Dinosaurus & Kapur',
-          tahun_kejadian: -6600,
-          kategori_poi: 'OBSERVATION',
+          tahun_kejadian: -66000000,
+          kategori_poi: 'Kawah Tumbukan & Kaldera Terbesar',
           judul: 'Kawah Asteroid Chicxulub',
           ringkasan_singkat: 'Kawah tumbukan raksasa yang mengakhiri era dinosaurus non-unggas di Bumi.',
-          nama_wahana: 'Semenanjung Yucatán, Meksiko • Diameter 180 km',
+          nama_wahana: 'Ekspedisi Geologi & Satelit',
+          karakteristik_fisik: 'Semenanjung Yucatán, Meksiko • Diameter 180 km',
           deskripsi:
             'Sekitar 66 juta tahun lalu, asteroid selebar 10–15 km menghantam Bumi dan membentuk Kawah Chicxulub serta memicu musim dingin global yang mengakhiri era dinosaurus non-unggas.',
           gambar_url: '/images/poi/earth-06-chicxulub.webp',
@@ -728,16 +735,8 @@ export default function AdminHistoryPage() {
         return;
       }
 
-      const rawKategori = String(raw.kategori_poi ?? '').trim().toUpperCase();
-      const kategori: PoiCategory = rawKategori
-        ? (rawKategori as PoiCategory)
-        : 'OBSERVATION';
-      if (!VALID_POI_CATEGORIES.includes(kategori)) {
-        errors.push(
-          `Baris ${rowNum}: kategori_poi "${rawKategori}" tidak valid (pilih: OBSERVATION, SURFACE_LANDING, atau ORBITAL_FLYBY).`,
-        );
-        return;
-      }
+      const rawKategori = String(raw.kategori_poi ?? '').trim();
+      const kategori: PoiCategory = rawKategori || 'Titik Observasi & Sejarah';
 
       const rawId = raw.event_id !== undefined && raw.event_id !== null ? String(raw.event_id).trim() : '';
       if (rawId && !isValidUuid(rawId)) {
@@ -754,6 +753,7 @@ export default function AdminHistoryPage() {
           : rawEra || 'Sejarah Geologi';
 
       const ringkasanSingkat = String(raw.ringkasan_singkat ?? '').trim();
+      const karakteristikFisik = String(raw.karakteristik_fisik ?? '').trim();
 
       const validated: ValidatedHistoryImportRow = {
         ...(rawId ? { event_id: rawId } : {}),
@@ -764,6 +764,7 @@ export default function AdminHistoryPage() {
         judul,
         ringkasan_singkat: ringkasanSingkat || deskripsi.slice(0, 140),
         nama_wahana: String(raw.nama_wahana ?? '').trim() || null,
+        karakteristik_fisik: karakteristikFisik,
         deskripsi,
         gambar_url: String(raw.gambar_url ?? '').trim(),
         koordinat_lat: 0,
@@ -1304,22 +1305,31 @@ export default function AdminHistoryPage() {
                   </select>
                 </div>
 
-                {/* Kategori Sejarah / Misi */}
+                {/* Kategori Peristiwa / POI */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Kategori Peristiwa / Misi
+                    Kategori Peristiwa / POI (PLY-04)
                   </label>
-                  <select
-                    value={formData.kategori_poi || 'OBSERVATION'}
+                  <input
+                    type="text"
+                    list="kategori-poi-suggestions"
+                    value={formData.kategori_poi || ''}
                     onChange={(e) =>
                       setFormData({ ...formData, kategori_poi: e.target.value as PoiCategory })
                     }
+                    placeholder="misal: Kawah Tumbukan & Kaldera Terbesar"
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
-                  >
-                    <option value="OBSERVATION">OBSERVATION — Bentang Alam &amp; Sejarah Peradaban</option>
+                  />
+                  <datalist id="kategori-poi-suggestions">
+                    <option value="OBSERVATION">OBSERVATION — Titik Observasi</option>
                     <option value="SURFACE_LANDING">SURFACE_LANDING — Pendaratan Permukaan</option>
                     <option value="ORBITAL_FLYBY">ORBITAL_FLYBY — Lintas Wahana / Orbit</option>
-                  </select>
+                    <option value="Kawah Tumbukan & Kaldera Terbesar" />
+                    <option value="Situs Geologi Purba & Pembentukan Bumi" />
+                    <option value="Struktur Batuan & Bentang Alam" />
+                    <option value="Pencapaian Manusia & Sejarah Dunia" />
+                    <option value="Titik Observasi & Sejarah" />
+                  </datalist>
                 </div>
 
                 {/* Babak / Era Sejarah / Topik Bahasan */}
@@ -1412,16 +1422,30 @@ export default function AdminHistoryPage() {
                 />
               </div>
 
-              {/* Fakta Lokasi, Tinggi & Ukuran (Modal Detail) */}
+              {/* Wahana / Tokoh / Ekspedisi Terkait (PLY-04 Metadata Baris 3) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Fakta Lokasi, Tinggi &amp; Ukuran (Modal Detail)
+                  Wahana / Tokoh / Ekspedisi Terkait (PLY-04)
                 </label>
                 <input
                   type="text"
                   value={formData.nama_wahana || ''}
                   onChange={(e) => setFormData({ ...formData, nama_wahana: e.target.value })}
-                  placeholder="misal: Perbatasan Nepal–Tibet • Puncak 8.848,86 m di atas permukaan laut"
+                  placeholder="misal: Mariner 10 & MESSENGER (NASA) / Sir Edmund Hillary & Tenzing Norgay"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              {/* Karakteristik Fisik / Dimensi / Lokasi (PLY-04 Metadata Baris 4) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Karakteristik Fisik / Dimensi / Lokasi (PLY-04)
+                </label>
+                <input
+                  type="text"
+                  value={formData.karakteristik_fisik || ''}
+                  onChange={(e) => setFormData({ ...formData, karakteristik_fisik: e.target.value })}
+                  placeholder="misal: Belahan Utara Merkurius • Diameter 1.550 km • Dikelilingi Pegunungan 2 km"
                   className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-600 focus:outline-none"
                 />
               </div>
@@ -1671,17 +1695,33 @@ export default function AdminHistoryPage() {
                           {(formData.judul || '').trim() || 'Judul Singkat Belum Diisi'}
                         </h4>
 
-                        {formData.nama_wahana?.trim() && (
-                          <div className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800/80 px-2.5 py-1.5 text-xs font-medium text-amber-300">
-                            <Rocket className="h-3.5 w-3.5 shrink-0" />
-                            <span>{formData.nama_wahana.trim()}</span>
+                        {/* 4 Baris Metadata Terstruktur (Sesuai Desain PLY-04) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-lg bg-slate-800/70 border border-slate-700/60 p-2.5">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">1. Kategori POI</p>
+                            <p className="text-cyan-300 font-medium mt-0.5">{formData.kategori_poi || 'Titik Observasi & Sejarah'}</p>
                           </div>
-                        )}
+                          <div className="rounded-lg bg-slate-800/70 border border-slate-700/60 p-2.5">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">2. Status / Era</p>
+                            <p className="text-indigo-300 font-medium mt-0.5">{(formData.era_label || '').trim() || 'Sejarah Geologi'}</p>
+                          </div>
+                          <div className="rounded-lg bg-slate-800/70 border border-slate-700/60 p-2.5">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">3. Wahana / Tokoh Terkait</p>
+                            <p className="text-amber-300 font-medium mt-0.5">{(formData.nama_wahana || '').trim() || '-'}</p>
+                          </div>
+                          <div className="rounded-lg bg-slate-800/70 border border-slate-700/60 p-2.5">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">4. Karakteristik Fisik / Lokasi</p>
+                            <p className="text-emerald-300 font-medium mt-0.5">{(formData.karakteristik_fisik || '').trim() || '-'}</p>
+                          </div>
+                        </div>
 
-                        <p className="text-xs sm:text-sm leading-relaxed text-slate-300 whitespace-pre-line">
-                          {(formData.deskripsi || '').trim() ||
-                            'Penjelasan lengkap sejarah, sains, dan dampaknya bagi peradaban akan tampil di modal detail ini.'}
-                        </p>
+                        <div className="space-y-1.5 pt-1">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Penjelasan Lengkap:</p>
+                          <p className="text-xs sm:text-sm leading-relaxed text-slate-300 whitespace-pre-line">
+                            {(formData.deskripsi || '').trim() ||
+                              'Penjelasan lengkap sejarah, sains, dan dampaknya bagi peradaban akan tampil di modal detail ini.'}
+                          </p>
+                        </div>
 
                         {formData.sumber_referensi?.trim() && (
                           <div className="pt-2.5 border-t border-slate-800 text-[11px] text-slate-400">
@@ -1783,7 +1823,7 @@ export default function AdminHistoryPage() {
         onClose={() => setImportModalOpen(false)}
         title="Import Massal Peristiwa Sejarah & POI"
         description="Unggah file JSON atau CSV untuk menambah peristiwa baru sekaligus atau memperbarui peristiwa berdasarkan event_id UUID."
-        columnsHint="planet_id, era_label, tahun_kejadian (negatif untuk SM), kategori_poi, judul, ringkasan_singkat, nama_wahana, deskripsi, gambar_url, sumber_referensi, [event_id opsional]"
+        columnsHint="planet_id, era_label, tahun_kejadian (negatif untuk SM), kategori_poi, judul, ringkasan_singkat, nama_wahana, karakteristik_fisik, deskripsi, gambar_url, sumber_referensi, [event_id opsional]"
         onDownloadCsvTemplate={handleDownloadCsvTemplate}
         onDownloadJsonTemplate={handleDownloadJsonTemplate}
         validateRecords={validateHistoryImportRows}

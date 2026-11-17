@@ -24,6 +24,7 @@ dist-ssr
 docs/
 supabase/
 src/app/admin/structure.sql
+structure.sql
 
 # Editor directories and files
 .vscode/*
@@ -59,5 +60,3 @@ playwright/.cache/
 # Raw large unoptimized assets (optional fallback)
 # raw-assets/
 /agent
-PRD_ADMIN_ASTROSPHERE.md
-admin_structure.sql

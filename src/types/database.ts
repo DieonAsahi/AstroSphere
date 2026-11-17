@@ -23,7 +23,11 @@ export type PlanetSlug =
 
 export type PlanetCategory = 'TERRESTRIAL' | 'GAS_GIANT' | 'ICE_GIANT';
 
-export type PoiCategory = 'SURFACE_LANDING' | 'ORBITAL_FLYBY' | 'OBSERVATION';
+export type PoiCategory =
+  | 'SURFACE_LANDING'
+  | 'ORBITAL_FLYBY'
+  | 'OBSERVATION'
+  | string;
 
 export type AnimationType =
   | 'SOLAR_ECLIPSE'
@@ -68,12 +72,24 @@ export type AdminUser = {
 export type Planet = {
   planet_id: string;
   urutan_orbit: number;
+  urutan_planet?: number;
   nama: string;
   kategori_planet?: PlanetCategory;
   diameter_km: number;
+  perbandingan_bumi?: string;
   rotation_period_hours: number;
+  periode_rotasi?: string;
+  subteks_rotasi?: string;
   orbital_period_days: number;
+  periode_orbit?: string;
+  subteks_orbit?: string;
   axial_tilt_deg: number;
+  kemiringan_sumbu?: string;
+  rentang_suhu?: string;
+  usia_planet?: string;
+  subteks_usia?: string;
+  judul_rotasi?: string;
+  deskripsi_rotasi?: string;
   deskripsi_materi: string;
   ringkasan_cepat?: string;
   sumber_referensi?: string | null;
@@ -100,6 +116,7 @@ export type HistoryEvent = {
   koordinat_lat?: number | null;
   koordinat_lng?: number | null;
   nama_wahana: string | null;
+  karakteristik_fisik?: string | null;
   sumber_referensi?: string | null;
   created_at: string;
 };
@@ -183,12 +200,24 @@ export type Database = {
         Row: {
           planet_id: string;
           urutan_orbit: number;
+          urutan_planet: number;
           nama: string;
           kategori_planet: PlanetCategory;
           diameter_km: number;
+          perbandingan_bumi: string;
           rotation_period_hours: number;
+          periode_rotasi: string;
+          subteks_rotasi: string;
           orbital_period_days: number;
+          periode_orbit: string;
+          subteks_orbit: string;
           axial_tilt_deg: number;
+          kemiringan_sumbu: string;
+          rentang_suhu: string;
+          usia_planet: string;
+          subteks_usia: string;
+          judul_rotasi: string;
+          deskripsi_rotasi: string;
           deskripsi_materi: string;
           ringkasan_cepat: string;
           sumber_referensi: string | null;
@@ -204,12 +233,24 @@ export type Database = {
         Insert: {
           planet_id: string;
           urutan_orbit: number;
+          urutan_planet?: number;
           nama: string;
           kategori_planet?: PlanetCategory;
           diameter_km: number;
+          perbandingan_bumi?: string;
           rotation_period_hours: number;
+          periode_rotasi?: string;
+          subteks_rotasi?: string;
           orbital_period_days: number;
+          periode_orbit?: string;
+          subteks_orbit?: string;
           axial_tilt_deg?: number;
+          kemiringan_sumbu?: string;
+          rentang_suhu?: string;
+          usia_planet?: string;
+          subteks_usia?: string;
+          judul_rotasi?: string;
+          deskripsi_rotasi?: string;
           deskripsi_materi: string;
           ringkasan_cepat?: string;
           sumber_referensi?: string | null;
@@ -225,12 +266,24 @@ export type Database = {
         Update: {
           planet_id?: string;
           urutan_orbit?: number;
+          urutan_planet?: number;
           nama?: string;
           kategori_planet?: PlanetCategory;
           diameter_km?: number;
+          perbandingan_bumi?: string;
           rotation_period_hours?: number;
+          periode_rotasi?: string;
+          subteks_rotasi?: string;
           orbital_period_days?: number;
+          periode_orbit?: string;
+          subteks_orbit?: string;
           axial_tilt_deg?: number;
+          kemiringan_sumbu?: string;
+          rentang_suhu?: string;
+          usia_planet?: string;
+          subteks_usia?: string;
+          judul_rotasi?: string;
+          deskripsi_rotasi?: string;
           deskripsi_materi?: string;
           ringkasan_cepat?: string;
           sumber_referensi?: string | null;
@@ -259,6 +312,7 @@ export type Database = {
           koordinat_lat: number | null;
           koordinat_lng: number | null;
           nama_wahana: string | null;
+          karakteristik_fisik: string;
           sumber_referensi: string | null;
           created_at: string;
         };
@@ -275,6 +329,7 @@ export type Database = {
           koordinat_lat?: number | null;
           koordinat_lng?: number | null;
           nama_wahana?: string | null;
+          karakteristik_fisik?: string;
           sumber_referensi?: string | null;
           created_at?: string;
         };
@@ -291,6 +346,7 @@ export type Database = {
           koordinat_lat?: number | null;
           koordinat_lng?: number | null;
           nama_wahana?: string | null;
+          karakteristik_fisik?: string;
           sumber_referensi?: string | null;
           created_at?: string;
         };
