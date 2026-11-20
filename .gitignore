@@ -1,62 +1,17 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Dependencies
 node_modules
+.nuxt
+.output
+.data
+.nitro
+.cache
 dist
-dist-ssr
-*.local
-*.tsbuildinfo
-
-# Environment Variables
 .env
 .env.*
 !.env.example
-!.env.local.example
-
-# Private Docs, Supabase Seeds & Internal Admin SQL
-/docs/
-/supabase/
-src/app/admin/structure.sql
-/structure.sql
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS generated files
+*.log
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Sumber model 3D mentah dari Sketchfab (±250 MB). Game memakai hasil optimasinya di public/models (npm run models).
+/3D Pesawat/
+/3D Planet/
+graphify-out/
 
-# Next.js build output
-.next/
-out/
-
-# Test outputs & caches
-coverage/
-playwright-report/
-test-results/
-blob-report/
-playwright/.cache/
-.eslintcache
-
-# Raw large unoptimized assets (optional fallback)
-# raw-assets/
-/agent

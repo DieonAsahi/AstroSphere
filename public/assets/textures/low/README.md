@@ -1,1 +1,0 @@
-# Tekstur kualitas rendah
