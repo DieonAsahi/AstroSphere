@@ -6,11 +6,11 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { SHIP_IDS } from '../data/ships.js';
 
 export const PLANET_MODEL_IDS = ['merkurius', 'venus', 'bumi', 'bulan', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
-export const DECOR_MODEL_IDS = ['black_hole']; // lubang hitam adegan pembuka (di luar tata surya)
+export const DECOR_MODEL_IDS = ['black_hole']; // lubang hitam di langit (di luar tata surya), dimuat belakangan
 
 export async function loadModels(onProgress = () => {}) {
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const jobs = [...PLANET_MODEL_IDS.map((id) => ['planets', id]), ...SHIP_IDS.map((id) => ['ships', id]), ...DECOR_MODEL_IDS.map((id) => ['decor', id])];
+  const jobs = [...PLANET_MODEL_IDS.map((id) => ['planets', id]), ...SHIP_IDS.map((id) => ['ships', id])];
   const out = { planets: {}, ships: {}, decor: {}, failed: [] };
   const frac = jobs.map(() => 0);
   let done = 0;
@@ -29,6 +29,14 @@ export async function loadModels(onProgress = () => {}) {
       (err) => { console.warn(`[AstroSphere] Model ${kind}/${id} gagal dimuat — memakai versi prosedural.`, err); out.failed.push(`${kind}/${id}`); finish(); });
   })));
   return out;
+}
+
+// Dekorasi (mis. lubang hitam) dimuat setelah permainan berjalan agar layar awal tetap ringan.
+export function loadDecor(id) {
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  return new Promise((resolve) => loader.load(`/models/decor/${id}.glb`,
+    (gltf) => { const root = gltf.scene.children.length === 1 ? gltf.scene.children[0] : gltf.scene; root.updateMatrixWorld(true); resolve(root); },
+    undefined, (err) => { console.warn(`[AstroSphere] Dekorasi ${id} gagal dimuat.`, err); resolve(null); }));
 }
 
 // Peran sebuah mesh (extras.role dari skrip optimasi). Primitive ganda → Mesh anak dari Group bernode → cek induk.

@@ -12,7 +12,7 @@ const R = (km) => km / 398.18755; // km → satuan dunia
 export const SUN = {
   id: 'matahari', name: 'Matahari', kind: 'Bintang induk · tipe G2V', radius: 230,
   radiusKm: 695700, rotationDays: 25.38, color: '#ffc861',
-  desc: 'Bintang kuning yang menyumbang 99,8% massa tata surya. Ukuran Matahari di game tidak berskala agar planet tetap terlihat.',
+  desc: 'Bintang yang menyumbang 99,86% massa tata surya. Ukuran Matahari di game tidak berskala agar planet tetap terlihat.',
   facts: [['Radius rata-rata', '695.700 km'], ['Rotasi (ekuator)', '± 25,4 hari'], ['Suhu permukaan', '± 5.500 °C'], ['Umur', '± 4,6 miliar tahun']],
 };
 

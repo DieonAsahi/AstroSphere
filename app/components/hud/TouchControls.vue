@@ -1,72 +1,57 @@
 <script setup>
-// Kontrol sentuh (diporting dari Jelajah Antariksa): joystick kiri, tuas dorongan kanan, tombol aksi.
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
+// Kontrol layar sentuh: joystick analog yang muncul & mengikuti jari di sisi kiri (arah), tombol Gas/Turbo/Rem di kanan.
+import { reactive, onBeforeUnmount } from 'vue';
 import { game } from '~/composables/useGame.js';
-const base = reactive({ on: false, x: 0, y: 0, kx: 0, ky: 0 });
-const hintOn = ref(true);
-let jid = null, bx = 0, by = 0; const R = 56;
-function jDown(e) { if (jid !== null) return; jid = e.pointerId; e.currentTarget.setPointerCapture(jid); bx = e.clientX; by = e.clientY; Object.assign(base, { on: true, x: bx, y: by, kx: 0, ky: 0 }); hintOn.value = false; }
-function jMove(e) {
-  if (e.pointerId !== jid) return;
-  let dx = (e.clientX - bx) / R, dy = (e.clientY - by) / R; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
-  const j = game()?.touch.joy; if (j) { j.x = dx; j.y = dy; } base.kx = dx * R; base.ky = dy * R;
+const R = 58; // jari-jari gerak knob (px)
+const j = reactive({ on: false, x: 0, y: 0, kx: 0, ky: 0, id: null });
+function jDown(e) {
+  if (j.id !== null) return;
+  j.id = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId);
+  Object.assign(j, { on: true, x: e.clientX, y: e.clientY, kx: 0, ky: 0 });
 }
-function jUp(e) { if (e.pointerId !== jid) return; jid = null; const j = game()?.touch.joy; if (j) { j.x = j.y = 0; } base.on = false; }
+function jMove(e) {
+  if (e.pointerId !== j.id) return;
+  let dx = e.clientX - j.x, dy = e.clientY - j.y; const l = Math.hypot(dx, dy);
+  // dasar joystick ikut terseret bila jari keluar jangkauan (joystick "mengikuti" jari)
+  if (l > R) { j.x += dx * (1 - R / l); j.y += dy * (1 - R / l); dx = e.clientX - j.x; dy = e.clientY - j.y; }
+  j.kx = dx; j.ky = dy;
+  const jo = game()?.touch.joy; if (jo) { jo.x = dx / R; jo.y = dy / R; }
+}
+function jUp(e) { if (e.pointerId !== j.id) return; j.id = null; j.on = false; const jo = game()?.touch.joy; if (jo) { jo.x = 0; jo.y = 0; } }
 const held = reactive({});
-function hDown(k, e) { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); held[k] = true; const h = game()?.touch.hold; if (h) h[k] = true; }
+function hDown(k, e) { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); held[k] = true; const h = game()?.touch.hold; if (h) h[k] = true; if (k !== 'brake') game()?.approachNo?.(); }
 function hUp(k) { held[k] = false; const h = game()?.touch.hold; if (h) h[k] = false; }
-const track = ref(null); const knob = ref(23.08); let tid = null;
-function setThr(e) { const r = track.value.getBoundingClientRect(); const t = Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height)); let v = -.3 + t * 1.3; if (Math.abs(v) < .04) v = 0; game()?.setThrottle(v); }
-function tDown(e) { tid = e.pointerId; track.value.setPointerCapture(tid); setThr(e); }
-function tMove(e) { if (e.pointerId === tid) setThr(e); }
-function tUp(e) { if (e.pointerId === tid) tid = null; }
-let raf = 0;
-function tick() { raf = requestAnimationFrame(tick); const g = game(); if (g) knob.value = (g.throttle + .3) / 1.3 * 100; }
-onMounted(tick); onBeforeUnmount(() => { cancelAnimationFrame(raf); const g = game(); if (g) { g.touch.joy.x = g.touch.joy.y = 0; for (const k in g.touch.hold) g.touch.hold[k] = false; } });
-const z = .3 / 1.3 * 100;
-const btns = [['rollL', 'guling-l', 'Guling'], ['up', 'naik', 'Naik'], ['rollR', 'guling-r', 'Guling'], ['target', 'target', 'Target'], ['down', 'turun', 'Turun'], ['align', 'arahkan', 'Arahkan']];
+onBeforeUnmount(() => { const g = game(); if (g) { g.touch.joy.x = g.touch.joy.y = 0; for (const k in g.touch.hold) g.touch.hold[k] = false; } });
 </script>
 <template>
   <div class="tc">
-    <div class="joyzone" @pointerdown="jDown" @pointermove="jMove" @pointerup="jUp" @pointercancel="jUp">
-      <div class="jbase" :class="{ on: base.on }" :style="{ left: base.x + 'px', top: base.y + 'px' }"><div class="jknob" :style="{ transform: `translate(${base.kx}px,${base.ky}px)` }" /></div>
+    <div class="zone" @pointerdown="jDown" @pointermove="jMove" @pointerup="jUp" @pointercancel="jUp">
+      <div v-if="!j.on" class="idle" aria-hidden="true"><i /><span>Geser untuk mengarahkan</span></div>
+      <div class="base" :class="{ on: j.on }" :style="{ transform: `translate(${j.x}px,${j.y}px)` }"><div class="knob" :style="{ transform: `translate(${j.kx}px,${j.ky}px)` }" /></div>
     </div>
-    <div v-if="hintOn" class="jhint">Geser di sini untuk mengemudi</div>
-    <div class="tbtns">
-      <template v-for="[k, ic, lb] in btns" :key="k + ic">
-        <button v-if="k === 'target'" class="tb" @pointerdown.prevent="game()?.cycleTarget(1)"><UiIcon :name="ic" :size="18" /><small>{{ lb }}</small></button>
-        <button v-else class="tb" :class="{ on: held[k] }" @pointerdown="hDown(k, $event)" @pointerup="hUp(k)" @pointercancel="hUp(k)"><UiIcon :name="ic" :size="18" /><small>{{ lb }}</small></button>
-      </template>
-      <button class="tb boost" :class="{ on: held.boost }" @pointerdown="hDown('boost', $event)" @pointerup="hUp('boost')" @pointercancel="hUp('boost')">BOOST</button>
-    </div>
-    <div class="thr">
-      <div ref="track" class="track panel" @pointerdown="tDown" @pointermove="tMove" @pointerup="tUp" @pointercancel="tUp">
-        <div class="fill" :style="{ bottom: Math.min(knob, z) + '%', height: Math.abs(knob - z) + '%' }" />
-        <div class="zero" :style="{ bottom: z + '%' }" /><div class="knob" :style="{ bottom: knob + '%' }" />
-      </div>
-      <span>DORONG</span>
+    <div class="btns">
+      <button class="b turbo" :class="{ on: held.boost }" aria-label="Turbo (tahan)" @pointerdown="hDown('boost', $event)" @pointerup="hUp('boost')" @pointercancel="hUp('boost')"><UiIcon name="kilat" :size="22" /><small>Turbo</small></button>
+      <button class="b brake" :class="{ on: held.brake }" aria-label="Rem (tahan)" @pointerdown="hDown('brake', $event)" @pointerup="hUp('brake')" @pointercancel="hUp('brake')"><UiIcon name="rem" :size="22" /><small>Rem</small></button>
+      <button class="b gas" :class="{ on: held.gas }" aria-label="Gas (tahan untuk maju)" @pointerdown="hDown('gas', $event)" @pointerup="hUp('gas')" @pointercancel="hUp('gas')"><UiIcon name="gas" :size="30" /><small>Gas</small></button>
     </div>
   </div>
 </template>
 <style scoped>
 .tc{position:fixed;inset:0;z-index:12;pointer-events:none}
-.joyzone{position:absolute;left:0;bottom:84px;width:44%;height:52%;pointer-events:auto;touch-action:none}
-.jbase{position:fixed;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:1px solid rgba(var(--acc-rgb),.35);background:rgba(6,14,23,.3);opacity:0;transition:opacity .15s}
-.jbase.on{opacity:1}
-.jknob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--soft);border:1px solid var(--acc)}
-.jhint{position:absolute;left:18px;bottom:calc(150px + var(--safe-b));font-size:10px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
-.tbtns{position:absolute;right:calc(70px + var(--safe-r));bottom:calc(84px + var(--safe-b));display:grid;grid-template-columns:repeat(3,52px);gap:6px;pointer-events:auto}
-.tb{height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:none;color:var(--txt)}
-.tb small{font-size:8.5px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
-.tb.on{background:var(--soft);border-color:var(--acc)}
-.tb.boost{grid-column:span 3;height:40px;font-size:12px;letter-spacing:.24em;font-weight:700}
-.thr{position:absolute;right:calc(12px + var(--safe-r));bottom:calc(84px + var(--safe-b));display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:auto}
-.track{position:relative;width:48px;height:150px;border-radius:12px;overflow:hidden;touch-action:none}
-.fill{position:absolute;left:0;right:0;background:var(--soft)}
-.zero{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.55)}
-.knob{position:absolute;left:4px;right:4px;height:8px;margin-bottom:-4px;border-radius:4px;background:var(--acc);box-shadow:0 0 10px var(--acc)}
-.thr span{font-size:9px;letter-spacing:.16em;color:var(--dim)}
-@media (orientation:landscape) and (max-height:520px){
-  .tbtns{grid-template-columns:repeat(3,44px)} .tb{height:40px} .tb.boost{height:34px} .track{height:120px}
-}
+.zone{position:absolute;left:0;bottom:0;width:55%;top:34%;pointer-events:auto;touch-action:none}
+.idle{position:absolute;left:calc(28px + var(--safe-l));bottom:calc(30px + var(--safe-b));display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.75}
+.idle i{width:104px;height:104px;border-radius:50%;border:2px dashed rgba(255,255,255,.3);background:radial-gradient(circle,rgba(59,108,240,.35) 0 20px,transparent 21px)}
+.idle span{font-size:12px;color:var(--muted);text-shadow:0 1px 6px #000}
+.base{position:fixed;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(16,23,58,.45);opacity:0;transition:opacity .12s}
+.base.on{opacity:1}
+.knob{position:absolute;left:32px;top:32px;width:56px;height:56px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 8px rgba(59,108,240,.25)}
+.btns{position:absolute;right:calc(18px + var(--safe-r));bottom:calc(22px + var(--safe-b));display:grid;grid-template-columns:auto auto;grid-template-areas:". t" "r g";gap:12px;align-items:end;pointer-events:auto}
+.b{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:50%;touch-action:none;color:var(--text);font-family:var(--display);font-weight:600;
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.3);transition:transform .08s}
+.b small{font-size:11px}
+.b.on{transform:scale(.93)}
+.turbo{grid-area:t;width:64px;height:64px;background:var(--star);color:var(--on-star)}
+.brake{grid-area:r;width:64px;height:64px;background:var(--surface-3);border:1px solid var(--line-2)}
+.gas{grid-area:g;width:92px;height:92px;background:var(--blue)}
+@media (orientation:landscape) and (max-height:520px){ .gas{width:78px;height:78px} .turbo,.brake{width:56px;height:56px} .zone{top:20%} }
 </style>

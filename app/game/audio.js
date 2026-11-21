@@ -57,6 +57,9 @@ export function createAudio(getEnabled) {
     correct() { this.tone(659.25, .3, 'triangle', .09, 0, false); this.tone(987.77, .5, 'triangle', .08, .1); },
     wrong() { this.tone(220, .35, 'sine', .08, 0, false); },
     thump() { this.tone(62, .4, 'sine', .35, 0, false); },
+    alarm() { this.tone(880, .16, 'square', .045, 0, false); this.tone(660, .2, 'square', .045, .19, false); },
+    hit() { this.tone(95, .3, 'sawtooth', .1, 0, false); this.tone(52, .5, 'sine', .3, 0, false); },
+    storm() { this.tone(110, 1.8, 'sawtooth', .06, 0, true); this.tone(73.4, 2.2, 'sine', .14, .05, true); },
     whoosh() {
       const c = this.ctx; if (!c) return;
       const s = c.createBufferSource(); s.buffer = this.noise;

@@ -12,6 +12,9 @@ export const ERAS = [
 ];
 
 const ev = (id, year, actor, kind, locationType, title, body, detail, loc) => ({ id, year, actor, kind, locationType, title, body, detail, lat: loc?.[0] ?? null, lon: loc?.[1] ?? null, status: 'demo' });
+// Kenangan: awak yang gugur dalam tugas. Tanpa titik/lintasan di 3D; kartu berisi apa yang terjadi, penyebab, pelajaran, dan nama awak.
+// Sumber: NASA Day of Remembrance, NASA Safety & Mission Assurance (Challenger/Columbia), Rogers Commission, CAIB.
+const mem = (id, year, date, actor, title, body, cause, lesson, crew) => ({ ...ev(id, year, actor, 'Kenangan', 'memorial', title, body, cause), memorial: { date, cause, lesson, crew } });
 
 export const HISTORY = {
   merkurius: [
@@ -30,9 +33,24 @@ export const HISTORY = {
   bumi: [
     ev('bum-1957', 1957, 'Sputnik 1 (Uni Soviet)', 'Orbit', 'orbit', 'Satelit Buatan Pertama', 'Sputnik 1 mengorbit Bumi dan memancarkan sinyal radio sederhana.', 'Peluncuran ini menandai dimulainya Era Antariksa.'),
     ev('bum-1961', 1961, 'Vostok 1 · Yuri Gagarin', 'Orbit', 'orbit', 'Manusia Pertama di Orbit', 'Yuri Gagarin mengelilingi Bumi satu kali dalam sekitar 108 menit.', 'Penerbangan ini membuktikan manusia dapat bertahan di luar angkasa.'),
+    mem('bum-1967', 1967, '27 Januari 1967', 'Apollo 1 (NASA)', 'Kenangan: Awak Apollo 1',
+      'Saat latihan peluncuran di landasan, api tiba-tiba muncul di dalam kabin. Ketiga astronaut gugur sebelum sempat keluar.',
+      'Kabin berisi oksigen murni sehingga api menyebar sangat cepat, dan pintunya tidak bisa dibuka dengan cepat.',
+      'Pesawat Apollo dirancang ulang: pintu yang bisa dibuka cepat, bahan yang sulit terbakar, dan udara kabin yang lebih aman saat di darat. Perbaikan ini ikut membawa manusia ke Bulan dua tahun kemudian.',
+      ['Virgil "Gus" Grissom', 'Edward White', 'Roger Chaffee']),
     ev('bum-1968', 1968, 'Apollo 8 (NASA)', 'Pengamatan', 'observation', 'Foto "Earthrise"', 'Kru Apollo 8 memotret Bumi terbit di atas cakrawala Bulan.', 'Foto ini menjadi salah satu gambar paling berpengaruh tentang rapuhnya planet kita.'),
+    mem('bum-1986', 1986, '28 Januari 1986', 'Pesawat ulang-alik Challenger (NASA)', 'Kenangan: Awak Challenger',
+      'Pesawat ulang-alik Challenger hancur 73 detik setelah lepas landas. Ketujuh awaknya gugur, termasuk Christa McAuliffe, guru yang akan mengajar dari luar angkasa.',
+      'Pagi itu sangat dingin. Cincin karet penyekat (O-ring) di roket pendorong menjadi kaku sehingga gas panas bocor. Para insinyur sebenarnya sudah memperingatkan bahaya suhu dingin.',
+      'Penerbangan dihentikan lebih dari dua tahun untuk perbaikan. Pelajaran terpentingnya: peringatan soal keselamatan harus didengar, sekecil apa pun.',
+      ['Dick Scobee', 'Michael J. Smith', 'Judith Resnik', 'Ellison Onizuka', 'Ronald McNair', 'Gregory Jarvis', 'Christa McAuliffe']),
     ev('bum-1990', 1990, 'Voyager 1 (NASA)', 'Pengamatan', 'observation', '"Pale Blue Dot"', 'Voyager 1 memotret Bumi sebagai titik kecil dari jarak sekitar 6 miliar km.', 'Foto ini diambil atas usul Carl Sagan.'),
     ev('bum-1998', 1998, 'Stasiun Antariksa Internasional', 'Orbit', 'orbit', 'Modul Pertama ISS Diluncurkan', 'Modul Zarya menjadi bagian pertama Stasiun Antariksa Internasional.', 'Sejak 2000, ISS dihuni manusia secara terus-menerus.'),
+    mem('bum-2003', 2003, '1 Februari 2003', 'Pesawat ulang-alik Columbia (NASA)', 'Kenangan: Awak Columbia',
+      'Saat pulang ke Bumi, 16 menit sebelum mendarat, pesawat ulang-alik Columbia pecah di langit Texas. Ketujuh awaknya gugur.',
+      'Saat peluncuran, sebongkah busa isolasi dari tangki bahan bakar menghantam sayap kiri dan merusak pelindung panasnya. Ketika masuk atmosfer, udara yang sangat panas masuk ke dalam sayap.',
+      'Sejak itu, pelindung panas pesawat ulang-alik diperiksa selama di orbit sebelum pulang. Masalah kecil yang sering terjadi tidak boleh dianggap biasa.',
+      ['Rick Husband', 'William McCool', 'Michael Anderson', 'Kalpana Chawla', 'David Brown', 'Laurel Clark', 'Ilan Ramon']),
   ],
   bulan: [
     ev('bul-1959', 1959, 'Luna 2 (Uni Soviet)', 'Tumbukan', 'observation', 'Benda Buatan Pertama yang Mencapai Bulan', 'Luna 2 sengaja ditumbukkan ke permukaan Bulan.', 'Lokasi tumbukan tidak ditandai sebagai pendaratan.'),
@@ -80,4 +98,4 @@ export const HISTORY = {
 };
 
 export const HISTORY_BODIES = ['merkurius', 'venus', 'bumi', 'bulan', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
-export const LOCATION_LABEL = { surface: 'Permukaan', flyby: 'Lintas terbang', orbit: 'Orbit', observation: 'Pengamatan', atmosphere: 'Atmosfer', moon: 'Di satelit' };
+export const LOCATION_LABEL = { surface: 'Permukaan', flyby: 'Lintas terbang', orbit: 'Orbit', observation: 'Pengamatan', atmosphere: 'Atmosfer', moon: 'Di satelit', memorial: 'Kenangan' };

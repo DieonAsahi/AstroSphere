@@ -22,24 +22,36 @@ float circleOverlap(float r1, float r2, float d){
   float c = 0.5*sqrt(max(0.0, (-d+r1+r2)*(d+r1-r2)*(d-r1+r2)*(d+r1+r2)));
   return a + b - c;
 }
-float eclipseLight(vec3 P){
+// x = bagian cakram Matahari yang masih terlihat dari P (1 = terang penuh), y = kedalaman di umbra (0 tepi … 1 sumbu)
+vec2 eclipseInfo(vec3 P){
   vec3 toS = uSrcPos - P, toO = uOccPos - P;
   float dS = length(toS), dO = length(toO);
-  if (dO >= dS || dot(toS, toO) <= 0.0) return 1.0;
+  if (dO >= dS || dot(toS, toO) <= 0.0) return vec2(1.0, 0.0);
   float aS = asin(clamp(uSrcR / dS, 0.0, 1.0));
   float aO = asin(clamp(uOccR / dO, 0.0, 1.0));
   float del = acos(clamp(dot(toS / dS, toO / dO), -1.0, 1.0));
-  return clamp(1.0 - circleOverlap(aS, aO, del) / (3.14159265 * aS * aS), 0.0, 1.0);
+  float light = clamp(1.0 - circleOverlap(aS, aO, del) / (3.14159265 * aS * aS), 0.0, 1.0);
+  float deep = aO > aS ? clamp((aO - aS - del) / (aO - aS), 0.0, 1.0) : 0.0;
+  return vec2(light, deep);
+}
+// Bulan merah: cahaya Matahari yang dibiaskan atmosfer Bumi ("semua matahari terbenam" sekaligus), dikalikan
+// warna permukaan Bulan sehingga kawah & maria tetap terlihat. Lebih terang/jingga di tepi umbra, merah tua di tengah,
+// plus pinggiran kebiruan tipis (ozon) tepat di batas umbra.
+vec3 umbraLight(vec2 eI){
+  float hid = 1.0 - eI.x;
+  vec3 c = mix(vec3(0.60, 0.20, 0.06), vec3(0.26, 0.055, 0.018), smoothstep(0.0, 0.85, eI.y));
+  float fringe = smoothstep(0.86, 0.985, hid) * (1.0 - smoothstep(0.985, 1.0, hid));
+  return c * smoothstep(0.55, 1.0, hid) + vec3(0.03, 0.09, 0.12) * fringe;
 }
 `;
 const LAB_FS = PLANET_FS
   .replace('void main(){', ECLIPSE_GLSL + '\nvoid main(){')
-  .replace('diff *= rs;', 'float eL = eclipseLight(vWorldPos); diff *= rs * eL;')
-  .replace('col += emis;', 'col += emis; col += uRed * vec3(0.55, 0.12, 0.035) * (1.0 - eL) * term * 0.55;');
+  .replace('diff *= rs;', 'vec2 eI = eclipseInfo(vWorldPos); float eL = eI.x; diff *= rs * eL;')
+  .replace('col += emis;', 'col += emis; col += uRed * alb * umbraLight(eI) * term;');
 const LAB_TFS = TPLANET_FS
   .replace('void main(){', ECLIPSE_GLSL + '\nvoid main(){')
-  .replace('diff *= rs;', 'float eL = eclipseLight(vWorldPos); diff *= rs * eL;')
-  .replace('gl_FragColor = vec4(col, a);', 'col += uRed * vec3(0.55, 0.12, 0.035) * (1.0 - eL) * term * 0.55;\n  gl_FragColor = vec4(col, a);');
+  .replace('diff *= rs;', 'vec2 eI = eclipseInfo(vWorldPos); float eL = eI.x; diff *= rs * eL;')
+  .replace('gl_FragColor = vec4(col, a);', 'col += uRed * alb * umbraLight(eI) * term * 1.6;\n  gl_FragColor = vec4(col, a);');
 
 // Versi JS dari rumus yang sama → status gerhana di titik pengamat (tidak bergantung kamera)
 export function eclipseAt(P, S, Rs, O, Ro) {
@@ -59,6 +71,14 @@ export function eclipseAt(P, S, Rs, O, Ro) {
   const light = clamp(1 - A / (Math.PI * aS * aS), 0, 1);
   const type = del <= aO - aS ? 'total' : del <= aS - aO ? 'cincin' : 'sebagian';
   return { light, type, covered: 1 - light };
+}
+
+function circleArea(r1, r2, d) {
+  if (d >= r1 + r2) return 0;
+  if (d <= Math.abs(r1 - r2)) return Math.PI * Math.min(r1, r2) ** 2;
+  const a = r1 * r1 * Math.acos(clamp((d * d + r1 * r1 - r2 * r2) / (2 * d * r1), -1, 1));
+  const b = r2 * r2 * Math.acos(clamp((d * d + r2 * r2 - r1 * r1) / (2 * d * r2), -1, 1));
+  return a + b - .5 * Math.sqrt(Math.max(0, (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)));
 }
 
 export function createLab(renderer, mainScene, uTime, models = null) {
@@ -135,7 +155,41 @@ export function createLab(renderer, mainScene, uTime, models = null) {
 
   const st = { type: 'matahari', t: LAB_DURATION * .25, playing: true, speed: 1, pov: 'samping', volume: true, labels: true, look: { yaw: .6, pitch: .35, dist: 420 } };
   const cam = { pos: new THREE.Vector3(), target: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 45, from: null, k: 1 };
-  let status = { light: 1, type: 'none' }, observer = new THREE.Vector3(), volInfo = null;
+  let status = { light: 1, type: 'none' }, diagram = null, marks = [], volInfo = null;
+  const _m = new THREE.Vector3(), _a = new THREE.Vector3(), _s = new THREE.Vector3(), _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3();
+  function moonAt(t, out) { const a = moonAngle(t); return out.set(Math.cos(a) * MOON_ORBIT, 0, Math.sin(a) * MOON_ORBIT); }
+  // Status gerhana + data diagram 2D untuk posisi Bulan M (tanpa efek samping pada adegan).
+  function measure(M) {
+    if (st.type === 'matahari') {
+      // dilihat dari titik di permukaan Bumi yang menghadap Matahari: cakram Bulan bergeser melintasi cakram Matahari
+      const n = _s.copy(sunPos).sub(earthPos).normalize().applyAxisAngle(Y, .05).normalize();
+      const O = _a.copy(earthPos).addScaledVector(n, EARTH_R);
+      const st0 = eclipseAt(O.clone(), sunPos, SUN_R, M, MOON_R);
+      const dS = sunPos.clone().sub(O), dM = M.clone().sub(O);
+      const aS = Math.asin(SUN_R / dS.length()), aM = Math.asin(MOON_R / dM.length());
+      dS.normalize(); dM.normalize();
+      _e1.crossVectors(dS, Y).normalize(); _e2.crossVectors(_e1, dS);
+      const off = dM.sub(dS);
+      return { status: st0, diagram: { kind: 'matahari', mx: -off.dot(_e1) / aS, my: off.dot(_e2) / aS, mr: aM / aS } };
+    }
+    // Gerhana Bulan: penampang bayangan Bumi sejauh Bulan (penumbra besar, umbra di dalamnya)
+    _a.copy(earthPos).sub(sunPos); const D = _a.length(); _a.divideScalar(D);
+    _m.copy(M).sub(earthPos); const along = _m.dot(_a);
+    _m.addScaledVector(_a, -along);
+    const ru = EARTH_R - along * (SUN_R - EARTH_R) / D, rp = EARTH_R + along * (SUN_R + EARTH_R) / D;
+    const dist = _m.length();
+    const type = dist >= rp + MOON_R ? 'none' : dist >= ru + MOON_R ? 'penumbra' : dist > ru - MOON_R ? 'sebagian' : 'total';
+    const inU = circleArea(MOON_R, ru, dist) / (Math.PI * MOON_R * MOON_R);
+    return { status: { type, covered: inU, light: 1 - inU }, diagram: { kind: 'bulan', mx: -_m.z / rp, my: _m.y / rp, mr: MOON_R / rp, ru: ru / rp } };
+  }
+  function computeMarks() {
+    const N = 240, out = []; let cur = null;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N * LAB_DURATION, k = measure(moonAt(t, new THREE.Vector3())).status.type;
+      if (!cur || cur.kind !== k) { if (cur) cur.to = i / N; cur = { kind: k, from: i / N, to: 1 }; out.push(cur); }
+    }
+    return out.filter((m) => m.kind !== 'none');
+  }
 
   function moonAngle(t) {
     const x = (t - LAB_DURATION / 2) / LAB_DURATION; // −0,5..0,5
@@ -154,7 +208,7 @@ export function createLab(renderer, mainScene, uTime, models = null) {
         const n = st.type === 'matahari' ? sunPos.clone().sub(earthPos).normalize() : moonPos.clone().sub(earthPos).normalize();
         n.applyAxisAngle(up, st.type === 'matahari' ? .05 : 0).normalize();
         const p = earthPos.clone().addScaledVector(n, EARTH_R + .6);
-        return { pos: p, target: st.type === 'matahari' ? sunPos.clone() : moonPos.clone(), up: new THREE.Vector3(0, 1, 0), fov: 26 };
+        return { pos: p, target: st.type === 'matahari' ? sunPos.clone() : moonPos.clone(), up: new THREE.Vector3(0, 1, 0), fov: st.type === 'matahari' ? 26 : 38 };
       }
       default: { // bebas
         const l = st.look; const p = new THREE.Vector3(Math.sin(l.yaw) * Math.cos(l.pitch), Math.sin(l.pitch), Math.cos(l.yaw) * Math.cos(l.pitch)).multiplyScalar(l.dist).add(c);
@@ -181,16 +235,13 @@ export function createLab(renderer, mainScene, uTime, models = null) {
     // volume & status
     if (st.type === 'matahari') { volInfo = shadowVolumes(moonPos, MOON_R, 220, 210); labelPos.umbra.copy(moonPos).addScaledVector(volInfo.dir, 45); labelPos.penumbra.copy(moonPos).addScaledVector(volInfo.dir, 120).add(new THREE.Vector3(0, 30, 0)); }
     else { volInfo = shadowVolumes(earthPos, EARTH_R, 320, 260); labelPos.umbra.copy(earthPos).addScaledVector(volInfo.dir, 70); labelPos.penumbra.copy(earthPos).addScaledVector(volInfo.dir, 150).add(new THREE.Vector3(0, 52, 0)); }
-    umbra.visible = pen.visible = st.volume;
+    // dari permukaan Bumi, garis bantu & volume bayangan hanya mengganggu (tampak sebagai cincin hitam & garis putus)
+    const fromEarth = st.pov === 'pengamat';
+    umbra.visible = pen.visible = st.volume && !fromEarth;
+    orbit.visible = axisLine.visible = !fromEarth;
     // titik pengamat & klasifikasi dari geometri fisik
-    if (st.type === 'matahari') {
-      const n = sunPos.clone().sub(earthPos).normalize().applyAxisAngle(Y, .05).normalize();
-      observer.copy(earthPos).addScaledVector(n, EARTH_R);
-      status = eclipseAt(observer, sunPos, SUN_R, moonPos, MOON_R);
-    } else {
-      observer.copy(moonPos);
-      status = eclipseAt(moonPos.clone().addScaledVector(sunPos.clone().sub(moonPos).normalize(), MOON_R), sunPos, SUN_R, earthPos, EARTH_R);
-    }
+    const r = measure(moonPos);
+    status = r.status; diagram = r.diagram;
     // kamera
     const tgt = povTarget(st.pov);
     const m = new THREE.Matrix4().lookAt(tgt.pos, tgt.target, tgt.up);
@@ -208,9 +259,10 @@ export function createLab(renderer, mainScene, uTime, models = null) {
     corona.quaternion.copy(camera.quaternion);
     atm.material.side = camera.position.distanceTo(earthPos) < EARTH_R * 1.12 ? THREE.BackSide : THREE.FrontSide;
   }
-  function setType(type) { st.type = type; st.t = LAB_DURATION * .25; st.playing = true; setPOV(st.pov, false); }
+  function setType(type) { st.type = type; st.t = LAB_DURATION * .25; st.playing = true; setPOV(st.pov, false); marks = computeMarks(); }
   function replay() { st.t = 0; st.playing = true; }
   function lookDrag(dx, dy) { if (st.pov !== 'bebas') return; st.look.yaw -= dx * .006; st.look.pitch = clamp(st.look.pitch + dy * .006, -1.3, 1.3); }
   function zoom(f) { if (st.pov !== 'bebas') return; st.look.dist = clamp(st.look.dist * f, 120, 1600); }
-  return { scene, camera, st, update, setType, setPOV, replay, lookDrag, zoom, labelPos, get status() { return status; } };
+  marks = computeMarks();
+  return { scene, camera, st, update, setType, setPOV, replay, lookDrag, zoom, labelPos, get status() { return status; }, get diagram() { return diagram; }, get marks() { return marks; } };
 }

@@ -1,68 +1,67 @@
 <script setup>
-// Hanggar (PRD R11): Astra gratis, Orion 300, Nova 700. Membuka memotong saldo sekali; memilih yang dimiliki gratis.
+// Hanggar: pesawat 3D berputar di latar, kartu pilihan di kiri-bawah, detail & aksi di kartu kanan.
+// Astra gratis, Orion 300, Nova 700 bintang. Membuka memotong saldo sekali; memilih pesawat yang dimiliki gratis.
 import { computed, onBeforeUnmount } from 'vue';
-import { store, game, unlockShip, saveProgress } from '~/composables/useGame.js';
+import { store, game, unlockShip, saveProgress, showToast } from '~/composables/useGame.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 const cur = computed(() => SHIPS[store.hangarPreview] || SHIPS.astra);
 const owned = (id) => store.progress.owned.includes(id);
 function preview(id) { game()?.previewShip(id); game()?.click(); }
 function use(id) { store.progress.selectedShip = id; saveProgress(); game()?.setShip(id); game()?.chime(); }
-function unlock(id) {
-  const r = unlockShip(id);
-  if (r.ok) { use(id); store.toast.html = `<b>${SHIPS[id].name}</b> dibuka · saldo dipotong ${SHIPS[id].price} poin`; store.toast.show = true; setTimeout(() => { store.toast.show = false; }, 3200); }
-}
+function unlock(id) { const r = unlockShip(id); if (r.ok) { use(id); showToast(`<b>${SHIPS[id].name}</b> terbuka!`); } }
 onBeforeUnmount(() => { if (store.hangarPreview !== store.progress.selectedShip) game()?.setShip(store.progress.selectedShip); });
 </script>
+
 <template>
   <div>
-    <div class="ltitle">
-      <div class="kicker acc">Hanggar · {{ store.progress.owned.length }} dari 3 dimiliki</div>
-      <h1>Pilih<br>Pesawat</h1>
-      <p>Kumpulkan poin dari kuis planet untuk membuka pesawat baru. Seret layar untuk memutar pesawat.</p>
-      <div class="bal panel"><span class="kicker">Saldo</span><b>{{ store.progress.points }} POIN</b></div>
+    <div class="stage-title">
+      <span class="tag star"><UiIcon name="bintang" :size="14" />{{ store.progress.points }} bintang</span>
+      <h1 class="h1">Hanggar</h1>
     </div>
-    <aside class="side panel" aria-label="Daftar pesawat">
-      <div class="sbody scroll">
-        <div class="kicker acc">Armada AstroSphere</div>
-        <button v-for="id in SHIP_IDS" :key="id" class="card" :class="{ on: id === store.hangarPreview, used: id === store.progress.selectedShip }" @click="preview(id)">
-          <span class="top">
-            <span class="st" :class="{ ok: owned(id) }">{{ id === store.progress.selectedShip ? 'Dipakai' : owned(id) ? 'Dimiliki' : SHIPS[id].price + ' poin' }}</span>
-            <UiIcon v-if="!owned(id)" name="kunci" :size="14" class="lock" />
-          </span>
+    <div class="stage-bottom">
+      <div class="ships" role="listbox" aria-label="Pilih pesawat">
+        <button v-for="id in SHIP_IDS" :key="id" class="sc" role="option" :aria-selected="id === store.hangarPreview" :class="{ on: id === store.hangarPreview }" @click="preview(id)">
           <b>{{ SHIPS[id].name }}</b>
-          <small>{{ SHIPS[id].cls }} · {{ SHIPS[id].length }}</small>
+          <span v-if="id === store.progress.selectedShip" class="tag green"><UiIcon name="cek" :size="13" />Dipakai</span>
+          <span v-else-if="owned(id)" class="tag">Dimiliki</span>
+          <span v-else class="tag star"><UiIcon name="kunci" :size="13" />{{ SHIPS[id].price }}</span>
         </button>
-        <hr class="divider">
-        <div class="kicker">Detail · {{ cur.name }}</div>
-        <p class="desc">{{ cur.desc }}</p>
-        <div v-for="(v, k) in cur.stats" :key="k" class="stat"><span>{{ k }}</span><div class="bar"><i :style="{ width: v * 100 + '%' }" /></div><b class="mono">{{ Math.round(v * 10) }}/10</b></div>
-        <p class="rule">Membuka pesawat memotong saldo sekali dan menambah kepemilikan sekali. Memilih pesawat yang sudah dimiliki tidak memotong saldo.</p>
       </div>
-      <div class="sfoot col">
-        <button v-if="cur.id === store.progress.selectedShip" class="btn" disabled>Sedang digunakan</button>
-        <button v-else-if="owned(cur.id)" class="btn primary" @click="use(cur.id)">Gunakan {{ cur.name }}</button>
-        <button v-else-if="store.progress.points >= cur.price" class="btn primary" @click="unlock(cur.id)">Buka · {{ cur.price }} poin</button>
-        <button v-else class="btn" disabled>Butuh {{ cur.price - store.progress.points }} poin lagi</button>
-        <button class="btn ghost" @click="game()?.setMode('jelajah')">‹ Kembali menjelajah</button>
+    </div>
+
+    <aside class="sheet card" aria-label="Detail pesawat">
+      <div class="sbody scroll">
+        <div>
+          <h2 class="h2">{{ cur.name }}</h2>
+          <p class="small">{{ cur.cls }} · {{ cur.length }}</p>
+        </div>
+        <p class="desc">{{ cur.desc }}</p>
+        <div class="stats">
+          <div v-for="(v, k) in cur.stats" :key="k" class="st"><span>{{ k }}</span><div class="bar"><i :style="{ width: v * 100 + '%' }" /></div></div>
+        </div>
+        <p class="small">Seret layar untuk memutar pesawat.</p>
+      </div>
+      <div class="sfoot">
+        <button v-if="cur.id === store.progress.selectedShip" class="btn block" disabled><UiIcon name="cek" :size="18" />Sedang dipakai</button>
+        <button v-else-if="owned(cur.id)" class="btn primary block" @click="use(cur.id)">Pakai pesawat ini</button>
+        <button v-else-if="store.progress.points >= cur.price" class="btn star block" @click="unlock(cur.id)"><UiIcon name="bintang" :size="18" />Buka · {{ cur.price }}</button>
+        <template v-else>
+          <button class="btn block" disabled><UiIcon name="kunci" :size="18" />Butuh {{ cur.price - store.progress.points }} bintang lagi</button>
+          <div class="bar star"><i :style="{ width: Math.min(100, store.progress.points / cur.price * 100) + '%' }" /></div>
+        </template>
       </div>
     </aside>
   </div>
 </template>
+
 <style scoped>
-.bal{display:inline-flex;align-items:center;gap:12px;padding:10px 16px;align-self:flex-start}
-.bal b{font-family:var(--mono);color:var(--acc2);font-size:18px}
-.card{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:12px;border:1px solid var(--divider);background:var(--panel);text-align:left;transition:border-color .2s,background .2s}
-.card:hover{border-color:var(--line)}
-.card.on{border-color:var(--acc);background:var(--soft)}
-.card b{font-size:17px;letter-spacing:.1em;text-transform:uppercase}
-.card small{font-size:12px;color:var(--dim)}
-.top{display:flex;align-items:center;justify-content:space-between}
-.st{font-size:10px;letter-spacing:.24em;text-transform:uppercase;font-weight:600;color:var(--acc2)}
-.st.ok{color:var(--ok)} .lock{color:var(--acc2)}
-.desc{font-size:13.5px;line-height:1.55;color:var(--dim)}
-.stat{display:grid;grid-template-columns:90px 1fr 42px;align-items:center;gap:10px;font-size:12px;color:var(--dim)}
-.stat b{font-size:11px;color:var(--txt);text-align:right}
-.rule{font-size:11.5px;color:var(--faint);line-height:1.45}
-.sfoot.col{flex-direction:column}
-@media (max-width:760px){ .ltitle h1{font-size:30px} .ltitle p{display:none} }
+.ships{display:flex;gap:10px;flex-wrap:wrap}
+.sc{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:150px;padding:14px 16px;border-radius:var(--r);background:var(--surface-a);border:2px solid var(--line);text-align:left;transition:border-color .15s,transform .12s}
+.sc:hover{border-color:var(--line-2)}
+.sc.on{border-color:var(--sky);transform:translateY(-3px)}
+.sc b{font-family:var(--display);font-weight:600;font-size:16px}
+.desc{font-size:14.5px;color:var(--muted);line-height:1.6}
+.stats{display:flex;flex-direction:column;gap:10px}
+.st{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
+@media (max-width:760px){ .ships{flex-wrap:nowrap;overflow-x:auto;width:100%} .sc{min-width:132px;padding:10px 12px} .desc{display:none} }
 </style>
