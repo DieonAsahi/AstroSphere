@@ -8,9 +8,9 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SKY_VS, SKY_FS, STARS_VS, STARS_FS } from './shaders.js';
 import { clamp, lerp, damp, smooth, dead, nextFrame, DEG, TAU, KM, fmtDist, fmtEta, fmtInt, daysSinceJ2000, fmtSimDate, dateFromDays, isTouchDevice } from './util.js';
-import { buildSystem, updateBodies, latLonToLocal } from './system.js';
+import { buildSystem, updateBodies, latLonToLocal, getEventCoords, upgradePlanetModel } from './system.js';
 import { initShipFactory, buildShip, setShipModels } from './ships.js';
-import { loadModels, loadDecor } from './models.js';
+import { loadCoreModels, loadSingleModel, REMAINING_PLANET_IDS, loadDecor } from './models.js';
 import { createLab, LAB_DURATION } from './lab.js';
 import { createAudio } from './audio.js';
 import { createHazards } from './hazards.js';
@@ -66,6 +66,7 @@ export function createEngine(el) {
     renderer.setPixelRatio(pr); composer.setPixelRatio(pr);
     renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
     U.uOct.value = hi ? 6 : 4;
+    if (bloomPass) bloomPass.enabled = hi;
     if (starsMat) starsMat.uniforms.uPR.value = pr;
   }
   function bakeSky() {
@@ -188,25 +189,47 @@ export function createEngine(el) {
     return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(_m.lookAt(pos, look, up)) };
   }
   function resetShip(pose) { ship.pos.copy(pose.pos); ship.quat.copy(pose.quat); ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false; }
+  async function ensureShipModel(id) {
+    if (!id || !SHIPS[id] || models?.ships?.[id]) return;
+    const m = await loadSingleModel('ships', id);
+    if (m && models?.ships) {
+      models.ships[id] = m;
+      setShipModels(models.ships);
+      shipModels[id] = buildShip(id);
+      if (shipModel && (store.progress.selectedShip === id || store.hangarPreview === id)) {
+        shipRoot.remove(shipModel.group);
+        shipModel = shipModels[id];
+        shipRoot.add(shipModel.group);
+      }
+    }
+  }
   function setShip(id) {
     if (!SHIPS[id]) id = 'astra';
     if (!shipModels[id]) shipModels[id] = buildShip(id);
     if (shipModel) shipRoot.remove(shipModel.group);
     shipModel = shipModels[id]; shipRoot.add(shipModel.group);
+    ensureShipModel(id);
   }
   function readInput(dt) {
     const t = hold;
-    let yaw = (act('turnR') ? 1 : 0) - (act('turnL') ? 1 : 0) + dead(joy.x, .12);
+    // Kontrol Yaw: Tombol belok (A/D, Q/E, panah kiri/kanan) atau analog jempol horizontal
+    const turnL = act('turnL') || act('left') || !!t.turnL;
+    const turnR = act('turnR') || act('right') || !!t.turnR;
+    let yaw = (turnR ? 1 : 0) - (turnL ? 1 : 0) + dead(joy.x, .12);
+
     let pitch = (act('up') || t.up ? 1 : 0) - (act('down') || t.down ? 1 : 0) - dead(joy.y, .12);
     if (settings.invertY) pitch = -pitch;
-    input.yaw = clamp(yaw, -1, 1); input.pitch = clamp(pitch, -1, 1);
-    input.strafe = (act('right') ? 1 : 0) - (act('left') ? 1 : 0);
+
+    input.yaw = clamp(yaw, -1, 1);
+    input.pitch = clamp(pitch, -1, 1);
+    input.strafe = 0; // HAPUS geser samping (pesawat tidak boleh melayang menyamping)
     input.boost = act('turbo') || !!t.boost;
     input.align = !!keys.KeyG;
+
     const fwd = act('forward') || !!t.gas, back = act('back'), brake = act('brake') || !!t.brake;
-    if (store.autopilot && (input.yaw || input.pitch || input.strafe || back || brake)) autopilotOff(true);
-    if (fwd) { ship.throttle = Math.min(1, ship.throttle + dt * .6); ship.braking = false; }
-    if (back) { ship.throttle = Math.max(-.3, ship.throttle - dt * .6); ship.braking = false; }
+    if (store.autopilot && (input.yaw || input.pitch || back || brake)) autopilotOff(true);
+    if (fwd) { ship.throttle = Math.min(1, ship.throttle + dt * .8); ship.braking = false; }
+    if (back) { ship.throttle = Math.max(-.3, ship.throttle - dt * .8); ship.braking = false; }
     ship.brakeHold = brake;
     if (brake) ship.throttle = damp(ship.throttle, 0, 4, dt);
   }
@@ -228,22 +251,29 @@ export function createEngine(el) {
       ship.throttle = damp(ship.throttle, want, 2.2, dt); ship.braking = false;
       input.boost = facing > .97 && d > 1600 && !broken;
     }
-    // tanpa tombol guling: pesawat perlahan kembali datar terhadap bidang orbit
+
+    // Efek banking roll sayap yang halus saat belok kiri/kanan (yaw), dan auto-leveling terhadap bidang orbit saat dilepas
+    const bankTarget = clamp(yaw * 0.45, -0.6, 0.6);
     const rightY = _v2.set(1, 0, 0).applyQuaternion(ship.quat).y, fwdY = _up.set(0, 0, -1).applyQuaternion(ship.quat).y;
-    const roll = clamp(rightY * 2.2, -1, 1) * (1 - Math.min(1, Math.abs(fwdY) * 1.15));
+    const levelRoll = clamp(rightY * 2.2, -1, 1) * (1 - Math.min(1, Math.abs(fwdY) * 1.15));
     const tr = def.turn;
+
     ship.rate.x = damp(ship.rate.x, pitch * 1.1 * tr, 6, dt);
-    ship.rate.y = damp(ship.rate.y, -yaw * 1.0 * tr, 6, dt);
-    ship.rate.z = damp(ship.rate.z, -roll * 1.4, 4, dt);
+    ship.rate.y = damp(ship.rate.y, -yaw * 1.25 * tr, 6, dt);
+    ship.rate.z = damp(ship.rate.z, bankTarget * 2.2 - levelRoll * 1.4, 5, dt);
+
     _q.setFromEuler(_e.set(ship.rate.x * dt, ship.rate.y * dt, ship.rate.z * dt, 'XYZ'));
     ship.quat.multiply(_q).normalize();
+
     const wantBoost = input.boost && ship.throttle > .05 && !broken;
     if (wantBoost && !wasBoost) sfx.whoosh();
     wasBoost = wantBoost;
     ship.boost = damp(ship.boost, wantBoost ? 1 : 0, wantBoost ? 1.6 : 3, dt);
     const boostMul = 1 + ship.boost * (def.boost - 1);
     const fwd = ship.throttle * def.speed * (ship.throttle > 0 ? boostMul : 1) * (broken ? .6 : 1);
-    const desired = _v.set(input.strafe * def.speed * .4, 0, -fwd).applyQuaternion(ship.quat);
+
+    // Fisika realistis roket antariksa: dorongan hanya maju/mundur searah moncong pesawat (tanpa geser samping)
+    const desired = _v.set(0, 0, -fwd).applyQuaternion(ship.quat);
     const alt = nearest ? nearest.alt : 1e9;
     const limit = 8 + Math.max(0, alt) * 1.15;
     ship.limited = desired.length() > limit && alt < 400;
@@ -276,7 +306,8 @@ export function createEngine(el) {
     shipRoot.position.copy(ship.pos); shipRoot.quaternion.copy(ship.quat);
     if (!shipModel) return;
     const g = shipModel.group, wm = worldMode();
-    g.rotation.z = damp(g.rotation.z, ship.rate.y * .35, 4, dt);
+    // Efek visual miring sayap (banking roll) halus saat memutar moncong kiri/kanan
+    g.rotation.z = damp(g.rotation.z, -input.yaw * .45, 5, dt);
     g.rotation.x = damp(g.rotation.x, ship.rate.x * .08, 4, dt);
     const thrust = Math.max(0, ship.throttle), b = ship.boost, def = shipModel.def;
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
@@ -510,6 +541,12 @@ export function createEngine(el) {
     if (el.vignette) el.vignette.style.opacity = (1 - smooth(sunB.radius * 1.3, sunB.radius * 2.6, sunB.dist ?? 1e9)).toFixed(2);
     if (el.boostFx) el.boostFx.style.opacity = (ship.boost * .9).toFixed(2);
     if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) store.msg.show = false; }
+
+    // Sinkronisasi analog stick kemudi ke HUD pada 60 FPS (mulus tanpa lag)
+    if (!store.hud.stick) store.hud.stick = { x: 0, y: 0 };
+    store.hud.stick.x = damp(store.hud.stick.x, input.yaw, 18, dt);
+    store.hud.stick.y = damp(store.hud.stick.y, input.pitch, 18, dt);
+
     if (!slow) return;
     const h = store.hud;
     h.hdg = String(Math.round(heading) % 360).padStart(3, '0') + '°';
@@ -517,7 +554,22 @@ export function createEngine(el) {
     h.speed = new Intl.NumberFormat('id-ID').format(Math.round(ship.speed * KM));
     h.thr = Math.round(ship.throttle * 100); h.braking = ship.braking || ship.brakeHold;
     h.boost = ship.boost > .3; h.limited = ship.limited;
-    if (nearest) { h.near.id = nearest.id; h.near.name = displayName(nearest); h.near.dist = fmtDist(nearest.alt); }
+
+    // Pemicu Pesan Jarak Planet (Zona Hijau):
+    // HANYA muncul ketika jarak pesawat <= 4x radius observasi/pendekatan planet tersebut.
+    // Di luar ambang jarak tersebut, status kedekatan dimatikan agar layar lapang.
+    const inApproachZone = nearest && (nearest.dist <= nearest.approach * 4 || nearest.alt <= nearest.approach * 4);
+    if (inApproachZone) {
+      h.near.isApproaching = true;
+      h.near.id = nearest.id;
+      h.near.name = displayName(nearest);
+      h.near.dist = fmtDist(nearest.alt);
+    } else {
+      h.near.isApproaching = false;
+      h.near.id = '';
+      h.near.name = '—';
+      h.near.dist = '—';
+    }
     if (target) {
       h.target.id = target.id; h.target.name = displayName(target);
       const d = ship.pos.distanceTo(target.pos) - target.radius;
@@ -764,19 +816,25 @@ export function createEngine(el) {
     const er = { semua: [-1e9, 1e9], kuno: [-1e9, 1609], teleskopik: [1610, 1956], antariksa: [1957, 1e9] }[store.sejarah.era] || [-1e9, 1e9];
     return e.year >= er[0] && e.year <= er[1];
   }
-  function buildPOIs() {
+  let currentHistoryList = [];
+  function buildPOIs(customList) {
     clearPOIs();
     const b = sys.byId[store.sejarah.body]; if (!b) return;
-    const list = (HISTORY[b.id] || []).filter(eraFilter);
-    for (const e of list) {
-      if (e.lat == null) continue;
+    const rawList = customList || store.sejarah.events || (HISTORY[b.id] || []);
+    const list = rawList.filter(eraFilter);
+    currentHistoryList = list;
+    list.forEach((e, i) => {
+      const coords = getEventCoords(e, i, list.length);
       const node = document.createElement('button');
       node.className = 'poi' + (e.id === store.sejarah.selected ? ' sel' : '');
-      node.innerHTML = `<i></i><span><b>${e.actor}</b><em>${e.year} · ${e.title}</em></span>`;
+      const actorLabel = e.nama_wahana || e.actor || 'Observasi';
+      const yearLabel = e.year || e.tahun_kejadian || '—';
+      const titleLabel = e.judul || e.title || '';
+      node.innerHTML = `<i></i><span><b>${actorLabel}</b><em>${yearLabel} · ${titleLabel}</em></span>`;
       node.addEventListener('click', () => { store.sejarah.selected = e.id; selectEvent(e.id); });
       el.poi.appendChild(node);
-      pois.push({ e, el: node, local: latLonToLocal(e.lat, e.lon), body: b });
-    }
+      pois.push({ e, el: node, local: latLonToLocal(coords.lat, coords.lon), body: b, coords });
+    });
     selectEvent(store.sejarah.selected, true);
   }
   function selectEvent(id, quiet) {
@@ -784,25 +842,26 @@ export function createEngine(el) {
     for (const p of pois) p.el.classList.toggle('sel', p.e.id === id);
     if (pathObj) { pathObj.parent && pathObj.parent.remove(pathObj); pathObj = null; }
     if (pathLabel) { pathLabel.el.remove(); pathLabel = null; }
-    const e = (HISTORY[b.id] || []).find((x) => x.id === id);
+    const e = currentHistoryList.find((x) => x.id === id) || (HISTORY[b.id] || []).find((x) => x.id === id);
     followDir = null;
     if (!e) return;
-    const R = b.radius;
-    if (e.lat != null) {
-      const p = pois.find((x) => x.e.id === id);
-      if (p) followDir = () => b.spinMesh.localToWorld(p.local.clone()).sub(b.pos).normalize();
+    const p = pois.find((x) => x.e.id === id);
+    if (p) {
+      followDir = () => b.spinMesh.localToWorld(p.local.clone()).sub(b.pos).normalize();
+      if (!quiet) sfx.click();
       return;
     }
+    const R = b.radius;
     let pts = null, anchor = null, label = '';
     if (e.locationType === 'flyby') {
       pts = [[-8, 1.6, 5], [-3, .6, 2.2], [-.6, .25, 1.6], [1.2, -.05, 1.5], [3.2, -.5, 2.0], [8, -1.6, -3]].map(([x, y, z]) => new THREE.Vector3(x * R, y * R, z * R));
-      anchor = pts[3]; label = `Lintasan flyby · ${e.actor}`;
+      anchor = pts[3]; label = `Lintasan flyby · ${e.actor || e.nama_wahana}`;
     } else if (e.locationType === 'orbit') {
       pts = []; for (let i = 0; i <= 128; i++) { const a = i / 128 * TAU; pts.push(new THREE.Vector3(Math.cos(a) * R * 1.9, Math.sin(a) * R * .55, Math.sin(a) * R * 1.9)); }
-      anchor = pts[20]; label = `Orbit wahana · ${e.actor}`;
+      anchor = pts[20]; label = `Orbit wahana · ${e.actor || e.nama_wahana}`;
     } else if (e.locationType === 'atmosphere') {
       pts = [[5, 2.4, 3], [2.6, 1.3, 1.6], [1.4, .7, .9], [.86, .44, .5]].map(([x, y, z]) => new THREE.Vector3(x * R, y * R, z * R));
-      anchor = pts[1]; label = `Masuk atmosfer · ${e.actor}`;
+      anchor = pts[1]; label = `Masuk atmosfer · ${e.actor || e.nama_wahana}`;
     }
     if (pts) {
       const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(pts).getPoints(160)),
@@ -815,6 +874,13 @@ export function createEngine(el) {
     if (!quiet) sfx.click();
   }
   function focusLocation() {
+    if (!followDir) {
+      const b = sys.byId[store.sejarah.body];
+      const p = pois.find((x) => x.e.id === store.sejarah.selected) || pois[0];
+      if (b && p) {
+        followDir = () => b.spinMesh.localToWorld(p.local.clone()).sub(b.pos).normalize();
+      }
+    }
     if (!followDir) return false;
     const d = followDir(); obsCam.yaw = Math.atan2(d.x, d.z); obsCam.pitch = Math.asin(clamp(d.y, -1, 1)); obsCam.dist = 2.3; beginCamTransition(); return true;
   }
@@ -982,6 +1048,7 @@ export function createEngine(el) {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     running(true);
     setTimeout(loadBlackHole, 3000);
+    setTimeout(queueBackgroundPlanets, 1500);
   }
   let loopOn = false;
   function running(onOff) {
@@ -1103,6 +1170,28 @@ export function createEngine(el) {
     sfx.update(wm === 'jelajah' && store.phase === 'playing', ship);
   }
 
+  let bgPlanetsLoading = false;
+  async function queueBackgroundPlanets() {
+    if (bgPlanetsLoading || !sys || !models) return;
+    bgPlanetsLoading = true;
+    for (const id of REMAINING_PLANET_IDS) {
+      if (models.planets[id]) continue;
+      // Jeda di antara muat model agar game tetap stabil 60 FPS
+      await new Promise((r) => setTimeout(r, 1200));
+      try {
+        const model = await loadSingleModel('planets', id);
+        if (model) {
+          models.planets[id] = model;
+          if (sys?.byId[id]) {
+            upgradePlanetModel(sys.byId[id], model, U);
+          }
+        }
+      } catch (err) {
+        console.warn(`[AstroSphere] Gagal memuat model planet ${id} di latar belakang:`, err);
+      }
+    }
+  }
+
   // ---------- Boot ----------
   const setLoad = (p, text) => { store.loading.p = p; store.loading.text = text; };
   let booting = null;
@@ -1115,8 +1204,8 @@ export function createEngine(el) {
       initShipFactory(renderer, U, isTouch);
       setLoad(.1, 'Menaburkan bintang'); await nextFrame();
       bakeSky();
-      setLoad(.14, 'Memuat planet & pesawat');
-      models = await loadModels((f) => setLoad(.14 + f * .56, 'Memuat planet & pesawat'));
+      setLoad(.14, 'Memuat Bumi, Bulan & pesawat');
+      models = await loadCoreModels(store.progress.selectedShip || 'astra', (f) => setLoad(.14 + f * .56, 'Memuat Bumi, Bulan & pesawat'));
       setShipModels(models.ships);
       setLoad(.72, 'Menghitung orbit'); await nextFrame();
       sys = buildSystem(scene, U, { touch: isTouch, models });
@@ -1141,9 +1230,11 @@ export function createEngine(el) {
       camera.position.copy(ship.pos).add(_v.set(Math.sin(menuAngle) * 11, 3, Math.cos(menuAngle) * 11).applyQuaternion(ship.quat));
       camera.lookAt(ship.pos);
       const warm = new THREE.Group(); warm.position.copy(ship.pos); scene.add(warm);
-      for (const id of SHIP_IDS) if (id !== store.progress.selectedShip) { shipModels[id] = buildShip(id); warm.add(shipModels[id].group); }
+      const curShip = store.progress.selectedShip || 'astra';
+      if (!shipModels[curShip]) shipModels[curShip] = buildShip(curShip);
+      warm.add(shipModels[curShip].group);
       try { await renderer.compileAsync(scene, camera); await renderer.compileAsync(bgScene, bgCam); } catch (e) { console.warn(e); }
-      for (const id of SHIP_IDS) if (id !== store.progress.selectedShip) warm.remove(shipModels[id].group);
+      warm.remove(shipModels[curShip].group);
       scene.remove(warm);
       trans.t = 1;
       setLoad(1, 'Siap terbang');
@@ -1171,6 +1262,9 @@ export function createEngine(el) {
     click() { sfx.click(); }, chime() { sfx.chime(); }, correct() { sfx.correct(); }, wrong() { sfx.wrong(); },
     get touch() { return { joy, hold }; },
     setThrottle(v) { ship.throttle = clamp(v, -.3, 1); ship.braking = false; },
+    setBoost(onOff) { hold.boost = !!onOff; },
+    setBrake(onOff) { hold.brake = !!onOff; if (onOff) ship.braking = true; },
+    setSteer(x, y) { joy.x = clamp(x, -1, 1); joy.y = clamp(y, -1, 1); },
     get throttle() { return ship.throttle; },
     // Misi kisah nyata (Apollo 13)
     mission: {

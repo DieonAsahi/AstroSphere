@@ -216,7 +216,7 @@ export function createHazards({ scene, camera, ship, sys, store, sfx, markersEl,
     onApproach(b) {
       if (ev.damaged && !b.isSun) {
         ev.damaged = false; ev.shield = 100;
-        toast(`<b>Perisai diperbaiki</b> di orbit ${b.name}`, 2600); sfx.chime();
+        toast('<b>Perisai pesawat pulih 100%!</b>', 3000); sfx.chime();
       }
       return !!cur;
     },

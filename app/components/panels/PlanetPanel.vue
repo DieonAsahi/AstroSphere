@@ -5,25 +5,72 @@
 // pemain menebak, dan jawabannya baru dibuka setelah ± 6 detik pengamatan.
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { store, game, recordPrediction } from '~/composables/useGame.js';
-import { PLANETS } from '~/data/solarSystem.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
+import { PLANETS, MOONS } from '~/data/solarSystem.js';
 import { HISTORY } from '~/data/history.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT, FACTS } from '~/data/learning.js';
-const p = computed(() => PLANETS.find((x) => x.id === store.focus) || PLANETS[2]);
-const ph = computed(() => PHENOMENA[p.value.id]);
+
+const { getPlanet, getPhenomenon } = useSupabaseContent();
+const p = computed(() => PLANETS.find((x) => x.id === store.focus) || MOONS.find((x) => x.id === store.focus) || PLANETS[2]);
+const planetData = computed(() => getPlanet(p.value.id));
+const ph = computed(() => getPhenomenon(p.value.id) || PHENOMENA[p.value.id]);
 const pq = computed(() => PREDICT[p.value.id] || null);
 const predicted = computed(() => !!store.progress.predict[p.value.id]);
-const nf = (n, d = 1) => n.toLocaleString('id-ID', { maximumFractionDigits: d });
-const facts = computed(() => {
-  const x = p.value, retro = x.tilt > 90;
-  const day = x.rotationDays < 2 ? `${nf(x.rotationDays * 24)} jam` : `${nf(x.rotationDays, 0)} hari`;
-  const yr = x.periodYears < 2 ? `${nf(x.periodYears * 365.25, 0)} hari` : `${nf(x.periodYears)} tahun`;
-  const size = x.id === 'bumi' ? '12.742 km' : `${nf(x.radiusKm / 6371.0084, 2)}× Bumi`;
+const nf = (n, d = 1) => (n != null && Number.isFinite(+n) ? (+n).toLocaleString('id-ID', { maximumFractionDigits: d }) : (n || '—'));
+
+// Status Bintang Misi Kontekstual
+const apolloStars = computed(() => store.progress.missions?.apollo13?.stars || 0);
+const mcoStars = computed(() => store.progress.missions?.mco?.stars || 0);
+function launchMission(id) {
+  game()?.setMode('misi', { mission: id });
+}
+
+// 6 Kotak Data Ilmiah Katalog Observasi (PLY-02)
+const scientificBoxes = computed(() => {
+  const pd = planetData.value || {};
+  const x = p.value;
+  const retro = (x.tilt || 0) > 90;
+  const rotDay = x.rotationDays < 2 ? `${nf(x.rotationDays * 24)} jam` : `${nf(x.rotationDays, 1)} hari`;
+  const orbYr = x.periodYears < 2 ? `${nf(x.periodYears * 365.25, 0)} hari` : `${nf(x.periodYears, 2)} tahun`;
+
   return [
-    { icon: 'matahari', k: 'Satu hari', v: day, s: retro ? 'berputar terbalik' : '' },
-    { icon: 'orbit', k: 'Satu tahun', v: yr, s: '' },
-    { icon: 'planet', k: x.id === 'bumi' ? 'Diameter' : 'Ukuran', v: size, s: '' },
-    { icon: 'bulan', k: 'Satelit', v: x.moons ? nf(x.moons, 0) : 'Tidak ada', s: '' },
+    {
+      icon: 'planet',
+      k: 'Diameter Ekuator',
+      v: pd.diameter_km ? `${nf(pd.diameter_km, 0)} km` : `${nf(x.radiusKm * 2, 0)} km`,
+      sub: pd.perbandingan_bumi || (x.id === 'bumi' ? '1,00× ukuran Bumi' : `${nf((x.radiusKm * 2) / 12742, 2)}× ukuran Bumi`),
+    },
+    {
+      icon: 'matahari',
+      k: 'Periode Rotasi',
+      v: pd.periode_rotasi || rotDay,
+      sub: pd.subteks_rotasi || (retro ? 'Berputar terbalik (retrograd)' : 'Searah jarum jam'),
+    },
+    {
+      icon: 'orbit',
+      k: 'Periode Orbit',
+      v: pd.periode_orbit || orbYr,
+      sub: pd.subteks_orbit || 'Waktu revolusi mengitari Matahari',
+    },
+    {
+      icon: 'kompas',
+      k: 'Kemiringan Sumbu',
+      v: pd.kemiringan_sumbu || `${nf(x.tilt, 2)}°`,
+      sub: 'Miring terhadap bidang orbit',
+    },
+    {
+      icon: 'termometer',
+      k: 'Suhu Rata-Rata',
+      v: pd.suhu_rata_c || '—',
+      sub: pd.rentang_suhu || 'Rentang suhu permukaan',
+    },
+    {
+      icon: 'jam',
+      k: 'Usia Planet',
+      v: pd.usia_planet || '± 4,5 miliar th',
+      sub: pd.subteks_usia || 'Sejak pembentukan tata surya',
+    },
   ];
 });
 function quiz() { store.quiz.planet = p.value.id; store.quiz.kind = 'planet'; store.quiz.stage = 'intro'; game()?.setMode('kuis'); }
@@ -83,10 +130,65 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
         </div>
         <!-- INFO PLANET -->
         <div v-else-if="!store.pheno.on" key="info" class="sbody scroll">
-          <p class="desc">{{ p.desc }}</p>
-          <div class="facts">
-            <div v-for="f in facts" :key="f.k" class="tile fact"><UiIcon :name="f.icon" :size="20" /><small>{{ f.k }}</small><b class="num">{{ f.v }}</b><em v-if="f.s">{{ f.s }}</em></div>
+          <p class="desc">{{ planetData?.deskripsi_materi || p.desc }}</p>
+
+          <!-- KARTU AJAKAN MISI SEJARAH: APOLLO 13 (KHUSUS BULAN) -->
+          <div v-if="p.id === 'bulan'" class="mission-callout apollo">
+            <div class="mc-head">
+              <span class="mc-icon"><UiIcon name="kilat" :size="20" /></span>
+              <div class="mc-title-box">
+                <span class="tag red">Misi Sejarah · 1970</span>
+                <b class="mc-title">Apollo 13: Pulang dengan Selamat</b>
+              </div>
+            </div>
+            <p class="mc-desc">Tangki oksigen meledak dalam perjalanan ke Bulan. Bantu 3 astronaut bertahan hidup dan pulang ke Bumi.</p>
+            <div class="mc-actions">
+              <button class="btn star block" @click="launchMission('apollo13')">
+                <UiIcon name="kilat" :size="18" /> Jalankan Misi Sejarah: Apollo 13
+              </button>
+              <div v-if="apolloStars" class="mc-stars">
+                <UiIcon v-for="n in 3" :key="n" :name="n <= apolloStars ? 'bintang' : 'bintang-o'" :size="15" :class="{ got: n <= apolloStars }" />
+                <span>Skor Terbaik: {{ apolloStars }}/3 Bintang</span>
+              </div>
+            </div>
           </div>
+
+          <!-- KARTU AJAKAN MISI INVESTIGASI: MARS CLIMATE ORBITER (KHUSUS MARS) -->
+          <div v-if="p.id === 'mars'" class="mission-callout mco">
+            <div class="mc-head">
+              <span class="mc-icon mco-ic"><UiIcon name="info" :size="20" /></span>
+              <div class="mc-title-box">
+                <span class="tag" style="background:rgba(255,140,90,.2);color:#ff9e7a">Investigasi Nyata · 1999</span>
+                <b class="mc-title">Mars Climate Orbiter: Misteri Satuan</b>
+              </div>
+            </div>
+            <p class="mc-desc">Wahana hilang di Mars akibat salah konversi satuan imperial ke metrik. Selidiki penyebabnya dan ulangi sejarah!</p>
+            <div class="mc-actions">
+              <button class="btn star block" @click="launchMission('mco')">
+                <UiIcon name="target" :size="18" /> Jalankan Misi Investigasi: MCO (1999)
+              </button>
+              <div v-if="mcoStars" class="mc-stars">
+                <UiIcon v-for="n in 3" :key="n" :name="n <= mcoStars ? 'bintang' : 'bintang-o'" :size="15" :class="{ got: n <= mcoStars }" />
+                <span>Skor Terbaik: {{ mcoStars }}/3 Bintang</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6 KOTAK DATA ILMIAH KATALOG OBSERVASI (PLY-02) -->
+          <div class="facts grid-sci">
+            <div v-for="f in scientificBoxes" :key="f.k" class="tile fact">
+              <div class="fh"><UiIcon :name="f.icon" :size="18" /><small>{{ f.k }}</small></div>
+              <b class="num">{{ f.v }}</b>
+              <span v-if="f.sub" class="f-sub">{{ f.sub }}</span>
+            </div>
+          </div>
+
+          <!-- KOTAK ARAH ROTASI (PLY-02) -->
+          <div v-if="planetData?.judul_rotasi" class="rot-box">
+            <div class="rh"><UiIcon name="ulang" :size="16" /><b>{{ planetData.judul_rotasi }}</b></div>
+            <p>{{ planetData.deskripsi_rotasi }}</p>
+          </div>
+
           <button v-if="ph" class="phc" :class="{ ask: pq && !predicted }" @click="phenomenon">
             <span class="ic"><UiIcon :name="pq && !predicted ? 'kuis' : 'fenomena'" :size="22" /></span>
             <span class="t"><small>{{ pq && !predicted ? 'Tebak dulu' : 'Fenomena' }}</small><b>{{ pq && !predicted ? pq.q : ph.title }}</b></span>
@@ -137,12 +239,29 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
 </template>
 
 <style scoped>
+/* KARTU AJAKAN MISI KONTEKSTUAL (BULAN & MARS) */
+.mission-callout{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:var(--r);background:linear-gradient(135deg,rgba(255,107,107,.18) 0%,rgba(20,28,58,.85) 100%);border:1px solid rgba(255,140,90,.4);box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.mission-callout.mco{background:linear-gradient(135deg,rgba(193,83,47,.22) 0%,rgba(20,28,58,.85) 100%);border-color:rgba(255,158,122,.38)}
+.mc-head{display:flex;align-items:center;gap:12px}
+.mc-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--coral);color:#2a0606;flex:none}
+.mc-icon.mco-ic{background:#e07a4f;color:#fff}
+.mc-title-box{display:flex;flex-direction:column;gap:3px}
+.mc-title{font-family:var(--display);font-size:15px;line-height:1.25;color:var(--text)}
+.mc-desc{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
+.mc-actions{display:flex;flex-direction:column;gap:6px}
+.mc-stars{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--star);justify-content:center}
+.mc-stars .got{color:var(--star)}
+
 .desc{font-size:15px;color:var(--muted);line-height:1.6}
 .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fact{display:flex;flex-direction:column;gap:2px;color:var(--sky)}
-.fact small{font-size:12.5px;color:var(--faint);margin-top:6px}
-.fact b{font-size:19px;font-weight:600;color:var(--text)}
-.fact em{font-style:normal;font-size:12px;color:var(--star)}
+.fact{display:flex;flex-direction:column;gap:3px;color:var(--sky);padding:12px 14px}
+.fh{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.fh small{font-size:12px;color:var(--muted)}
+.fact b{font-size:17px;font-weight:600;color:var(--text);margin-top:2px}
+.f-sub{font-size:11.5px;color:var(--faint);line-height:1.35}
+.rot-box{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:var(--r);background:rgba(59,108,240,.12);border:1px solid rgba(143,176,255,.25)}
+.rot-box .rh{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:600;font-size:14.5px;color:var(--sky)}
+.rot-box p{font-size:13px;color:var(--muted);line-height:1.5}
 .phc{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r);background:linear-gradient(120deg,rgba(59,108,240,.3),rgba(59,108,240,.08));border:1px solid rgba(143,176,255,.3);text-align:left;transition:filter .15s}
 .phc:hover{filter:brightness(1.15)}
 .phc .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--blue);flex:none}

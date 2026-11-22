@@ -14,4 +14,11 @@ dist
 /3D Pesawat/
 /3D Planet/
 graphify-out/
+/docs/
+/supabase/
+/structure.sql
+/src/
+/agent/
+*.tsbuildinfo
+
 

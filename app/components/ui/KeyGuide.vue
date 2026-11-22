@@ -18,15 +18,23 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
     <div v-if="tab === 'keyboard'" class="kb">
       <section class="grp">
         <div class="pad">
-          <div class="r"><span class="key"><b class="kbd">{{ k('turnL') }}</b><small>Putar</small></span><span class="key hl"><b class="kbd">{{ k('forward') }}</b><small>Maju</small></span><span class="key"><b class="kbd">{{ k('turnR') }}</b><small>Putar</small></span></div>
-          <div class="r"><span class="key"><b class="kbd">{{ k('left') }}</b><small>Geser</small></span><span class="key"><b class="kbd">{{ k('back') }}</b><small>Mundur</small></span><span class="key"><b class="kbd">{{ k('right') }}</b><small>Geser</small></span></div>
+          <div class="r">
+            <span class="key"><b class="kbd">{{ k('down') }}</b><small>Turun</small></span>
+            <span class="key hl"><b class="kbd">{{ k('forward') }}</b><small>Maju</small></span>
+            <span class="key"><b class="kbd">{{ k('up') }}</b><small>Naik</small></span>
+          </div>
+          <div class="r">
+            <span class="key"><b class="kbd">{{ k('left') }}</b><small>Belok</small></span>
+            <span class="key"><b class="kbd">{{ k('back') }}</b><small>Mundur</small></span>
+            <span class="key"><b class="kbd">{{ k('right') }}</b><small>Belok</small></span>
+          </div>
         </div>
-        <p class="cap">Terbang &amp; belok</p>
+        <p class="cap">Terbang &amp; arah</p>
       </section>
       <section class="grp">
         <div class="pad arrows">
-          <span class="key"><b class="kbd">{{ k('up') }}</b><small>Naik</small></span>
-          <span class="key"><b class="kbd">{{ k('down') }}</b><small>Turun</small></span>
+          <span class="key"><b class="kbd">↑</b><small>Naik</small></span>
+          <span class="key"><b class="kbd">↓</b><small>Turun</small></span>
         </div>
         <p class="cap">Arah hidung</p>
       </section>
@@ -50,13 +58,26 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 
     <div v-else class="tc">
       <div class="phone" aria-hidden="true">
-        <div class="joy"><i /><span>Geser</span></div>
-        <div class="btns"><i class="b1">Turbo</i><i class="b2">Rem</i><i class="b3">Gas</i></div>
+        <div class="stick-mock">
+          <div class="grid-ring" />
+          <i class="knob" />
+          <span>Analog Kemudi</span>
+        </div>
+        <div class="throttle-mock">
+          <div class="slots">
+            <span class="slot hot">TURBO</span>
+            <span class="slot act">MAJU</span>
+            <span class="slot">NETRAL</span>
+            <span class="slot warn">REM</span>
+          </div>
+          <div class="rail"><i class="lever" /></div>
+        </div>
+        <div class="stop-mock">STOP</div>
       </div>
       <ul class="tl">
-        <li><b>Jempol kiri</b> — sentuh di mana saja di sisi kiri, lalu geser untuk mengarahkan pesawat.</li>
-        <li><b>Gas</b> untuk maju, <b>Turbo</b> untuk melesat, <b>Rem</b> untuk berhenti.</li>
-        <li><b>Geser sisi kanan</b> layar untuk melihat sekeliling.</li>
+        <li><b>Kemudi Analog (Kiri)</b> — seret stik analog di kiri bawah untuk mengarahkan haluan moncong pesawat (belok kiri/kanan &amp; naik/turun).</li>
+        <li><b>Tuas Dorong (Kanan)</b> — geser tuas dorong di kanan bawah ke slot Turbo, Maju, Netral, atau Rem. Tekan tombol <b>STOP</b> untuk langsung diam.</li>
+        <li><b>Seret tengah layar</b> dengan tetikus atau jari untuk melihat sekeliling kokpit dengan bebas.</li>
       </ul>
     </div>
   </div>
@@ -80,15 +101,20 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 .key.wide small{font-size:13.5px;color:var(--text)}
 .cap{font-family:var(--display);font-weight:600;font-size:14px;color:var(--faint)}
 .tc{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center}
-.phone{position:relative;width:280px;height:150px;border-radius:26px;border:3px solid var(--line-2);background:linear-gradient(160deg,#141d45,#0b1130);flex:none}
-.joy{position:absolute;left:24px;bottom:20px;width:78px;height:78px;border-radius:50%;border:2px dashed var(--line-2);display:grid;place-items:center}
-.joy i{width:34px;height:34px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 6px rgba(59,108,240,.25)}
-.joy span{position:absolute;bottom:-20px;font-size:11px;color:var(--muted)}
-.btns{position:absolute;right:16px;bottom:16px;display:grid;grid-template-columns:auto auto;grid-template-areas:". t" "r g";gap:6px;align-items:end}
-.btns i{font-style:normal;display:grid;place-items:center;border-radius:50%;font-family:var(--display);font-weight:600;font-size:11px}
-.btns .b1{grid-area:t;width:40px;height:40px;background:var(--star);color:var(--on-star)}
-.btns .b2{grid-area:r;width:40px;height:40px;background:var(--surface-3)}
-.btns .b3{grid-area:g;width:56px;height:56px;background:var(--blue)}
+.phone{position:relative;width:290px;height:154px;border-radius:26px;border:3px solid var(--line-2);background:linear-gradient(160deg,#141d45,#0b1130);flex:none;overflow:hidden}
+.stick-mock{position:absolute;left:20px;bottom:18px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,rgba(22,33,70,.85) 0%,rgba(10,16,38,.95) 100%);border:2px solid rgba(143,176,255,.25);display:grid;place-items:center}
+.stick-mock .grid-ring{position:absolute;inset:12px;border-radius:50%;border:1px dashed rgba(143,176,255,.2)}
+.stick-mock .knob{position:relative;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b6cf0 0%,#1e3a8a 100%);box-shadow:0 0 10px rgba(59,108,240,.5)}
+.stick-mock span{position:absolute;bottom:-20px;font-size:10.5px;color:var(--muted);white-space:nowrap}
+.throttle-mock{position:absolute;right:18px;bottom:22px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(16,23,58,.8);border:1px solid rgba(143,176,255,.2)}
+.throttle-mock .slots{display:flex;flex-direction:column;gap:3px}
+.throttle-mock .slot{font-size:9px;font-weight:700;color:var(--faint);letter-spacing:.04em}
+.throttle-mock .slot.hot{color:#ffc947}
+.throttle-mock .slot.act{color:#60a5fa}
+.throttle-mock .slot.warn{color:#ff6b6b}
+.throttle-mock .rail{position:relative;width:6px;height:68px;border-radius:999px;background:rgba(10,16,38,.9);border:1px solid rgba(143,176,255,.25);overflow:hidden}
+.throttle-mock .lever{position:absolute;left:0;right:0;top:20px;height:12px;border-radius:999px;background:#60a5fa;box-shadow:0 0 6px #60a5fa}
+.stop-mock{position:absolute;right:84px;bottom:14px;padding:2px 7px;border-radius:6px;background:rgba(255,107,107,.18);border:1px solid rgba(255,107,107,.4);color:#ff8585;font-size:9.5px;font-weight:700}
 .tl{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:360px;font-size:14.5px;color:var(--muted)}
 .tl b{color:var(--text);font-weight:600}
 .compact .grp{min-width:0;padding:12px 12px 10px}

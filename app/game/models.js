@@ -5,35 +5,82 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { SHIP_IDS } from '../data/ships.js';
 
-export const PLANET_MODEL_IDS = ['merkurius', 'venus', 'bumi', 'bulan', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
+export const CORE_PLANET_IDS = ['bumi', 'bulan'];
+export const REMAINING_PLANET_IDS = ['merkurius', 'venus', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
+export const PLANET_MODEL_IDS = [...CORE_PLANET_IDS, ...REMAINING_PLANET_IDS];
 export const DECOR_MODEL_IDS = ['black_hole']; // lubang hitam di langit (di luar tata surya), dimuat belakangan
 
-export async function loadModels(onProgress = () => {}) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const jobs = [...PLANET_MODEL_IDS.map((id) => ['planets', id]), ...SHIP_IDS.map((id) => ['ships', id])];
+const getLoader = () => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+
+/**
+ * Muat satu model GLB spesifik (planet atau kapal).
+ */
+export function loadSingleModel(kind, id) {
+  const loader = getLoader();
+  return new Promise((resolve) => {
+    loader.load(
+      `/models/${kind}/${id}.glb`,
+      (gltf) => {
+        const root = gltf.scene.children.length === 1 ? gltf.scene.children[0] : gltf.scene;
+        root.updateMatrixWorld(true);
+        resolve(root);
+      },
+      undefined,
+      (err) => {
+        console.warn(`[AstroSphere] Model ${kind}/${id} gagal dimuat — memakai versi prosedural.`, err);
+        resolve(null);
+      }
+    );
+  });
+}
+
+/**
+ * Pemuatan model inti (Lazy Loading): Hanya Bumi, Bulan, dan pesawat aktif saat boot.
+ * Total unduhan awal turun dari ~17 MB menjadi ~2,5 MB.
+ */
+export async function loadCoreModels(selectedShip = 'astra', onProgress = () => {}) {
+  const shipId = SHIP_IDS.includes(selectedShip) ? selectedShip : 'astra';
+  const jobs = [
+    ['planets', 'bumi'],
+    ['planets', 'bulan'],
+    ['ships', shipId]
+  ];
   const out = { planets: {}, ships: {}, decor: {}, failed: [] };
   const frac = jobs.map(() => 0);
   let done = 0;
   const report = () => onProgress(frac.reduce((a, b) => a + b, 0) / jobs.length, done, jobs.length);
+
   await Promise.all(jobs.map(([kind, id], i) => new Promise((resolve) => {
     const finish = () => { frac[i] = 1; done++; report(); resolve(); };
-    loader.load(`/models/${kind}/${id}.glb`,
+    getLoader().load(`/models/${kind}/${id}.glb`,
       (gltf) => {
-        // akar node berisi extras (kind, id, ringInner/Outer, size) → userData
         const root = gltf.scene.children.length === 1 ? gltf.scene.children[0] : gltf.scene;
         root.updateMatrixWorld(true);
         out[kind][id] = root;
         finish();
       },
       (e) => { if (e.total) { frac[i] = Math.min(.99, e.loaded / e.total); report(); } },
-      (err) => { console.warn(`[AstroSphere] Model ${kind}/${id} gagal dimuat — memakai versi prosedural.`, err); out.failed.push(`${kind}/${id}`); finish(); });
+      (err) => {
+        console.warn(`[AstroSphere] Model ${kind}/${id} gagal dimuat — memakai versi prosedural.`, err);
+        out.failed.push(`${kind}/${id}`);
+        finish();
+      }
+    );
   })));
+
   return out;
+}
+
+/**
+ * Kompatibilitas fungsi pemuatan bawaan (secara default mengunduh model inti).
+ */
+export async function loadModels(onProgress = () => {}) {
+  return loadCoreModels('astra', onProgress);
 }
 
 // Dekorasi (mis. lubang hitam) dimuat setelah permainan berjalan agar layar awal tetap ringan.
 export function loadDecor(id) {
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = getLoader();
   return new Promise((resolve) => loader.load(`/models/decor/${id}.glb`,
     (gltf) => { const root = gltf.scene.children.length === 1 ? gltf.scene.children[0] : gltf.scene; root.updateMatrixWorld(true); resolve(root); },
     undefined, (err) => { console.warn(`[AstroSphere] Dekorasi ${id} gagal dimuat.`, err); resolve(null); }));

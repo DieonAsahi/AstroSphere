@@ -3,12 +3,20 @@
 // Astra gratis, Orion 300, Nova 700 bintang. Membuka memotong saldo sekali; memilih pesawat yang dimiliki gratis.
 import { computed, onBeforeUnmount } from 'vue';
 import { store, game, unlockShip, saveProgress, showToast } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
-const cur = computed(() => SHIPS[store.hangarPreview] || SHIPS.astra);
+import { KM } from '~/game/util.js';
+
+const { getShips } = useSupabaseContent();
+const shipsData = computed(() => getShips());
+const cur = computed(() => shipsData.value[store.hangarPreview] || SHIPS[store.hangarPreview] || SHIPS.astra);
+const cruiseSpeedKm = computed(() => Math.round((cur.value.speed || 70) * KM).toLocaleString('id-ID'));
+const boostSpeedKm = computed(() => Math.round((cur.value.speed || 70) * (cur.value.boost || 4.5) * KM).toLocaleString('id-ID'));
+const shipOf = (id) => shipsData.value[id] || SHIPS[id];
 const owned = (id) => store.progress.owned.includes(id);
 function preview(id) { game()?.previewShip(id); game()?.click(); }
 function use(id) { store.progress.selectedShip = id; saveProgress(); game()?.setShip(id); game()?.chime(); }
-function unlock(id) { const r = unlockShip(id); if (r.ok) { use(id); showToast(`<b>${SHIPS[id].name}</b> terbuka!`); } }
+function unlock(id) { const s = shipOf(id); const r = unlockShip(id); if (r.ok) { use(id); showToast(`<b>${s.name}</b> terbuka!`); } }
 onBeforeUnmount(() => { if (store.hangarPreview !== store.progress.selectedShip) game()?.setShip(store.progress.selectedShip); });
 </script>
 
@@ -36,6 +44,16 @@ onBeforeUnmount(() => { if (store.hangarPreview !== store.progress.selectedShip)
           <p class="small">{{ cur.cls }} · {{ cur.length }}</p>
         </div>
         <p class="desc">{{ cur.desc }}</p>
+        <div class="speed-grid">
+          <div class="speed-box">
+            <span class="sb-label">Jelajah Maksimal</span>
+            <b class="sb-val num">{{ cruiseSpeedKm }} <small>km/s</small></b>
+          </div>
+          <div class="speed-box hot">
+            <span class="sb-label">Pendorong Turbo</span>
+            <b class="sb-val num">{{ boostSpeedKm }} <small>km/s</small></b>
+          </div>
+        </div>
         <div class="stats">
           <div v-for="(v, k) in cur.stats" :key="k" class="st"><span>{{ k }}</span><div class="bar"><i :style="{ width: v * 100 + '%' }" /></div></div>
         </div>
@@ -61,6 +79,13 @@ onBeforeUnmount(() => { if (store.hangarPreview !== store.progress.selectedShip)
 .sc.on{border-color:var(--sky);transform:translateY(-3px)}
 .sc b{font-family:var(--display);font-weight:600;font-size:16px}
 .desc{font-size:14.5px;color:var(--muted);line-height:1.6}
+.speed-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.speed-box{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid rgba(143,176,255,.14)}
+.speed-box.hot{border-color:rgba(255,201,71,.3);background:rgba(255,201,71,.08)}
+.sb-label{font-size:11px;color:var(--faint);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.sb-val{font-size:17px;font-weight:700;color:var(--text)}
+.speed-box.hot .sb-val{color:var(--star)}
+.sb-val small{font-size:11.5px;color:var(--muted);font-weight:400}
 .stats{display:flex;flex-direction:column;gap:10px}
 .st{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
 @media (max-width:760px){ .ships{flex-wrap:nowrap;overflow-x:auto;width:100%} .sc{min-width:132px;padding:10px 12px} .desc{display:none} }

@@ -66,7 +66,6 @@ onBeforeUnmount(() => { game()?.dispose(); });
         <PanelsMcoPanel v-else-if="store.mode === 'misi' && store.mission.id === 'mco'" key="mco" />
         <PanelsMissionPanel v-else-if="store.mode === 'misi'" key="misi" />
       </Transition>
-      <HudTouchControls v-if="store.touch && isJelajah && store.phase === 'playing' && !store.approach.show && !store.event.result" />
       <Transition name="fade"><PanelsPauseMenu v-if="store.phase === 'paused'" /></Transition>
     </template>
 

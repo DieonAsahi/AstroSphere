@@ -322,5 +322,17 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
   .items{grid-template-columns:1fr 1fr}
   .note{top:auto;bottom:calc(58vh + 16px);border-radius:var(--r)}
 }
+@media (max-height:520px){
+  .stat{max-width:280px;gap:2px}
+  .stat .h1{font-size:20px}
+  .clk b{font-size:16px}
+  .meters{display:none}
+  .mc{bottom:calc(6px + var(--safe-b));max-height:calc(100vh - 46px);padding:12px 14px;gap:8px}
+  .tx{font-size:13px;line-height:1.4}
+  .opts{gap:6px}
+  .opt{padding:8px 10px;font-size:13.5px}
+  .fb{padding:8px 10px;font-size:13px}
+  .mc>.btn,.row2{position:sticky;bottom:0;z-index:3;margin-top:2px}
+}
 @media (prefers-reduced-motion:reduce){ .boom,.static,.dotp{animation:none} }
 </style>

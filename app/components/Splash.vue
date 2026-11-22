@@ -39,11 +39,12 @@ watch(() => store.screen, (s) => live?.setScene(sceneFor(s)));
 
 onMounted(async () => {
   const c = navigator.connection, slowNet = !!(c && (c.saveData || /2g/.test(c.effectiveType || '')));
-  // Unduh model 3D di latar saat browser senggang (prioritas rendah) — bukan di koneksi hemat data.
+  // Unduh model 3D inti di latar saat browser senggang (prioritas rendah) — bukan di koneksi hemat data.
   if (!slowNet) {
     const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
     idle(() => {
-      for (const href of [...[...PLANETS.map((p) => p.id), 'bulan'].map((id) => `/models/planets/${id}.glb`), ...SHIP_IDS.map((id) => `/models/ships/${id}.glb`)]) {
+      const coreHrefs = ['/models/planets/bumi.glb', '/models/planets/bulan.glb', '/models/ships/astra.glb'];
+      for (const href of coreHrefs) {
         if (document.querySelector(`link[href="${href}"]`)) continue;
         const l = document.createElement('link'); l.rel = 'prefetch'; l.href = href; document.head.appendChild(l);
       }
@@ -98,8 +99,11 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
         <form class="card form" novalidate @submit.prevent="submit">
           <button type="button" class="ib sm back" aria-label="Kembali ke beranda" @click="go('welcome')"><UiIcon name="kembali" :size="20" /></button>
           <h2 class="h2">{{ store.screen === 'login' ? 'Selamat datang kembali' : 'Buat akun penjelajah' }}</h2>
-          <p class="small">{{ store.screen === 'login' ? 'Masuk dengan nama dan kata sandimu.' : 'Cukup nama dan kata sandi.' }}</p>
-          <label class="field">Nama penjelajah<input v-model="f.name" autocomplete="username" autocapitalize="words" placeholder="Contoh: Raka" maxlength="24"></label>
+          <p class="small">{{ store.screen === 'login' ? 'Masuk dengan nama dan kata sandimu.' : 'Daftar dengan nama unik dan kata sandi.' }}</p>
+          <label class="field">
+            Nama penjelajah
+            <input v-model="f.name" autocomplete="username" autocapitalize="none" placeholder="Contoh: penjelajah_01" maxlength="20">
+          </label>
           <label class="field">Kata sandi
             <span class="pw"><input v-model="f.pass" :type="f.show ? 'text' : 'password'" :autocomplete="store.screen === 'login' ? 'current-password' : 'new-password'" :placeholder="store.screen === 'login' ? 'Kata sandimu' : 'Minimal 6 karakter'"><button type="button" class="eye" :aria-label="f.show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'" @click="f.show = !f.show"><UiIcon name="mata" :size="20" /></button></span>
           </label>
@@ -108,7 +112,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
           <button class="btn ghost block" type="button" @click="play(store.hasSave)">Main sebagai tamu</button>
           <p class="sw">{{ store.screen === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?' }}
             <button type="button" class="link" @click="go(store.screen === 'login' ? 'register' : 'login')">{{ store.screen === 'login' ? 'Daftar' : 'Masuk' }}</button></p>
-          <p class="fine">Akun &amp; progres tersimpan di perangkat ini saja.</p>
+          <p class="fine">Akun &amp; progres tersinkronisasi aman dengan awan Supabase.</p>
         </form>
       </main>
     </Transition>

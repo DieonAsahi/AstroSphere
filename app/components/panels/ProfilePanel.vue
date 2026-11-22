@@ -1,7 +1,17 @@
 <script setup>
-// Profil pemain: Riwayat kuis · Pesawat (inventaris) · Kontrol (bisa diubah) · FAQ & kredit.
-import { computed, ref, onBeforeUnmount } from 'vue';
-import { store, game, saveProgress, saveSettings, quizMax, showToast } from '~/composables/useGame.js';
+// Profil pemain: Riwayat kuis · Pesawat (inventaris) · Kontrol (bisa diubah) · Akun & Awan (Supabase) · FAQ & kredit.
+import { computed, ref, reactive, onBeforeUnmount } from 'vue';
+import {
+  store,
+  game,
+  saveProgress,
+  saveSettings,
+  quizMax,
+  showToast,
+  registerUser,
+  loginUser,
+  logoutUser,
+} from '~/composables/useGame.js';
 import { PLANETS, NAME_OF } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 import { POINTS_PER_QUESTION } from '~/data/quiz.js';
@@ -10,13 +20,25 @@ import { MODEL_CREDITS, LICENSE_URL } from '~/data/credits.js';
 import { fmtDate } from '~/game/util.js';
 
 const P = store.progress;
-const TABS = [['kuis', 'Riwayat kuis'], ['armada', 'Pesawat'], ['kontrol', 'Kontrol'], ['faq', 'FAQ']];
-const tab = computed({ get: () => (TABS.some(([id]) => id === store.profileTab) ? store.profileTab : 'kuis'), set: (v) => { store.profileTab = v; } });
-const name = computed(() => store.account.loggedIn ? store.account.name : 'Penjelajah tamu');
+const TABS = [
+  ['kuis', 'Riwayat kuis'],
+  ['armada', 'Pesawat'],
+  ['kontrol', 'Kontrol'],
+  ['akun', 'Akun & Awan'],
+  ['faq', 'Bantuan'],
+];
+
+const tab = computed({
+  get: () => (TABS.some(([id]) => id === store.profileTab) ? store.profileTab : 'kuis'),
+  set: (v) => { store.profileTab = v; },
+});
+
+const name = computed(() => store.account.loggedIn ? store.account.name : 'Penjelajah Tamu');
 const visited = computed(() => store.discovered.filter((d) => PLANETS.some((p) => p.id === d)).length);
 const perfect = computed(() => PLANETS.filter((p) => (P.best[p.id] ?? 0) >= quizMax()).length);
 const stars = (s) => Math.round((s ?? 0) / POINTS_PER_QUESTION);
 const ledger = computed(() => [...P.ledger].reverse().slice(0, 6));
+
 const ledgerLabel = (l) => l.type === 'kuis' ? `Kuis ${PLANETS.find((p) => p.id === l.planet)?.name || ''}`
   : l.type === 'pesawat' ? `Membuka ${SHIPS[l.ship]?.name || 'pesawat'}`
   : l.type === 'tebak' ? `Tebakan benar: ${l.key?.startsWith('gerhana') ? (l.key === 'gerhana-bulan' ? 'gerhana Bulan' : 'gerhana Matahari') : PLANETS.find((p) => p.id === l.key)?.name || ''}`
@@ -24,6 +46,7 @@ const ledgerLabel = (l) => l.type === 'kuis' ? `Kuis ${PLANETS.find((p) => p.id 
   : l.type === 'kartu' ? `Kartu baru: ${NAME_OF[l.key] || ''}`
   : l.type === 'peristiwa' ? (l.key === 'badai' ? 'Selamat dari badai Matahari' : 'Lolos dari sampah antariksa')
   : l.type === 'misi' ? (l.key === 'mco' ? 'Misi Mars Climate Orbiter selesai' : 'Misi Apollo 13 selesai') : 'Bintang';
+
 function quiz(id) { store.quiz.planet = id; store.quiz.stage = 'intro'; game()?.setMode('kuis'); }
 function openHangar(id) { game()?.setMode('hanggar'); game()?.previewShip(id); }
 function useShip(id) { if (!P.owned.includes(id)) return; P.selectedShip = id; saveProgress(); game()?.setShip(id); game()?.chime(); }
@@ -48,13 +71,52 @@ function resetKeys() { store.settings.keys = {}; saveSettings(); game()?.applySe
 onBeforeUnmount(endCapture);
 function setting(k, v) { store.settings[k] = v; game()?.applySettings(); }
 
+// ---- formulir akun & awan di profil ----
+const authMode = ref('login'); // 'login' | 'register'
+const authForm = reactive({ username: '', password: '', busy: false, err: '', success: '' });
+
+async function handleAuthSubmit() {
+  if (authForm.busy) return;
+  authForm.err = '';
+  authForm.success = '';
+  if (!authForm.username.trim()) { authForm.err = 'Isi nama penjelajah.'; return; }
+  if (!authForm.password) { authForm.err = 'Isi kata sandi.'; return; }
+
+  authForm.busy = true;
+  const isReg = authMode.value === 'register';
+  const res = isReg
+    ? await registerUser(authForm.username, authForm.password)
+    : await loginUser(authForm.username, authForm.password);
+  authForm.busy = false;
+
+  if (!res.ok) {
+    authForm.err = res.err || 'Gagal memproses akun.';
+    return;
+  }
+
+  authForm.password = '';
+  const act = isReg ? 'Akun baru berhasil dibuat' : 'Berhasil masuk akun';
+  authForm.success = `${act}! Progres lokal Anda telah digabungkan ke awan Supabase.`;
+  showToast(`Selamat datang, <b>${store.account.name}</b>!`, 3200);
+}
+
+async function handleLogout() {
+  await logoutUser();
+  showToast('Anda telah keluar dari akun awan. Beralih ke Mode Tamu lokal.', 2800);
+}
+
+function triggerManualSync() {
+  saveProgress();
+  showToast('Progres berhasil disinkronkan ke awan Supabase!', 2200);
+}
+
 const open = ref({ 0: true });
 const FAQ = [
   ['Apa itu AstroSphere?', 'Game belajar tata surya di browser. Terbangkan pesawat, singgahi delapan planet, lihat fenomenanya, telusuri sejarah eksplorasi, lalu uji dirimu lewat kuis.'],
   ['Bagaimana cara ke planet tertentu?', 'Buka Peta (tombol M atau lewat menu), pilih planet, lalu tekan "Terbang ke sini". Pesawat terbang otomatis dan berhenti sendiri saat tiba.'],
   ['Bagaimana mendapat bintang?', 'Kerjakan kuis planet: 3 soal, 50 bintang per jawaban benar. Bintang hanya bertambah kalau skormu lebih tinggi dari skor terbaik sebelumnya. Jawaban salah tidak mengurangi bintang.'],
   ['Untuk apa bintang?', 'Membuka pesawat baru di Hanggar: Orion Glider 300 bintang, Nova Voyager 700 bintang.'],
-  ['Apakah progres tersimpan?', 'Ya, otomatis di browser ini — termasuk saat bermain sebagai tamu. Sinkronisasi antar-perangkat belum tersedia.'],
+  ['Apakah progres tersimpan di awan?', 'Ya! Saat Anda mendaftar atau masuk akun, seluruh bintang, pesawat, dan catatan perjalanan tersimpan otomatis di basis data awan Supabase. Mode Tamu tetap tersimpan di perangkat ini.'],
   ['Apakah ukuran dan jaraknya asli?', 'Ukuran planet dibandingkan satu sama lain sudah sesuai aslinya. Jarak antarplanet dipadatkan dan Matahari diperkecil agar semuanya bisa dijelajahi.'],
 ];
 </script>
@@ -64,11 +126,18 @@ const FAQ = [
     <div class="dim solid" />
     <section class="prof scroll">
       <div class="wrap">
+        <!-- HEADER KARTU PROFIL -->
         <div class="head card flat">
           <div class="av">{{ name.slice(0, 1).toUpperCase() }}</div>
           <div class="who">
             <h1 class="h2">{{ name }}</h1>
-            <span class="tag" :class="store.account.loggedIn ? 'green' : ''">{{ store.account.loggedIn ? 'Akun di perangkat ini' : 'Tamu' }}</span>
+            <div class="tags-row">
+              <span class="tag" :class="store.account.cloudSynced ? 'green' : ''">
+                <UiIcon :name="store.account.cloudSynced ? 'orbit' : 'info'" :size="13" />
+                {{ store.account.cloudSynced ? 'Tersimpan di Awan' : 'Tersimpan Lokal (Mode Tamu)' }}
+              </span>
+              <span v-if="store.account.username" class="uname-badge">@{{ store.account.username }}</span>
+            </div>
           </div>
           <div class="kpis">
             <div class="kpi star"><UiIcon name="bintang" :size="20" /><b class="num">{{ P.points }}</b><small>bintang</small></div>
@@ -78,6 +147,7 @@ const FAQ = [
           <button class="btn primary back" @click="game()?.back()"><UiIcon name="kembali" :size="18" />Kembali terbang</button>
         </div>
 
+        <!-- TAB NAVIGASI -->
         <div class="seg tabs" role="tablist">
           <button v-for="[id, lb] in TABS" :key="id" role="tab" :aria-selected="tab === id" :class="{ on: tab === id }" @click="tab = id">{{ lb }}</button>
         </div>
@@ -131,14 +201,102 @@ const FAQ = [
           <div class="ctl card flat">
             <div class="ch"><span class="ic"><UiIcon name="sentuh" :size="22" /></span><div><h3 class="h3">Layar sentuh</h3></div></div>
             <div class="tcs">
-              <div class="tile"><UiIcon name="target" :size="24" /><b>Joystick</b><small>Sentuh sisi kiri layar lalu geser untuk mengarahkan.</small></div>
-              <div class="tile"><UiIcon name="gas" :size="24" /><b>Gas · Turbo · Rem</b><small>Tombol bulat di kanan bawah. Tahan untuk memakai.</small></div>
-              <div class="tile"><UiIcon name="mata" :size="24" /><b>Lihat sekeliling</b><small>Geser sisi kanan layar.</small></div>
+              <div class="tile"><UiIcon name="target" :size="24" /><b>Kemudi Analog</b><small>Sentuh stik analog di kiri bawah untuk mengarahkan moncong pesawat.</small></div>
+              <div class="tile"><UiIcon name="gas" :size="24" /><b>Tuas Dorong & Rem</b><small>Tarik tuas dorong di kanan bawah untuk mengatur maju, turbo, dan rem.</small></div>
+              <div class="tile"><UiIcon name="mata" :size="24" /><b>Lihat sekeliling</b><small>Geser area tengah layar dengan tetikus atau jari.</small></div>
             </div>
           </div>
           <div class="ctl card flat">
             <div class="trow"><span>Kepekaan lihat sekeliling</span><span class="rng"><input type="range" min=".3" max="2.5" step=".1" :value="store.settings.sensitivity" @input="setting('sensitivity', +$event.target.value)"><b class="num">{{ store.settings.sensitivity.toFixed(1) }}×</b></span></div>
             <UiToggle :model-value="store.settings.invertY" label="Balik naik/turun" sub="Tombol naik = hidung ke bawah" @update:model-value="setting('invertY', $event)" />
+          </div>
+        </template>
+
+        <!-- AKUN & SINKRONISASI AWAN -->
+        <template v-else-if="tab === 'akun'">
+          <div class="cloud-panel card flat">
+            <div class="ch">
+              <span class="ic"><UiIcon name="orbit" :size="24" /></span>
+              <div>
+                <h3 class="h3">Sinkronisasi Awan &amp; Akun Pemain</h3>
+                <p class="small">Simpan progres penjelajahan, bintang, dan armada pesawat secara permanen di Supabase.</p>
+              </div>
+            </div>
+
+            <!-- TAMPILAN JIKA SUDAH LOGIN -->
+            <div v-if="store.account.loggedIn" class="acct-logged-in">
+              <div class="info-banner card flat">
+                <UiIcon name="cek" :size="20" class="ic-success" />
+                <div class="ib-text">
+                  <b>Akun Aktif Terhubung</b>
+                  <p>Progres permainan Anda tersinkronisasi secara otomatis setiap kali ada capaian baru.</p>
+                </div>
+              </div>
+
+              <div class="detail-rows">
+                <div class="drow"><span>Nama Penjelajah</span><b>{{ store.account.name }}</b></div>
+                <div class="drow"><span>Username Unik</span><b>@{{ store.account.username || store.account.name }}</b></div>
+                <div class="drow"><span>Status Penyimpanan</span><span class="tag green">Awan Supabase Aktif</span></div>
+              </div>
+
+              <div class="btn-actions">
+                <button class="btn line" @click="triggerManualSync">
+                  <UiIcon name="ulang" :size="16" /> Sinkronkan Sekarang
+                </button>
+                <button class="btn ghost danger" @click="handleLogout">
+                  <UiIcon name="keluar" :size="16" /> Keluar dari Akun Awan
+                </button>
+              </div>
+            </div>
+
+            <!-- TAMPILAN JIKA MASIH MODE TAMU -->
+            <div v-else class="acct-guest">
+              <div class="guest-banner card flat">
+                <UiIcon name="info" :size="20" />
+                <div>
+                  <b>Anda Bermain dalam Mode Tamu</b>
+                  <p>Progres saat ini hanya tersimpan di browser ini. Masuk atau buat akun agar capaian Anda tidak hilang saat cache terhapus dan bisa dibuka di perangkat lain.</p>
+                </div>
+              </div>
+
+              <div class="auth-box card flat">
+                <div class="auth-toggle seg">
+                  <button :class="{ on: authMode === 'login' }" @click="authMode = 'login'; authForm.err = ''; authForm.success = ''">Masuk Akun</button>
+                  <button :class="{ on: authMode === 'register' }" @click="authMode = 'register'; authForm.err = ''; authForm.success = ''">Daftar Akun Baru</button>
+                </div>
+
+                <form class="auth-form" @submit.prevent="handleAuthSubmit">
+                  <label class="field">
+                    <span>Nama Penjelajah</span>
+                    <input
+                      v-model="authForm.username"
+                      type="text"
+                      placeholder="Contoh: penjelajah_01"
+                      maxlength="20"
+                      autocomplete="username"
+                    />
+                    <small class="hint">3–20 karakter alfanumerik (huruf kecil, angka, atau garis bawah _).</small>
+                  </label>
+
+                  <label class="field">
+                    <span>Kata Sandi</span>
+                    <input
+                      v-model="authForm.password"
+                      type="password"
+                      placeholder="Minimal 6 karakter"
+                      autocomplete="current-password"
+                    />
+                  </label>
+
+                  <p v-if="authForm.err" class="msg-err"><UiIcon name="silang" :size="14" /> {{ authForm.err }}</p>
+                  <p v-if="authForm.success" class="msg-ok"><UiIcon name="cek" :size="14" /> {{ authForm.success }}</p>
+
+                  <button class="btn primary block" type="submit" :disabled="authForm.busy">
+                    {{ authForm.busy ? 'Menghubungkan…' : (authMode === 'login' ? 'Masuk & Sinkronkan Progres' : 'Daftar Akun & Simpan ke Awan') }}
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </template>
 
@@ -170,6 +328,8 @@ const FAQ = [
 .head{display:flex;align-items:center;gap:18px;padding:18px 20px;flex-wrap:wrap}
 .av{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight:700;font-size:28px;flex:none}
 .who{display:flex;flex-direction:column;gap:6px;align-items:flex-start;flex:1;min-width:160px}
+.tags-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.uname-badge{font-size:12px;color:var(--faint);font-family:var(--font);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:999px}
 .kpis{display:flex;gap:10px;flex-wrap:wrap}
 .kpi{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:10px 16px;border-radius:var(--r);background:var(--surface-2);color:var(--sky)}
 .kpi svg{grid-row:span 2}
@@ -215,6 +375,31 @@ const FAQ = [
 .tcs b{color:var(--text);font-weight:600;font-size:15px}
 .tcs small{color:var(--muted);font-size:13px;line-height:1.45}
 .rng{display:flex;align-items:center;gap:10px;width:220px}.rng b{font-size:14px;width:40px;text-align:right}
+
+/* Panel Awan & Akun */
+.cloud-panel{padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+.info-banner{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:rgba(54,211,154,.08);border:1px solid rgba(54,211,154,.25);border-radius:var(--r)}
+.ic-success{color:var(--green);flex:none;margin-top:2px}
+.ib-text b{display:block;font-size:14.5px;color:var(--green);margin-bottom:2px}
+.ib-text p{margin:0;font-size:13px;color:var(--muted)}
+.detail-rows{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:var(--r);background:var(--surface-2)}
+.drow{display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:4px 0}
+.drow span{color:var(--faint)}
+.btn-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.btn.danger{color:#ff8080}
+.guest-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:rgba(59,108,240,.08);border:1px solid rgba(59,108,240,.22);border-radius:var(--r)}
+.guest-banner b{display:block;font-size:15px;color:var(--sky);margin-bottom:4px}
+.guest-banner p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.45}
+.auth-box{max-width:440px;padding:16px;display:flex;flex-direction:column;gap:14px;margin-top:4px}
+.auth-toggle{align-self:flex-start}
+.auth-form{display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--muted)}
+.field input{width:100%;padding:10px 12px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface-3);color:var(--text);font-size:14px}
+.field input:focus{border-color:var(--sky);outline:none}
+.hint{font-size:11.5px;color:var(--faint)}
+.msg-err{display:flex;align-items:center;gap:6px;color:#ff8080;font-size:13px;margin:0}
+.msg-ok{display:flex;align-items:center;gap:6px;color:var(--green);font-size:13px;margin:0}
+
 .faq{display:flex;flex-direction:column;gap:8px}
 .fi{padding:0 18px}
 .fq{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;text-align:left}

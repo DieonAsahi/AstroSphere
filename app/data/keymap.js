@@ -1,18 +1,18 @@
 // Pemetaan tombol keyboard (KeyboardEvent.code). Tombol pertama tiap aksi bisa diubah di Profil → Kontrol.
 // Kursor/mouse TIDAK mengemudikan pesawat; seret mouse hanya untuk melihat sekeliling.
 export const ACTIONS = [
-  { id: 'forward', label: 'Maju', sub: 'Tambah kecepatan', keys: ['KeyW', 'Enter'] },
-  { id: 'back', label: 'Mundur', sub: 'Kurangi kecepatan', keys: ['KeyS'] },
-  { id: 'left', label: 'Geser kiri', sub: 'Bergeser ke samping', keys: ['KeyA'] },
-  { id: 'right', label: 'Geser kanan', sub: 'Bergeser ke samping', keys: ['KeyD'] },
-  { id: 'turnL', label: 'Putar kiri', sub: 'Belok ke kiri', keys: ['KeyQ', 'ArrowLeft'] },
-  { id: 'turnR', label: 'Putar kanan', sub: 'Belok ke kanan', keys: ['KeyE', 'ArrowRight'] },
-  { id: 'up', label: 'Naik', sub: 'Hidung pesawat ke atas', keys: ['ArrowUp'] },
-  { id: 'down', label: 'Turun', sub: 'Hidung pesawat ke bawah', keys: ['ArrowDown'] },
+  { id: 'forward', label: 'Maju', sub: 'Tambah kecepatan pendorong', keys: ['KeyW', 'Enter'] },
+  { id: 'back', label: 'Mundur', sub: 'Kurangi kecepatan pendorong', keys: ['KeyS'] },
+  { id: 'left', label: 'Belok Kiri', sub: 'Arahkan moncong ke kiri (banking roll)', keys: ['KeyA', 'ArrowLeft'] },
+  { id: 'right', label: 'Belok Kanan', sub: 'Arahkan moncong ke kanan (banking roll)', keys: ['KeyD', 'ArrowRight'] },
+  { id: 'turnL', label: 'Putar Kiri', sub: 'Arahkan moncong ke kiri', keys: ['KeyA', 'ArrowLeft'] },
+  { id: 'turnR', label: 'Putar Kanan', sub: 'Arahkan moncong ke kanan', keys: ['KeyD', 'ArrowRight'] },
+  { id: 'up', label: 'Naik', sub: 'Hidung pesawat ke atas (Pitch Up)', keys: ['KeyE', 'ArrowUp'] },
+  { id: 'down', label: 'Turun', sub: 'Hidung pesawat ke bawah (Pitch Down)', keys: ['KeyQ', 'ArrowDown'] },
   { id: 'turbo', label: 'Turbo', sub: 'Tahan untuk melesat', keys: ['ShiftLeft', 'ShiftRight'] },
   { id: 'brake', label: 'Rem', sub: 'Tahan untuk melambat', keys: ['ControlLeft', 'ControlRight'] },
-  { id: 'stop', label: 'Berhenti', sub: 'Langsung diam', keys: ['Space'] },
-  { id: 'map', label: 'Peta', sub: 'Pilih tujuan', keys: ['KeyM'] },
+  { id: 'stop', label: 'Berhenti', sub: 'Langsung diam di tempat', keys: ['Space'] },
+  { id: 'map', label: 'Peta', sub: 'Pilih tujuan penjelajahan', keys: ['KeyM'] },
 ];
 export const ACTION_IDS = ACTIONS.map((a) => a.id);
 const RESERVED = ['Escape', 'Tab', 'MetaLeft', 'MetaRight', 'AltLeft', 'AltRight', 'F5', 'F11', 'F12'];

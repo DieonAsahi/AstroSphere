@@ -1,72 +1,117 @@
 <script setup>
-// Fenomena Bumi: laboratorium gerhana Matahari & Bulan. Judul kiri-atas, kartu kanan, bilah waktu kiri-bawah.
-// Kartu kanan: diagram 2D langsung (apa yang sedang terjadi), status, tahap di bilah waktu, dan satu "kenapa".
-// Ganti sudut pandang tidak mengubah fase gerhana.
-// "Tebak dulu": gerhana yang belum pernah ditebak dimulai dari awal & berhenti di pertanyaan; jawabannya dibuka
-// saat simulasi benar-benar mencapai gerhana total.
+// Fenomena Bumi: laboratorium gerhana Matahari & Bulan dengan dukungan data Supabase & Fallback Lokal.
+// Mengambil judul, deskripsi edukatif, dan materi fenomena dari useSupabaseContent.js.
 import { computed, ref, watch, onMounted } from 'vue';
 import { store, game, recordPrediction } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PREDICT } from '~/data/learning.js';
+
+const { getPhenomenon } = useSupabaseContent();
+const phenoData = computed(() => getPhenomenon('bumi'));
+
 const L = () => game()?.lab;
 const key = computed(() => 'gerhana-' + store.lab.type);
 const pq = computed(() => PREDICT[key.value]);
 const pick = ref(null), revealed = ref(false), skipped = ref(false), result = ref({ ok: false, reward: 0 });
 const asking = computed(() => !store.progress.predict[key.value] && pick.value == null && !skipped.value);
+
 function prepare() {
-  pick.value = null; revealed.value = false; skipped.value = false;
-  if (!store.progress.predict[key.value]) { L()?.scrub(0); store.lab.playing = false; }
+  pick.value = null;
+  revealed.value = false;
+  skipped.value = false;
+  if (!store.progress.predict[key.value]) {
+    L()?.scrub(0);
+    store.lab.playing = false;
+  }
 }
+
 watch(key, prepare);
 onMounted(prepare);
-function choose(i) { pick.value = i; game()?.click(); L()?.replay(); }
-function skip() { skipped.value = true; L()?.replay(); }
+
+function choose(i) {
+  pick.value = i;
+  game()?.click();
+  L()?.replay();
+}
+
+function skip() {
+  skipped.value = true;
+  L()?.replay();
+}
+
 watch(() => store.lab.status, (s) => {
   if (pick.value == null || revealed.value || s !== 'total') return;
-  result.value = recordPrediction(key.value, pick.value); revealed.value = true;
+  result.value = recordPrediction(key.value, pick.value);
+  revealed.value = true;
   if (result.value.ok) game()?.correct(); else game()?.wrong();
 });
+
 const dur = computed(() => L()?.duration || 120);
 const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const POVS = [['samping', 'Samping'], ['depan', 'Depan'], ['atas', 'Atas'], ['ikhtisar', 'Jauh'], ['pengamat', 'Dari Bumi'], ['bebas', 'Bebas']];
 const sun = computed(() => store.lab.type === 'matahari');
 const pct = computed(() => Math.round(store.lab.covered * 100));
+
 const STAGE = {
   matahari: { sebagian: 'Sebagian', cincin: 'Cincin', total: 'Total' },
   bulan: { penumbra: 'Penumbra', sebagian: 'Sebagian', total: 'Total' },
 };
+
 const status = computed(() => {
   const s = store.lab.status;
-  if (sun.value) return s === 'total' ? ['Gerhana Matahari total', 'Siang mendadak gelap, korona terlihat']
-    : s === 'cincin' ? ['Gerhana cincin', 'Tepi Matahari tetap bersinar']
-    : s === 'sebagian' ? ['Gerhana sebagian', `${pct.value}% Matahari tertutup`] : ['Belum gerhana', 'Bulan belum segaris'];
+  if (sun.value) {
+    return s === 'total' ? ['Gerhana Matahari total', 'Siang mendadak gelap, korona terlihat']
+      : s === 'cincin' ? ['Gerhana cincin', 'Tepi Matahari tetap bersinar']
+      : s === 'sebagian' ? ['Gerhana sebagian', `${pct.value}% Matahari tertutup`] : ['Belum gerhana', 'Bulan belum segaris'];
+  }
   return s === 'total' ? ['Gerhana Bulan total', 'Bulan berwarna merah tembaga']
     : s === 'sebagian' ? ['Gerhana sebagian', `${pct.value}% Bulan masuk umbra`]
     : s === 'penumbra' ? ['Gerhana penumbra', 'Bulan hanya sedikit meredup'] : ['Belum gerhana', 'Bulan purnama biasa'];
 });
+
 const why = computed(() => sun.value
   ? ['Kenapa bisa pas menutup?', 'Matahari sekitar 400 kali lebih lebar dari Bulan, tapi juga sekitar 400 kali lebih jauh. Dari Bumi, ukurannya tampak hampir sama.']
   : ['Kenapa Bulan jadi merah?', 'Cahaya Matahari menembus atmosfer Bumi. Biru dihamburkan, merah dibelokkan sampai ke Bulan — seperti semua matahari terbenam di Bumi terlihat sekaligus.']);
+
 const dia = computed(() => store.lab.dia && store.lab.dia.kind === store.lab.type ? store.lab.dia : null);
 const marks = computed(() => store.lab.marks || []);
-function scrub(e) { L()?.scrub(parseFloat(e.target.value)); }
-function togglePlay() { store.lab.playing = !store.lab.playing; if (store.lab.playing && store.lab.t >= dur.value) L()?.replay(); }
+
+function scrub(e) {
+  L()?.scrub(parseFloat(e.target.value));
+}
+
+function togglePlay() {
+  store.lab.playing = !store.lab.playing;
+  if (store.lab.playing && store.lab.t >= dur.value) L()?.replay();
+}
+
 const f3 = (v) => (+v).toFixed(3);
 </script>
 
 <template>
   <div>
+    <!-- Judul Fenomena (Tersambung ke Supabase & Fallback Lokal) -->
     <div class="stage-title">
       <span class="tag">Fenomena Bumi</span>
-      <h1 class="h1">Gerhana</h1>
+      <h1 class="h1">{{ phenoData?.title || 'Gerhana Matahari & Bulan' }}</h1>
+      <p v-if="phenoData?.deskripsi_edukatif || phenoData?.short" class="pheno-sub">
+        {{ phenoData?.deskripsi_edukatif || phenoData?.short }}
+      </p>
       <div class="seg" role="tablist" aria-label="Jenis gerhana">
-        <button role="tab" :aria-selected="sun" :class="{ on: sun }" @click="L()?.setType('matahari')"><UiIcon name="matahari" :size="16" /> Matahari</button>
-        <button role="tab" :aria-selected="!sun" :class="{ on: !sun }" @click="L()?.setType('bulan')"><UiIcon name="bulan" :size="16" /> Bulan</button>
+        <button role="tab" :aria-selected="sun" :class="{ on: sun }" @click="L()?.setType('matahari')">
+          <UiIcon name="matahari" :size="16" /> Matahari
+        </button>
+        <button role="tab" :aria-selected="!sun" :class="{ on: !sun }" @click="L()?.setType('bulan')">
+          <UiIcon name="bulan" :size="16" /> Bulan
+        </button>
       </div>
     </div>
 
     <div class="stage-bottom tlw">
       <div class="tl card flat">
-        <button class="ib" :aria-label="store.lab.playing ? 'Jeda' : 'Putar'" @click="togglePlay"><UiIcon :name="store.lab.playing ? 'jeda' : 'putar'" :size="20" /></button>
+        <button class="ib" :aria-label="store.lab.playing ? 'Jeda' : 'Putar'" @click="togglePlay">
+          <UiIcon :name="store.lab.playing ? 'jeda' : 'putar'" :size="20" />
+        </button>
         <div class="scrub">
           <input type="range" min="0" :max="dur" step="0.1" :value="store.lab.t" aria-label="Geser waktu gerhana" @input="scrub">
           <div class="zones" aria-hidden="true">
@@ -77,12 +122,16 @@ const f3 = (v) => (+v).toFixed(3);
           </div>
         </div>
         <b class="num tm">{{ fmt(store.lab.t) }}</b>
-        <div class="seg sp" role="group" aria-label="Kecepatan"><button v-for="s in [.5, 1, 2]" :key="s" :class="{ on: store.lab.speed === s }" @click="store.lab.speed = s">{{ s }}×</button></div>
+        <div class="seg sp" role="group" aria-label="Kecepatan">
+          <button v-for="s in [.5, 1, 2]" :key="s" :class="{ on: store.lab.speed === s }" @click="store.lab.speed = s">{{ s }}×</button>
+        </div>
       </div>
     </div>
 
     <aside class="sheet card" aria-label="Penjelasan gerhana">
-      <div v-if="asking" class="sbody scroll"><UiPredictCard :q="pq" @pick="choose" /></div>
+      <div v-if="asking" class="sbody scroll">
+        <UiPredictCard :q="pq" @pick="choose" />
+      </div>
       <div v-else class="sbody scroll">
         <!-- Diagram langsung: apa yang terjadi sekarang -->
         <figure class="dia" :class="store.lab.status" aria-hidden="true">
@@ -99,8 +148,10 @@ const f3 = (v) => (+v).toFixed(3);
             <text x="0" :y="f3(-(dia?.ru ?? .45) + .16)" class="lb">umbra</text>
           </svg>
           <svg v-else viewBox="-3 -1.5 6 3">
-            <defs><radialGradient id="sg"><stop offset="0" stop-color="#fff4cf" /><stop offset=".75" stop-color="#ffc35a" /><stop offset="1" stop-color="#ff8a2a" /></radialGradient>
-              <radialGradient id="cg"><stop offset=".55" stop-color="#fff" stop-opacity=".9" /><stop offset="1" stop-color="#9fb4ff" stop-opacity="0" /></radialGradient></defs>
+            <defs>
+              <radialGradient id="sg"><stop offset="0" stop-color="#fff4cf" /><stop offset=".75" stop-color="#ffc35a" /><stop offset="1" stop-color="#ff8a2a" /></radialGradient>
+              <radialGradient id="cg"><stop offset=".55" stop-color="#fff" stop-opacity=".9" /><stop offset="1" stop-color="#9fb4ff" stop-opacity="0" /></radialGradient>
+            </defs>
             <circle r="1.9" fill="url(#cg)" class="corona" />
             <circle r="1" fill="url(#sg)" />
             <circle v-if="dia" :cx="f3(dia.mx)" :cy="f3(-dia.my)" :r="f3(dia.mr)" class="smoon" />
@@ -116,13 +167,18 @@ const f3 = (v) => (+v).toFixed(3);
 
         <div>
           <h3 class="lbl">Sudut pandang</h3>
-          <div class="povs"><button v-for="[id, lb] in POVS" :key="id" class="chip" :class="{ on: store.lab.pov === id }" @click="L()?.setPOV(id)">{{ lb }}</button></div>
+          <div class="povs">
+            <button v-for="[id, lb] in POVS" :key="id" class="chip" :class="{ on: store.lab.pov === id }" @click="L()?.setPOV(id)">{{ lb }}</button>
+          </div>
         </div>
         <UiToggle v-model="store.lab.labels" label="Label" />
         <UiToggle v-model="store.lab.volume" label="Tampilkan bayangan" />
-        <p class="fine">Ukuran dan jarak tidak berskala agar mudah dilihat.</p>
+        <p class="fine">Materi disinkronkan dengan data edukasi Supabase &amp; katalog AstroSphere.</p>
       </div>
-      <div v-if="asking" class="sfoot"><button class="btn ghost block" @click="skip">Lewati, langsung lihat</button></div>
+
+      <div v-if="asking" class="sfoot">
+        <button class="btn ghost block" @click="skip">Lewati, langsung lihat</button>
+      </div>
       <div v-else class="sfoot">
         <div class="row2">
           <button class="btn" @click="L()?.resetCam()"><UiIcon name="target" :size="18" />Atur kamera</button>
@@ -136,6 +192,7 @@ const f3 = (v) => (+v).toFixed(3);
 <style scoped>
 .stage-title .seg button{display:inline-flex;align-items:center;gap:6px}
 .stage-title .seg{align-self:flex-start}
+.pheno-sub{margin:4px 0 8px 0;font-size:13.5px;color:var(--faint);max-width:38ch;line-height:1.4}
 .tlw{right:calc(min(400px,36vw) + var(--gap) * 2 + var(--safe-r));max-width:none}
 .tl{width:100%;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 10px;border-radius:var(--r-lg)}
 .scrub{flex:1;display:flex;flex-direction:column;gap:6px;padding-top:6px;min-width:0}

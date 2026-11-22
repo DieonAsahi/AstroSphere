@@ -4,6 +4,30 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
+  routeRules: {
+    '/**': {
+      headers: {
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+      },
+    },
+    '/admin/**': {
+      headers: {
+        'X-Robots-Tag': 'noindex, nofollow',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      },
+    },
+  },
+  runtimeConfig: {
+    public: {
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
+      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
+      dataSource: process.env.DATA_SOURCE || process.env.NUXT_PUBLIC_DATA_SOURCE || 'auto',
+    },
+  },
   app: {
     head: {
       htmlAttrs: { lang: 'id' },
@@ -24,6 +48,6 @@ export default defineNuxtConfig({
     },
   },
   vite: {
-    optimizeDeps: { include: ['three'] },
+    optimizeDeps: { include: ['three', '@supabase/supabase-js'] },
   },
 })

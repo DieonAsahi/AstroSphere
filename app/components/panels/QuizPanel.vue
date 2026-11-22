@@ -3,15 +3,20 @@
 // Urutan pilihan diacak tiap percobaan. Hadiah = maks(0, skor baru − skor terbaik) (PRD §11.2); salah tidak mengurangi.
 import { computed, ref } from 'vue';
 import { store, game, submitQuiz, quizMax, isFound } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { QUIZ, POINTS_PER_QUESTION } from '~/data/quiz.js';
 import { PLANETS } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
+
+const { getQuiz } = useSupabaseContent();
 const Q = store.quiz;
 const planet = computed(() => PLANETS.find((p) => p.id === Q.planet) || PLANETS[2]);
-const set = computed(() => QUIZ[Q.planet]);
+const set = computed(() => getQuiz(Q.planet) || QUIZ[Q.planet]);
+const questionCount = computed(() => set.value?.questions?.length || 3);
+const maxScore = computed(() => questionCount.value * POINTS_PER_QUESTION);
 const order = ref([]); // urutan acak indeks pilihan per soal
-const qq = computed(() => set.value.questions[Q.index]);
-const opts = computed(() => (order.value[Q.index] || [0, 1, 2, 3]).map((i) => ({ i, text: qq.value.options[i] })));
+const qq = computed(() => set.value?.questions?.[Q.index] || { text: '', options: [], answer: 0, explanation: '' });
+const opts = computed(() => (order.value[Q.index] || [0, 1, 2, 3]).map((i) => ({ i, text: qq.value.options?.[i] || '' })));
 const best = computed(() => store.progress.best[Q.planet] ?? 0);
 const answered = computed(() => Q.stage === 'feedback');
 const correct = computed(() => Q.answers[Q.index] === qq.value.answer);
@@ -24,14 +29,15 @@ const open = computed(() => isFound(Q.planet));
 const nOpen = computed(() => PLANETS.filter((p) => isFound(p.id)).length);
 function flyThere() { game()?.flyTo(Q.planet); }
 function start() {
-  if (!open.value) return;
+  if (!open.value || !set.value?.questions?.length) return;
   order.value = set.value.questions.map((q) => shuffle(q.options.length));
   Object.assign(Q, { stage: 'question', index: 0, picked: null, answers: [], score: 0, reward: 0 }); game()?.click();
 }
 function answer(i) {
   if (answered.value) return;
   Q.picked = i; Q.answers[Q.index] = i;
-  if (i === qq.value.answer) { Q.score += POINTS_PER_QUESTION; game()?.correct(); } else game()?.wrong();
+  const rewardPts = qq.value.points || POINTS_PER_QUESTION;
+  if (i === qq.value.answer) { Q.score += rewardPts; game()?.correct(); } else game()?.wrong();
   Q.stage = 'feedback';
 }
 function next() {
@@ -65,9 +71,9 @@ const letters = ['A', 'B', 'C', 'D'];
         <span class="planet-dot big" :class="{ locked: !open }" :style="{ '--c': open ? planet.color : 'transparent', '--s': '96px' }"><UiIcon v-if="!open" name="kunci" :size="34" /></span>
         <h2 class="h2">Kuis {{ planet.name }}</h2>
         <template v-if="open">
-          <p class="lead">3 soal · <UiIcon name="bintang" :size="16" class="si" /> {{ POINTS_PER_QUESTION }} per jawaban benar</p>
-          <div class="starrow" :aria-label="`Skor terbaik ${stars(best)} dari 3 bintang`">
-            <UiIcon v-for="n in 3" :key="n" :name="n <= stars(best) ? 'bintang' : 'bintang-o'" :size="28" :class="{ got: n <= stars(best) }" />
+          <p class="lead">{{ questionCount }} soal · <UiIcon name="bintang" :size="16" class="si" /> {{ POINTS_PER_QUESTION }} per jawaban benar</p>
+          <div class="starrow" :aria-label="`Skor terbaik ${stars(best)} dari ${questionCount} bintang`">
+            <UiIcon v-for="n in questionCount" :key="n" :name="n <= stars(best) ? 'bintang' : 'bintang-o'" :size="28" :class="{ got: n <= stars(best) }" />
           </div>
         </template>
         <p v-else class="lead">Kuis ini terbuka setelah kamu terbang mendekati {{ planet.name }}.</p>
@@ -107,11 +113,11 @@ const letters = ['A', 'B', 'C', 'D'];
 
       <!-- HASIL -->
       <div v-else class="body intro">
-        <div class="starrow big" :aria-label="`${stars(Q.score)} dari 3 bintang`">
-          <UiIcon v-for="n in 3" :key="n" :name="n <= stars(Q.score) ? 'bintang' : 'bintang-o'" :size="54" :class="{ got: n <= stars(Q.score) }" :style="{ animationDelay: n * .15 + 's' }" />
+        <div class="starrow big" :aria-label="`${stars(Q.score)} dari ${questionCount} bintang`">
+          <UiIcon v-for="n in questionCount" :key="n" :name="n <= stars(Q.score) ? 'bintang' : 'bintang-o'" :size="54" :class="{ got: n <= stars(Q.score) }" :style="{ animationDelay: n * .15 + 's' }" />
         </div>
-        <h2 class="h2">{{ Q.score === quizMax() ? 'Sempurna!' : Q.score > 0 ? 'Kerja bagus!' : 'Ayo coba lagi!' }}</h2>
-        <p class="lead">{{ Q.score / POINTS_PER_QUESTION }} dari 3 jawaban benar</p>
+        <h2 class="h2">{{ Q.score >= maxScore ? 'Sempurna!' : Q.score > 0 ? 'Kerja bagus!' : 'Ayo coba lagi!' }}</h2>
+        <p class="lead">{{ Math.round(Q.score / POINTS_PER_QUESTION) }} dari {{ questionCount }} jawaban benar</p>
         <div class="gain" :class="{ zero: !Q.reward }">
           <UiIcon name="bintang" :size="22" />
           <b class="num">+{{ Q.reward }}</b>
@@ -132,7 +138,7 @@ const letters = ['A', 'B', 'C', 'D'];
 
 <style scoped>
 .quiz{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:22;width:min(680px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow-x:hidden;overflow-y:auto}
-.x{position:absolute;right:14px;top:14px;z-index:1}
+.x{position:absolute;right:calc(14px + var(--safe-r));top:calc(14px + var(--safe-t));z-index:2}
 .kinds{display:flex;justify-content:center;padding:22px 60px 0}
 .kinds .seg button{display:inline-flex;align-items:center;gap:6px}
 .kinds + .body{padding-top:18px}
@@ -183,4 +189,13 @@ const letters = ['A', 'B', 'C', 'D'];
 .nr b{color:var(--star)}
 .acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 @media (max-width:760px){ .kinds{padding:16px 54px 0 16px;justify-content:flex-start} .kinds .seg button{padding-left:10px;padding-right:10px;font-size:13.5px} .body{padding:22px 16px 18px} .opts{grid-template-columns:1fr} .opt{min-height:54px} }
+@media (max-height:520px){
+  .quiz{max-height:calc(100vh - 12px);width:min(640px,calc(100vw - 16px))}
+  .body{padding:12px 14px 10px;gap:8px}
+  .q{font-size:18px}
+  .opts{grid-template-columns:1fr 1fr;gap:6px}
+  .opt{min-height:44px;padding:6px 10px;font-size:13.5px}
+  .fb{position:sticky;bottom:0;z-index:2;padding:10px 12px;box-shadow:0 -6px 16px rgba(0,0,0,.5)}
+  .acts{position:sticky;bottom:0;z-index:2;background:var(--surface-a);padding-top:4px}
+}
 </style>

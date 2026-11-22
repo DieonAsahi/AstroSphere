@@ -1,4 +1,4 @@
-// Tiga pesawat AstroSphere (PRD R11): Astra Scout gratis, Orion Glider 300 poin, Nova Voyager 700 poin.
+// Tiga pesawat AstroSphere (PRD R11): Astra Scout gratis, Orion Glider 300 bintang, Nova Voyager 700 bintang.
 // Model 3D: GLB unduhan (public/models/ships, kredit di app/data/credits.js), dioptimasi oleh scripts/optimize-models.mjs:
 //   Astra Scout  — Space Shuttle Discovery (semburan api bawaan model mengikuti tuas gas)
 //   Orion Glider — Stealthy Space Tato (lambung siluman, satu mesin utama)

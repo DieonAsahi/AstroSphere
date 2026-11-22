@@ -49,6 +49,57 @@ export function texturedPlanet(model, o) {
   return group;
 }
 
+/**
+ * Mengganti mesh planet prosedural dengan model GLB bertekstur secara mulus (Lazy Upgrade).
+ */
+export function upgradePlanetModel(body, model, U) {
+  if (!body || !model || body.textured) return;
+  const mu = model.userData || {};
+  const ring = mu.ringOuter > 0 ? { inner: mu.ringInner, outer: mu.ringOuter, seed: body.ring?.seed ?? 1.7 } : body.ring;
+  if (ring && body.ringMesh && mu.ringOuter > 0) {
+    body.axis.remove(body.ringMesh);
+    body.ringMesh = null;
+  }
+  const R = body.radius;
+  const newSpinMesh = texturedPlanet(model, {
+    sunPos: U.uSunPos,
+    sunColor: U.uSunColor,
+    center: body.pos,
+    atmo: col3(body.atmo).multiplyScalar(body.atmoStr ? 1 : 0),
+    ring,
+    ringN: body.ringN,
+    R,
+  });
+  newSpinMesh.scale.setScalar(R);
+  newSpinMesh.rotation.copy(body.spinMesh.rotation);
+
+  // Pertahankan wadah POI permukaan
+  if (body.poiRoot) {
+    newSpinMesh.add(body.poiRoot);
+  }
+
+  body.axis.remove(body.spinMesh);
+  body.axis.add(newSpinMesh);
+
+  // Bersihkan geometri dan material mesh prosedural lama dari memori WebGL
+  const oldSpinMesh = body.spinMesh;
+  if (oldSpinMesh) {
+    if (oldSpinMesh.geometry) oldSpinMesh.geometry.dispose();
+    if (oldSpinMesh.material) {
+      if (Array.isArray(oldSpinMesh.material)) {
+        oldSpinMesh.material.forEach((m) => m && m.dispose && m.dispose());
+      } else if (oldSpinMesh.material.dispose) {
+        oldSpinMesh.material.dispose();
+      }
+    }
+  }
+
+  body.spinMesh = newSpinMesh;
+  body.mesh = newSpinMesh;
+  body.textured = true;
+  body.ring = ring;
+}
+
 // ---------- Model orbit Kepler (bidang orbit → ekliptika → Three.js Y-up: (x, y, z)dom → (x, z, −y)) ----------
 function solveKepler(M, e) {
   let E = e < 0.8 ? M : Math.PI;
@@ -221,4 +272,32 @@ const _x = new THREE.Vector3(1, 0, 0);
 export function latLonToLocal(lat, lon, r = 1.004) {
   const la = lat * DEG, lo = lon * DEG;
   return new THREE.Vector3(Math.cos(la) * Math.cos(lo) * r, Math.sin(la) * r, -Math.cos(la) * Math.sin(lo) * r);
+}
+
+// Menghitung koordinat bola deterministik dengan rumus Fibonacci Sphere bila lat/lon null (100% data Supabase)
+export function getEventCoords(e, index = 0, total = 30) {
+  if (e && Number.isFinite(e.lat) && Number.isFinite(e.lon)) {
+    return { lat: e.lat, lon: e.lon, isCalculated: false };
+  }
+  let idx = index;
+  if (e && typeof e.id === 'string') {
+    let hash = 0;
+    for (let i = 0; i < e.id.length; i++) {
+      hash = ((hash << 5) - hash) + e.id.charCodeAt(i);
+      hash |= 0;
+    }
+    idx = Math.abs(hash);
+  }
+  const n = Math.max(total, 24);
+  const phi = (1 + Math.sqrt(5)) / 2; // Golden ratio ~1.6180339887
+  const goldenAngle = (2 - phi) * (2 * Math.PI); // ~2.399963 rad
+  const step = (idx % n) / n;
+  const y = (step * 1.64) - 0.82; // Hindari kutub langsung
+  const radiusAtY = Math.sqrt(Math.max(0.01, 1 - y * y));
+  const theta = (idx % n) * goldenAngle;
+  const x = Math.cos(theta) * radiusAtY;
+  const z = Math.sin(theta) * radiusAtY;
+  const lat = Math.asin(y) * (180 / Math.PI);
+  const lon = Math.atan2(z, x) * (180 / Math.PI);
+  return { lat, lon, isCalculated: true };
 }

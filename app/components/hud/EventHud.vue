@@ -11,7 +11,7 @@ const banner = computed(() => {
     if (ev.phase === 'warn') return { cls: 'warn', icon: 'matahari', t: E.value.warn, s: ev.safe ? 'Kamu sudah di bayangan — tetap di sana' : `Berlindung di bayangan ${ev.shelterName}`, n: ev.left };
     return { cls: ev.safe ? 'safe' : 'danger', icon: 'matahari', t: E.value.hit, s: ev.safe ? 'Aman di bayangan' : 'Terkena radiasi — cepat ke bayangan!', n: ev.left };
   }
-  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: E.value.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D geser · Q/E putar · ↑/↓ naik-turun', n: ev.left };
+  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: E.value.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D belok · Q/E atau ↑/↓ naik-turun', n: ev.left };
   return { cls: ev.hits > 3 ? 'danger' : 'warn', icon: 'info', t: E.value.hit, s: ev.hits ? `Tertabrak ${ev.hits} kali` : 'Belum tertabrak', n: ev.left };
 });
 const showShield = computed(() => ev.phase || ev.damaged || ev.shield < 99.5);
@@ -34,6 +34,17 @@ function close() { ev.result = null; }
         <span class="ic"><UiIcon :name="banner.icon" :size="22" /></span>
         <span class="tx"><b>{{ banner.t }}</b><small>{{ banner.s }}</small></span>
         <span class="n num">{{ banner.n }}</span>
+      </div>
+    </Transition>
+
+    <!-- BANNER PERINGATAN PERISAI 0% (TURBO NONAKTIF) -->
+    <Transition name="fade">
+      <div v-if="ev.damaged" class="damaged-shield-banner" role="alert" aria-live="assertive">
+        <span class="dam-ic"><UiIcon name="silang" :size="20" /></span>
+        <div class="dam-tx">
+          <b>Perisai rusak (Turbo nonaktif)</b>
+          <small>Terbang mendekati planet terdekat untuk perbaikan otomatis.</small>
+        </div>
       </div>
     </Transition>
 
@@ -79,6 +90,14 @@ function close() { ev.result = null; }
 .banner small{font-size:13px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .banner .n{min-width:44px;height:38px;padding:0 8px;border-radius:999px;display:grid;place-items:center;background:rgba(0,0,0,.35);font-family:var(--display);font-weight:700;font-size:20px}
 @keyframes blink{50%{box-shadow:0 0 0 6px rgba(255,179,71,.18),0 8px 30px rgba(0,0,0,.4)}}
+/* BANNER PERINGATAN PERISAI 0% */
+.damaged-shield-banner{position:absolute;left:50%;bottom:calc(var(--gap) + 180px + var(--safe-b));transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:999px;background:rgba(45,6,6,.94);border:1.5px solid var(--coral);box-shadow:0 0 24px rgba(255,107,107,.4);color:#ffd4d4;backdrop-filter:blur(8px);pointer-events:auto;z-index:15;animation:pulseDanger 1.4s infinite;white-space:nowrap}
+@keyframes pulseDanger{0%,100%{box-shadow:0 0 16px rgba(255,107,107,.3)}50%{box-shadow:0 0 28px rgba(255,107,107,.65)}}
+.dam-ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,107,107,.25);color:var(--coral);flex:none}
+.dam-tx{display:flex;flex-direction:column;gap:1px}
+.dam-tx b{font-family:var(--display);font-size:14px;color:#ff9e9e}
+.dam-tx small{font-size:12px;color:#ffdede}
+
 .shield{position:absolute;left:calc(var(--gap) + var(--safe-l));bottom:calc(var(--gap) + 118px + var(--safe-b));width:210px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 10px;
   padding:10px 14px;border-radius:var(--r);background:var(--surface-a);border:1px solid var(--line)}
 .shield .lb{font-size:12.5px;color:var(--muted)}
@@ -106,6 +125,12 @@ function close() { ev.result = null; }
 .touch .banner small{white-space:normal}
 .touch .shield{left:50%;transform:translateX(-50%);bottom:calc(14px + var(--safe-b));width:min(240px,60vw)}
 .touch .res-wrap{place-items:end center;padding:12px 12px calc(12px + var(--safe-b))}
-@media (max-width:760px){ .banner b{font-size:14.5px} .banner .n{font-size:17px;min-width:38px;height:34px} }
+@media (max-width:760px){
+  .banner b{font-size:14.5px}
+  .banner .n{font-size:17px;min-width:38px;height:34px}
+  .damaged-shield-banner{bottom:calc(var(--gap) + 155px + var(--safe-b));padding:8px 12px;white-space:normal;max-width:calc(100vw - 24px);text-align:left}
+  .dam-tx b{font-size:13px}
+  .dam-tx small{font-size:11.5px}
+}
 @media (prefers-reduced-motion:reduce){ .banner.warn{animation:none} }
 </style>
