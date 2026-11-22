@@ -1,5 +1,5 @@
 // Lapisan penerjemah & pengambil data publik Supabase dengan fallback aman ke berkas lokal app/data/*.js
-import { reactive, computed, onMounted } from 'vue';
+import { reactive, computed } from 'vue';
 import { getSupabaseClient, isSupabaseConfigured } from '~/utils/supabaseClient.js';
 import { PLANETS, SUN, MOONS } from '~/data/solarSystem.js';
 import { HISTORY } from '~/data/history.js';
@@ -76,13 +76,13 @@ function getFallbackScientificData(planetId) {
   };
 }
 
-// State terpusat (singleton)
+// State terpusat (singleton reaktif)
 const state = reactive({
   loading: false,
   loaded: false,
   fromSupabase: false,
   error: null,
-  planets: {},          // key: local_id
+  planets: {},          // key: local_id & supabase_id
   historyEvents: {},    // key: local_id -> array event
   phenomena: {},        // key: local_id
   questions: {},        // key: local_id -> array soal
@@ -90,14 +90,16 @@ const state = reactive({
 });
 
 export async function fetchAllPublicContent(force = false) {
-  if (state.loaded && !force) return state;
+  // Jika sudah sukses dimuat dari Supabase dan bukan paksa muat ulang, lewati
+  if (state.loaded && state.fromSupabase && !force) return state;
+  if (state.loading) return state;
 
   state.loading = true;
   state.error = null;
 
   const client = getSupabaseClient();
   if (!client) {
-    // Mode offline / fallback lokal
+    // Mode offline / fallback lokal jika konfigurasi Supabase tidak ditemukan
     populateWithFallback();
     state.loading = false;
     state.loaded = true;
@@ -114,17 +116,44 @@ export async function fetchAllPublicContent(force = false) {
       client.from('ships').select('*'),
     ]);
 
-    // 1. Petakan Planet
+    // Audit galat Supabase tanpa ditelan diam-diam
+    let tableErrorCount = 0;
+    if (planetsRes.error) {
+      console.warn('[AstroSphere Supabase Error] planets:', planetsRes.error.message);
+      tableErrorCount++;
+    }
+    if (historyRes.error) {
+      console.warn('[AstroSphere Supabase Error] history_events:', historyRes.error.message);
+      tableErrorCount++;
+    }
+    if (phenoRes.error) {
+      console.warn('[AstroSphere Supabase Error] phenomena:', phenoRes.error.message);
+      tableErrorCount++;
+    }
+    if (questionsRes.error) {
+      console.warn('[AstroSphere Supabase Error] questions:', questionsRes.error.message);
+      tableErrorCount++;
+    }
+    if (shipsRes.error) {
+      console.warn('[AstroSphere Supabase Error] ships:', shipsRes.error.message);
+      tableErrorCount++;
+    }
+
+    // 1. Petakan Planet (Simpan di dua kunci: ID lokal dan ID Supabase agar lookup selalu berhasil)
     if (planetsRes.data && planetsRes.data.length > 0) {
       const pMap = {};
       for (const row of planetsRes.data) {
         const localId = toLocalPlanetId(row.planet_id);
         const fb = getFallbackScientificData(localId) || {};
-        pMap[localId] = {
+        const planetItem = {
           ...fb,
           ...row,
           local_id: localId,
         };
+        pMap[localId] = planetItem;
+        if (row.planet_id && row.planet_id !== localId) {
+          pMap[row.planet_id] = planetItem;
+        }
       }
       state.planets = pMap;
     } else {
@@ -137,7 +166,7 @@ export async function fetchAllPublicContent(force = false) {
       for (const row of historyRes.data) {
         const localId = toLocalPlanetId(row.planet_id);
         if (!hMap[localId]) hMap[localId] = [];
-        hMap[localId].push({
+        const eventItem = {
           id: row.event_id,
           planet_id: row.planet_id,
           local_planet_id: localId,
@@ -157,7 +186,12 @@ export async function fetchAllPublicContent(force = false) {
           deskripsi: row.deskripsi || '',
           gambar_url: row.gambar_url || '',
           sumber_referensi: row.sumber_referensi || '',
-        });
+        };
+        hMap[localId].push(eventItem);
+        if (row.planet_id && row.planet_id !== localId) {
+          if (!hMap[row.planet_id]) hMap[row.planet_id] = [];
+          hMap[row.planet_id].push(eventItem);
+        }
       }
       state.historyEvents = hMap;
     } else {
@@ -170,7 +204,7 @@ export async function fetchAllPublicContent(force = false) {
       for (const row of phenoRes.data) {
         const localId = toLocalPlanetId(row.planet_id);
         const localPh = PHENOMENA[localId] || {};
-        phMap[localId] = {
+        const phenoItem = {
           ...localPh,
           phenomenon_id: row.phenomenon_id,
           planet_id: row.planet_id,
@@ -187,6 +221,10 @@ export async function fetchAllPublicContent(force = false) {
           judul_bulan: row.judul_bulan || row.konfigurasi_visual?.judul_bulan || '',
           is_active: row.is_active !== false,
         };
+        phMap[localId] = phenoItem;
+        if (row.planet_id && row.planet_id !== localId) {
+          phMap[row.planet_id] = phenoItem;
+        }
       }
       state.phenomena = phMap;
     } else {
@@ -200,7 +238,6 @@ export async function fetchAllPublicContent(force = false) {
         const localId = toLocalPlanetId(row.planet_id);
         if (!qMap[localId]) qMap[localId] = { topic: `Kuis ${localId}`, questions: [] };
 
-        // Normalisasi format kolom (mendukung skema jsonb opsi atau opsi terpisah a,b,c,d)
         let options = [];
         if (Array.isArray(row.opsi)) {
           options = row.opsi;
@@ -218,14 +255,19 @@ export async function fetchAllPublicContent(force = false) {
           answer = map[row.jawaban_benar.toUpperCase()] ?? 0;
         }
 
-        qMap[localId].questions.push({
+        const qItem = {
           id: row.question_id,
           text: row.soal || row.pertanyaan || row.teks_soal || '',
           options,
           answer,
           explanation: row.pembahasan_edukatif || row.penjelasan || row.penjelasan_pembahasan || '',
           points: row.bobot_poin || row.poin_hadiah || 50,
-        });
+        };
+        qMap[localId].questions.push(qItem);
+        if (row.planet_id && row.planet_id !== localId) {
+          if (!qMap[row.planet_id]) qMap[row.planet_id] = { topic: `Kuis ${row.planet_id}`, questions: [] };
+          qMap[row.planet_id].questions.push(qItem);
+        }
       }
       state.questions = qMap;
     } else {
@@ -238,24 +280,34 @@ export async function fetchAllPublicContent(force = false) {
       for (const row of shipsRes.data) {
         const localId = toLocalShipId(row.ship_id);
         const localS = SHIPS[localId] || {};
-        sMap[localId] = {
+        const shipItem = {
           ...localS,
           name: row.nama || localS.name,
           desc: row.deskripsi || localS.desc,
           price: row.harga_poin ?? row.biaya_bintang ?? localS.price ?? 0,
           length: row.panjang_meter ? `${row.panjang_meter} m` : localS.length,
         };
+        sMap[localId] = shipItem;
+        if (row.ship_id && row.ship_id !== localId) {
+          sMap[row.ship_id] = shipItem;
+        }
       }
       state.ships = sMap;
     } else {
       fillShipsFallback();
     }
 
-    state.fromSupabase = true;
+    const hasAnyLiveSuccess = (planetsRes.data?.length > 0) || (historyRes.data?.length > 0) || (phenoRes.data?.length > 0);
+    state.fromSupabase = hasAnyLiveSuccess;
     state.loaded = true;
-    const totalEvents = Object.values(state.historyEvents).flat().length;
-    const totalQuizzes = Object.values(state.questions).reduce((acc, q) => acc + (q.questions?.length || 0), 0);
-    console.info(`[AstroSphere] Data LIVE Supabase berhasil dimuat: ${Object.keys(state.planets).length} planet, ${Object.keys(state.phenomena).length} fenomena, ${totalEvents} sejarah, ${totalQuizzes} kuis, ${Object.keys(state.ships).length} pesawat.`);
+
+    if (hasAnyLiveSuccess) {
+      const totalEvents = Object.values(state.historyEvents).flat().length;
+      const totalQuizzes = Object.values(state.questions).reduce((acc, q) => acc + (q.questions?.length || 0), 0);
+      console.info(`[AstroSphere] Data LIVE Supabase berhasil dimuat: ${planetsRes.data?.length || 0} planet, ${phenoRes.data?.length || 0} fenomena, ${totalEvents} sejarah/POI, ${totalQuizzes} soal kuis, ${shipsRes.data?.length || 0} pesawat.`);
+    } else if (tableErrorCount > 0) {
+      console.warn('[AstroSphere] Kueri Supabase mengembalikan galat pada seluruh tabel, menggunakan data cadangan lokal.');
+    }
   } catch (err) {
     console.warn('[AstroSphere] Gagal mengambil data Supabase, menggunakan data lokal:', err);
     state.error = err.message || String(err);
@@ -272,7 +324,10 @@ export async function fetchAllPublicContent(force = false) {
 function fillPlanetsFallback() {
   const pMap = {};
   for (const p of PLANETS) {
-    pMap[p.id] = getFallbackScientificData(p.id);
+    const item = getFallbackScientificData(p.id);
+    pMap[p.id] = item;
+    const supId = toSupabasePlanetId(p.id);
+    if (supId !== p.id) pMap[supId] = item;
   }
   state.planets = pMap;
 }
@@ -280,7 +335,7 @@ function fillPlanetsFallback() {
 function fillHistoryFallback() {
   const hMap = {};
   for (const [planetId, list] of Object.entries(HISTORY)) {
-    hMap[planetId] = list.map((e) => ({
+    const items = list.map((e) => ({
       ...e,
       tahun_kejadian: e.year,
       judul: e.title,
@@ -293,20 +348,38 @@ function fillHistoryFallback() {
       sumber_referensi: 'NASA / Arsip Sejarah Antariksa',
       era_label: e.year < 1609 ? 'Kuno' : e.year < 1957 ? 'Teleskopik' : 'Era Antariksa',
     }));
+    hMap[planetId] = items;
+    const supId = toSupabasePlanetId(planetId);
+    if (supId !== planetId) hMap[supId] = items;
   }
   state.historyEvents = hMap;
 }
 
 function fillPhenomenaFallback() {
-  state.phenomena = { ...PHENOMENA };
+  const phMap = { ...PHENOMENA };
+  for (const [k, v] of Object.entries(PHENOMENA)) {
+    const supId = toSupabasePlanetId(k);
+    if (supId !== k) phMap[supId] = v;
+  }
+  state.phenomena = phMap;
 }
 
 function fillQuestionsFallback() {
-  state.questions = { ...QUIZ };
+  const qMap = { ...QUIZ };
+  for (const [k, v] of Object.entries(QUIZ)) {
+    const supId = toSupabasePlanetId(k);
+    if (supId !== k) qMap[supId] = v;
+  }
+  state.questions = qMap;
 }
 
 function fillShipsFallback() {
-  state.ships = { ...SHIPS };
+  const sMap = { ...SHIPS };
+  for (const [k, v] of Object.entries(SHIPS)) {
+    const supId = toSupabaseShipId(k);
+    if (supId !== k) sMap[supId] = v;
+  }
+  state.ships = sMap;
 }
 
 function populateWithFallback() {
@@ -315,11 +388,6 @@ function populateWithFallback() {
   fillPhenomenaFallback();
   fillQuestionsFallback();
   fillShipsFallback();
-}
-
-// Inisialisasi awal saat composable dimuat
-if (typeof window !== 'undefined') {
-  fetchAllPublicContent();
 }
 
 export function useSupabaseContent() {
@@ -331,10 +399,26 @@ export function useSupabaseContent() {
     isLoaded: computed(() => state.loaded),
     isLoading: computed(() => state.loading),
     fromSupabase: computed(() => state.fromSupabase),
-    getPlanet: (id) => state.planets[id] || getFallbackScientificData(id),
-    getHistory: (id) => state.historyEvents[id] || HISTORY[id] || [],
-    getPhenomenon: (id) => state.phenomena[id] || PHENOMENA[id] || null,
-    getQuiz: (id) => state.questions[id] || QUIZ[id] || null,
+    getPlanet: (id) => {
+      if (!id) return null;
+      const localId = toLocalPlanetId(id);
+      return state.planets[localId] || state.planets[id] || getFallbackScientificData(localId) || getFallbackScientificData(id) || null;
+    },
+    getHistory: (id) => {
+      if (!id) return [];
+      const localId = toLocalPlanetId(id);
+      return state.historyEvents[localId] || state.historyEvents[id] || HISTORY[localId] || HISTORY[id] || [];
+    },
+    getPhenomenon: (id) => {
+      if (!id) return null;
+      const localId = toLocalPlanetId(id);
+      return state.phenomena[localId] || state.phenomena[id] || PHENOMENA[localId] || PHENOMENA[id] || null;
+    },
+    getQuiz: (id) => {
+      if (!id) return null;
+      const localId = toLocalPlanetId(id);
+      return state.questions[localId] || state.questions[id] || QUIZ[localId] || QUIZ[id] || null;
+    },
     getShips: () => (Object.keys(state.ships).length ? state.ships : SHIPS),
   };
 }

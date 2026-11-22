@@ -1,14 +1,34 @@
 <script setup>
 // Muncul saat pesawat mendekati planet: pesawat berhenti, pemain memilih melihat planet atau lanjut terbang.
+// Mengambil ringkasan materi dan fenomena secara reaktif dari useSupabaseContent (Supabase LIVE / Fallback).
 import { computed } from 'vue';
 import { store, game } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT } from '~/data/learning.js';
+
+const { getPlanet, getPhenomenon } = useSupabaseContent();
+
+const planetData = computed(() => getPlanet(store.approach.id));
+const phenomenonData = computed(() => getPhenomenon(store.approach.id) || PHENOMENA[store.approach.id]);
+
+const approachName = computed(() => planetData.value?.nama || store.approach.name);
+const approachDesc = computed(() => {
+  const materi = planetData.value?.deskripsi_materi;
+  if (materi) {
+    const firstSentence = materi.split(/(?<=[.!?])\s+/)[0] || materi;
+    return firstSentence.trim();
+  }
+  return store.approach.desc;
+});
+
 // Fenomena yang belum ditebak ditampilkan sebagai pertanyaan, supaya jawabannya tidak bocor sebelum "Tebak dulu".
 const teaser = computed(() => {
-  const id = store.approach.id, ph = PHENOMENA[id];
+  const id = store.approach.id;
+  const ph = phenomenonData.value;
   if (!ph) return null;
-  return PREDICT[id] && !store.progress.predict[id] ? { label: 'Tebak dulu', text: PREDICT[id].q } : { label: 'Fenomena', text: ph.title };
+  const title = ph.title || ph.judul || '';
+  return PREDICT[id] && !store.progress.predict[id] ? { label: 'Tebak dulu', text: PREDICT[id].q } : { label: 'Fenomena', text: title };
 });
 </script>
 <template>
@@ -18,11 +38,11 @@ const teaser = computed(() => {
         <span class="planet-dot" :style="{ '--c': store.approach.color, '--s': '64px' }" />
         <div>
           <span v-if="store.approach.isNew" class="tag star"><UiIcon name="bintang" :size="13" />Penemuan baru</span>
-          <h2 id="ap-t" class="h2">{{ store.approach.name }}</h2>
+          <h2 id="ap-t" class="h2">{{ approachName }}</h2>
           <p class="small">{{ store.approach.kind }}</p>
         </div>
       </div>
-      <p class="desc">{{ store.approach.desc }}</p>
+      <p class="desc">{{ approachDesc }}</p>
       <div v-if="teaser" class="ph"><UiIcon name="fenomena" :size="18" /><span>{{ teaser.label }}: <b>{{ teaser.text }}</b></span></div>
       <p class="q">{{ store.approach.id === 'matahari' ? 'Lihat Matahari dari dekat?' : 'Lihat planet ini dari dekat?' }}</p>
       <div class="acts">

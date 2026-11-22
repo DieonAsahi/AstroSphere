@@ -23,8 +23,18 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
-      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL
+        || process.env.SUPABASE_URL
+        || process.env.VITE_SUPABASE_URL
+        || process.env.NEXT_PUBLIC_SUPABASE_URL
+        || '',
+      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY
+        || process.env.SUPABASE_ANON_KEY
+        || process.env.SUPABASE_KEY
+        || process.env.VITE_SUPABASE_ANON_KEY
+        || process.env.VITE_SUPABASE_KEY
+        || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        || '',
       dataSource: process.env.DATA_SOURCE || process.env.NUXT_PUBLIC_DATA_SOURCE || 'auto',
     },
   },

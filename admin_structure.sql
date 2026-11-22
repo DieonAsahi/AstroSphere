@@ -88,7 +88,7 @@ END $$;
 
 -- 2.2 Tabel Master Planet Tata Surya (A02 - Data Planet Sesuai PLY-02 & Procedural 3D Shader)
 -- Blok Migrasi Aman untuk Kolom Baru & Pembersihan Kolom Usang
-DO $
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
@@ -136,7 +136,7 @@ BEGIN
       NULL;
     END;
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.planets (
   planet_id TEXT PRIMARY KEY,
@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS public.planets (
 
 -- 2.3 Tabel Peristiwa Sejarah & Point of Interest (POI) (A03 - Sesuai PLY-03 & PLY-04)
 -- Blok Migrasi Aman untuk Kolom Baru & Pembersihan Koordinat Usang
-DO $
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables 
@@ -186,7 +186,7 @@ BEGIN
     ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_kategori_poi_check;
     ALTER TABLE public.history_events ALTER COLUMN kategori_poi SET DEFAULT 'Titik Observasi & Sejarah';
   END IF;
-END $;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.history_events (
   event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
