@@ -240,11 +240,10 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
 
 <style scoped>
 /* KARTU AJAKAN MISI KONTEKSTUAL (BULAN & MARS) */
-.mission-callout{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:var(--r);background:linear-gradient(135deg,rgba(255,107,107,.18) 0%,rgba(20,28,58,.85) 100%);border:1px solid rgba(255,140,90,.4);box-shadow:0 4px 18px rgba(0,0,0,.35)}
-.mission-callout.mco{background:linear-gradient(135deg,rgba(193,83,47,.22) 0%,rgba(20,28,58,.85) 100%);border-color:rgba(255,158,122,.38)}
+.mission-callout{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .mc-head{display:flex;align-items:center;gap:12px}
-.mc-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--coral);color:#2a0606;flex:none}
-.mc-icon.mco-ic{background:#e07a4f;color:#fff}
+.mc-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.18);color:var(--sky);flex:none}
+.mc-icon.mco-ic{background:rgba(59,130,246,.18);color:var(--sky)}
 .mc-title-box{display:flex;flex-direction:column;gap:3px}
 .mc-title{font-family:var(--display);font-size:15px;line-height:1.25;color:var(--text)}
 .mc-desc{font-size:13px;color:var(--muted);line-height:1.45;margin:0}

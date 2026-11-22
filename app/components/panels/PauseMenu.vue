@@ -67,14 +67,12 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 .badge{position:absolute;top:-4px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-weight:700;font-size:12px}
 .nw{font-family:var(--font);font-weight:400;font-size:11.5px;color:var(--star);margin-top:-4px}
 .mlist{display:flex;flex-direction:column;gap:8px}
-.mis.mco{background:linear-gradient(120deg,rgba(193,83,47,.28),rgba(255,201,71,.08));border-color:rgba(255,140,90,.35)}
-.mis.mco .mic{background:#e07a4f}
-.mis{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--r);text-align:left;background:linear-gradient(120deg,rgba(255,107,107,.22),rgba(255,201,71,.1));border:1px solid rgba(255,140,90,.4);transition:filter .15s}
-.mis:hover{filter:brightness(1.15)}
-.mic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--coral);color:#2a0606;flex:none}
+.mis{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--r);text-align:left;background:var(--surface-2);border:1px solid var(--line);transition:background .15s,transform .1s}
+.mis:hover{background:var(--surface-3);transform:translateX(2px)}
+.mic{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.18);color:var(--sky);flex:none}
 .mt{flex:1;display:flex;flex-direction:column}
-.mt small{font-size:12px;color:#ffb8a8}
-.mt b{font-family:var(--display);font-weight:600;font-size:16px}
+.mt small{font-size:11.5px;color:var(--faint)}
+.mt b{font-family:var(--display);font-weight:600;font-size:15px;color:var(--text)}
 .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--line)}
 .pts{display:flex;align-items:center;gap:6px;color:var(--star);font-family:var(--display);font-weight:600;padding-top:10px}
 .foot .btn{margin-top:10px}

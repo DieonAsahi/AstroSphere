@@ -115,6 +115,10 @@ async function handleLogin() {
 
   router.push('/admin');
 }
+
+onBeforeUnmount(() => {
+  if (cooldownTimer) clearInterval(cooldownTimer);
+});
 </script>
 
 <template>

@@ -107,8 +107,8 @@ onBeforeUnmount(closeMissionMenu);
 
 /* TOMBOL CEPAT & POPOVER MISI */
 .mission-wrapper{position:relative}
-.mission-top-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,107,107,.14);border:1px solid rgba(255,140,90,.38);color:#ffe3dc;font-weight:600;padding:0 12px;border-radius:999px}
-.mission-top-btn:hover{background:rgba(255,107,107,.24);color:#fff}
+.mission-top-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-weight:600;padding:0 12px;border-radius:999px;transition:background .15s}
+.mission-top-btn:hover{background:var(--surface-3);color:#fff}
 .badge-mini{background:var(--star);color:#2b1d00;font-size:10.5px;font-weight:700;padding:1px 5px;border-radius:999px}
 .mission-popover{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 12px 30px rgba(0,0,0,.6);padding:12px;display:flex;flex-direction:column;gap:10px;z-index:40}
 .pop-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px}
@@ -116,8 +116,8 @@ onBeforeUnmount(closeMissionMenu);
 .pop-list{display:flex;flex-direction:column;gap:8px}
 .pop-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid var(--line);text-align:left;transition:background .15s,transform .1s;cursor:pointer}
 .pop-item:hover{background:var(--surface-3);transform:translateX(-2px)}
-.pop-item .p-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--coral);color:#2a0606;flex:none}
-.pop-item .p-ic.mco-ic{background:#e07a4f;color:#fff}
+.pop-item .p-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.18);color:var(--sky);flex:none}
+.pop-item .p-ic.mco-ic{background:rgba(59,130,246,.18);color:var(--sky)}
 .pop-item .p-txt{display:flex;flex-direction:column;min-width:0;flex:1}
 .pop-item small{font-size:10.5px;color:var(--faint)}
 .pop-item b{font-family:var(--display);font-size:13.5px;color:var(--text);line-height:1.2}

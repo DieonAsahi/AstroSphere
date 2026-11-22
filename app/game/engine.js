@@ -634,9 +634,11 @@ export function createEngine(el) {
     if (isNew) toast(`<b>Penemuan baru</b> · ${b.name} — kartu baru di Jurnal`, 3000);
   }
   // Mendekati planet: pesawat berhenti sendiri dan menawarkan tampilan planet (Ya → mode Planet, Tidak → lanjut terbang)
+  let approachShownAt = 0;
   function arrive(b, isNew) {
     autopilotOff();
     ship.throttle = 0; ship.braking = true;
+    approachShownAt = performance.now();
     const ph = PHENOMENA[b.id];
     Object.assign(store.approach, { show: true, id: b.id, name: b.name, kind: b.kind, color: b.color, desc: (b.desc || '').split('. ')[0].replace(/\.$/, '') + '.', pheno: ph ? ph.title : '', isNew });
   }
@@ -968,7 +970,7 @@ export function createEngine(el) {
 
   // ---------- Input ----------
   // Keyboard memakai pemetaan aksi (data/keymap.js, bisa diubah pemain). Mouse hanya untuk melihat sekeliling.
-  const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable);
+  const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable);
   const isAct = (id, code) => (keymap[id] || []).includes(code);
   const FLY = ['forward', 'back', 'left', 'right', 'turnL', 'turnR', 'up', 'down', 'turbo', 'brake', 'stop'];
   on(window, 'keydown', (e) => {
@@ -983,9 +985,11 @@ export function createEngine(el) {
       if (e.repeat) return;
       if (store.event.result && ['Enter', 'Escape', 'Space', 'NumpadEnter'].includes(e.code)) { store.event.result = null; keys[e.code] = false; return; }
       if (store.approach.show) {
-        if (e.code === 'Enter' || e.code === 'KeyY') { keys[e.code] = false; api.approachYes(); return; }
-        if (e.code === 'Escape' || e.code === 'KeyN') { api.approachNo(); return; }
-        if (isAct('forward', e.code) || isAct('back', e.code)) api.approachNo();
+        // Jeda aman ~350 ms setelah kartu pendekatan muncul dan abaikan penahanan berulang (e.repeat)
+        // agar tombol gas Enter yang sedang ditahan tidak langsung memicu pilihan secara tak sengaja
+        if (performance.now() - approachShownAt < 350 || e.repeat) return;
+        if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'KeyY') { keys[e.code] = false; api.approachYes(); return; }
+        if (e.code === 'Escape' || e.code === 'KeyN' || isAct('back', e.code)) { api.approachNo(); return; }
       }
       if (isAct('stop', e.code)) { stop(); return; }
       if (isAct('map', e.code)) { setMode('peta'); return; }

@@ -16,12 +16,11 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
     </div>
 
     <div v-if="tab === 'keyboard'" class="kb">
+      <!-- Kolom 1: Kendali Hidung (W A S D) -->
       <section class="grp">
-        <div class="pad">
-          <div class="r">
-            <span class="key"><b class="kbd">{{ k('brake') }}</b><small>Rem</small></span>
+        <div class="pad wasd">
+          <div class="r single">
             <span class="key hl"><b class="kbd">{{ k('up') }}</b><small>Naik</small></span>
-            <span class="key"><b class="kbd">{{ k('forward') }}</b><small>Gas</small></span>
           </div>
           <div class="r">
             <span class="key"><b class="kbd">{{ k('left') }}</b><small>Kiri</small></span>
@@ -29,31 +28,28 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
             <span class="key"><b class="kbd">{{ k('right') }}</b><small>Kanan</small></span>
           </div>
         </div>
-        <p class="cap">Kendali Hidung &amp; Gas</p>
+        <p class="cap">Kendali Hidung</p>
       </section>
-      <section class="grp">
-        <div class="pad arrows">
-          <span class="key"><b class="kbd">↑</b><small>Naik</small></span>
-          <span class="key"><b class="kbd">↓</b><small>Turun</small></span>
-        </div>
-        <p class="cap">Arah Hidung</p>
-      </section>
+
+      <!-- Kolom 2: Kecepatan & Dorongan (Enter, Shift, Ctrl, Spasi) -->
       <section class="grp">
         <div class="pad col">
-          <span class="key wide"><b class="kbd">{{ k('forward') }}</b><small>Gas / Maju</small></span>
+          <span class="key wide hl-wide"><b class="kbd">{{ k('forward') }}</b><small>Gas / Maju</small></span>
           <span class="key wide"><b class="kbd">{{ k('turbo') }}</b><small>Turbo</small></span>
           <span class="key wide"><b class="kbd">{{ k('brake') }}</b><small>Rem</small></span>
           <span class="key wide"><b class="kbd sp">{{ k('stop') }}</b><small>Berhenti</small></span>
         </div>
         <p class="cap">Kecepatan</p>
       </section>
+
+      <!-- Kolom 3: Pintasan & Pandangan -->
       <section class="grp">
         <div class="pad col">
           <span class="key wide"><b class="kbd">{{ k('map') }}</b><small>Peta</small></span>
           <span class="key wide"><b class="kbd">Esc</b><small>Menu</small></span>
           <span class="key wide"><b class="kbd"><UiIcon name="mouse" :size="18" /></b><small>Seret = lihat sekitar</small></span>
         </div>
-        <p class="cap">Lainnya</p>
+        <p class="cap">Pintasan</p>
       </section>
     </div>
 
@@ -90,10 +86,11 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 .grp{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 18px 12px;border-radius:var(--r);background:var(--surface-2);min-width:150px}
 .pad{display:flex;flex-direction:column;gap:8px;align-items:center}
 .pad .r{display:flex;gap:8px}
-.pad.arrows{flex-direction:column}
+.pad.wasd .r.single{justify-content:center}
 .key{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
 .key .kbd{min-width:48px;height:46px;font-size:17px;border-radius:11px}
 .key.hl .kbd{background:var(--blue);border-color:var(--blue-d)}
+.key.wide.hl-wide .kbd{background:var(--blue);border-color:var(--blue-d)}
 .key small{font-size:12px;color:var(--muted)}
 .pad.col{flex-direction:column;gap:8px;align-items:stretch}
 .key.wide{flex-direction:row;gap:10px;justify-content:flex-start}

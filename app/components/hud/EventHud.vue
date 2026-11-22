@@ -98,8 +98,8 @@ function close() { ev.result = null; }
 .dam-tx b{font-family:var(--display);font-size:14px;color:#ff9e9e}
 .dam-tx small{font-size:12px;color:#ffdede}
 
-.shield{position:absolute;left:calc(var(--gap) + var(--safe-l));bottom:calc(var(--gap) + 118px + var(--safe-b));width:210px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 10px;
-  padding:10px 14px;border-radius:var(--r);background:var(--surface-a);border:1px solid var(--line)}
+.shield{position:absolute;left:calc(var(--gap) + var(--safe-l));bottom:calc(var(--gap) + 172px + var(--safe-b));width:210px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 10px;
+  padding:10px 14px;border-radius:var(--r);background:var(--surface-a);border:1px solid var(--line);z-index:12}
 .shield .lb{font-size:12.5px;color:var(--muted)}
 .shield .bar{height:8px}
 .shield b{font-size:14px}

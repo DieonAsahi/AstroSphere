@@ -1,14 +1,14 @@
 /* AstroSphere — sistem desain "mainan antariksa": navy malam, biru roket, kuning bintang.
    Prinsip: sedikit teks, tombol besar yang terasa bisa ditekan, panel padat tanpa blur (blur di atas kanvas WebGL mahal). */
 :root{
-  --bg:#060a1a;
-  --surface:#10173a; --surface-a:rgba(16,23,58,.94); --surface-2:#18214c; --surface-3:#222c5e;
-  --line:#2b3770; --line-2:#3a4889;
-  --text:#f4f7ff; --muted:#aab6e0; --faint:#7d8cc0;
-  --blue:#3b6cf0; --blue-d:#2a52c4; --sky:#8fb0ff;
-  --star:#ffc947; --star-d:#d99a14; --on-star:#231800;
-  --coral:#ff6b6b; --coral-d:#c94646;
-  --green:#36d39a; --green-d:#1f9c6e;
+  --bg:#070b1a;
+  --surface:#0e1533; --surface-a:rgba(14,21,51,.95); --surface-2:#141c42; --surface-3:#1c2759;
+  --line:rgba(148,174,255,.16); --line-2:rgba(148,174,255,.28);
+  --text:#f4f7ff; --muted:#a6b4dc; --faint:#7182b8;
+  --blue:#3b82f6; --blue-d:#1d4ed8; --sky:#60a5fa;
+  --star:#eab308; --star-d:#ca8a04; --on-star:#231800;
+  --coral:#f87171; --coral-d:#dc2626;
+  --green:#34d399; --green-d:#059669;
   --r-lg:22px; --r:16px; --r-sm:12px;
   --font:'Lexend',system-ui,-apple-system,'Segoe UI',sans-serif;
   --display:'Fredoka','Lexend',system-ui,sans-serif;
