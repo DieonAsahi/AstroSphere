@@ -531,4 +531,14 @@ export function showToast(html, ms = 3200) {
 let engineRef = null;
 export const setEngine = (e) => { engineRef = e; };
 export const game = () => engineRef;
-export function useGame() { return { store, game }; }
+
+/**
+ * Menentukan apakah layar Onboarding 5 Slide (Guide.vue) harus ditampilkan:
+ * - HANYA tampil untuk Tamu Baru (!store.account.loggedIn && !store.hasSave && !store.settings.tutorialSeen).
+ * - Langsung lewati jika sudah login akun ATAU sudah pernah main (hasSave / tutorialSeen).
+ */
+export function shouldShowGuide() {
+  return !store.account.loggedIn && !store.hasSave && !store.settings.tutorialSeen;
+}
+
+export function useGame() { return { store, game, shouldShowGuide }; }

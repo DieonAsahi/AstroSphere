@@ -1,12 +1,20 @@
 <script setup>
 // Jendela modal: Pengaturan, Jurnal penjelajah, Kontrol, dan konfirmasi Mulai baru.
 import { ref } from 'vue';
-import { store, game, wipeAll } from '~/composables/useGame.js';
+import { store, game, wipeAll, shouldShowGuide } from '~/composables/useGame.js';
 function close() { store.modal = null; store.journalId = null; confirmWipe.value = false; }
 function setting(k, v) { store.settings[k] = v; game()?.applySettings?.(); if (!game()) { try { localStorage.setItem('astrosphere.settings', JSON.stringify(store.settings)); } catch {} } }
 const confirmWipe = ref(false);
 function wipe() { wipeAll(); location.reload(); }
-function startNew() { close(); store.startFromSave = false; store.phase = 'guide'; }
+function startNew() {
+  close();
+  store.startFromSave = false;
+  if (shouldShowGuide()) {
+    store.phase = 'guide';
+  } else {
+    store.phase = 'loading';
+  }
+}
 const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 'Kontrol', confirmNew: 'Mulai petualangan baru?' };
 </script>
 

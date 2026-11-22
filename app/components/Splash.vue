@@ -4,7 +4,7 @@
 // dan jadi cadangan (mode Hemat untuk lubang hitam, "kurangi gerakan", hemat data, atau perangkat lambat).
 // Dunia 3D game baru dimuat setelah pemain menekan "Main".
 import { reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { store, registerUser, loginUser, logoutUser, showToast } from '~/composables/useGame.js';
+import { store, registerUser, loginUser, logoutUser, showToast, shouldShowGuide } from '~/composables/useGame.js';
 import { PLANETS } from '~/data/solarSystem.js';
 import { SHIP_IDS } from '~/data/ships.js';
 
@@ -13,7 +13,11 @@ function go(screen) { store.screen = screen; f.err = ''; f.pass = ''; f.unknown 
 function play(fromSave) {
   if (!fromSave && store.hasSave) { store.modal = 'confirmNew'; return; }
   store.startFromSave = !!fromSave;
-  store.phase = 'guide';
+  if (shouldShowGuide()) {
+    store.phase = 'guide';
+  } else {
+    store.phase = 'loading';
+  }
 }
 async function submit() {
   if (f.busy) return;

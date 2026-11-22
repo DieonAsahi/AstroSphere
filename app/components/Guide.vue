@@ -2,7 +2,7 @@
 // Onboarding modern gaya briefing game dengan layout 2 kolom (Visual di kiri, Penjelasan di kanan)
 // serta panggung demo pesawat interaktif di slide 5.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import { store, game } from '~/composables/useGame.js';
+import { store, game, saveSettings } from '~/composables/useGame.js';
 import { resolveKeymap, keyLabel } from '~/data/keymap.js';
 
 const TOTAL_SLIDES = 5;
@@ -171,20 +171,30 @@ function clearAction(act) {
 function start() {
   if (!store.ready) return;
   store.settings.tutorialSeen = true;
+  saveSettings();
   game()?.startGame(store.startFromSave);
 }
 
 function skip() {
+  store.settings.tutorialSeen = true;
+  saveSettings();
   if (store.ready) {
     start();
   } else {
-    slide.value = TOTAL_SLIDES;
+    store.phase = 'loading';
   }
 }
 
 function nextSlide() {
-  if (slide.value < TOTAL_SLIDES) slide.value++;
-  else if (store.ready) start();
+  if (slide.value < TOTAL_SLIDES) {
+    slide.value++;
+  } else if (store.ready) {
+    start();
+  } else {
+    store.settings.tutorialSeen = true;
+    saveSettings();
+    store.phase = 'loading';
+  }
 }
 
 function prevSlide() {

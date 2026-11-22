@@ -1,6 +1,6 @@
 <script setup>
 // Cangkang AstroSphere. Layar awal (Splash) hanya HTML+gambar; mesin 3D (Three.js) baru diunduh & dijalankan
-// saat pemain masuk ke "Cara terbang", sehingga halaman pertama ringan dan tidak patah-patah.
+// saat pemain masuk ke "Cara terbang" (Tamu Baru) atau langsung lewat muat cepat otomatis (Pemain Lama / Login).
 import { ref, computed, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import { store, setEngine, game } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
@@ -29,11 +29,22 @@ async function ensureEngine() {
   if (import.meta.dev) window.__astro = { engine, store };
   return engine;
 }
+
 watch(() => store.phase, async (p) => {
-  if (p !== 'guide') return;
-  try { const e = await ensureEngine(); await e.boot(); }
-  catch (err) { console.error(err); store.loading.error = 'Dunia 3D gagal dimuat. Periksa koneksi lalu coba lagi.'; }
+  if (p !== 'guide' && p !== 'loading') return;
+  try {
+    const e = await ensureEngine();
+    await e.boot();
+    // Jika fase loading (pemain lama / pengguna login / tamu lewati slide), langsung masuk ke jelajah 3D!
+    if (store.phase === 'loading') {
+      e.startGame(store.startFromSave);
+    }
+  } catch (err) {
+    console.error(err);
+    store.loading.error = 'Dunia 3D gagal dimuat. Periksa koneksi lalu coba lagi.';
+  }
 });
+
 onBeforeUnmount(() => { game()?.dispose(); });
 </script>
 
@@ -52,9 +63,41 @@ onBeforeUnmount(() => { game()?.dispose(); });
     <div ref="poi" class="layer poi-layer" v-show="store.mode === 'sejarah' && inGame" />
     <div ref="labLabels" class="layer" v-show="store.mode === 'fenomena' && inGame" />
 
+    <!-- Layar Awal Splash (Beranda / Masuk / Daftar) -->
     <Transition name="fade"><Splash v-if="store.phase === 'splash'" /></Transition>
+
+    <!-- Onboarding 5 Slide (Hanya untuk Tamu Baru yang pertama kali bermain) -->
     <Transition name="fade"><Guide v-if="store.phase === 'guide'" /></Transition>
 
+    <!-- Layar Muat Cepat Otomatis (Untuk Pemain Lama & Pengguna Login yang melewati 5 Slide) -->
+    <Transition name="fade">
+      <div v-if="store.phase === 'loading'" class="quick-loader" role="status" aria-live="polite">
+        <div class="card box-loader">
+          <div class="loader-orbit">
+            <span class="orbit-glow" />
+            <UiIcon name="logo" :size="40" class="logo-spin" />
+          </div>
+          <div class="loader-texts">
+            <h2 class="loader-title">Menyiapkan Tata Surya 3D</h2>
+            <p class="loader-sub">{{ store.loading.text || 'Memuat ruang angkasa...' }}</p>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" :style="{ width: Math.round(store.loading.p * 100) + '%' }" />
+          </div>
+          <div class="loader-meta">
+            <span class="pct num">{{ Math.round(store.loading.p * 100) }}%</span>
+            <span v-if="store.startFromSave" class="tag star"><UiIcon name="putar" :size="12" />Melanjutkan Sesi</span>
+            <span v-else class="tag star"><UiIcon name="pesawat" :size="12" />Meluncur ke Angkasa</span>
+          </div>
+          <div v-if="store.loading.error" class="loader-err">
+            <span>{{ store.loading.error }}</span>
+            <button class="btn sm line" @click="store.phase = 'splash'">Kembali ke Beranda</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Tampilan Utama Dalam Game -->
     <template v-if="inGame">
       <TopBar v-if="showTop" />
       <HudGameHud v-if="isJelajah" />
@@ -92,4 +135,20 @@ onBeforeUnmount(() => { game()?.dispose(); });
 .toast :deep(b){font-family:var(--display);font-weight:600}
 .touch .toast{bottom:auto;top:calc(var(--top) + 172px + var(--safe-t));white-space:normal;text-align:center}
 .touch .compass{top:calc(var(--top) + 4px + var(--safe-t))}
+
+/* Layar Muat Cepat Otomatis */
+.quick-loader{position:fixed;inset:0;z-index:42;display:grid;place-items:center;padding:16px;background:rgba(6,10,26,.88);backdrop-filter:blur(16px)}
+.box-loader{width:min(440px,100%);padding:32px 28px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;background:var(--surface-a);border:1px solid var(--line);box-shadow:var(--shadow-lg)}
+.loader-orbit{position:relative;width:80px;height:80px;display:grid;place-items:center}
+.orbit-glow{position:absolute;inset:0;border-radius:50%;border:2px dashed rgba(59,108,240,.45);animation:spin 12s linear infinite}
+.logo-spin{color:var(--sky);filter:drop-shadow(0 0 14px rgba(59,108,240,.6))}
+.loader-texts{display:flex;flex-direction:column;gap:6px}
+.loader-title{font-family:var(--display);font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em}
+.loader-sub{font-size:14px;color:var(--muted)}
+.bar-wrap{width:100%;height:6px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--cyan));border-radius:999px;transition:width .2s ease;box-shadow:0 0 10px rgba(59,108,240,.5)}
+.loader-meta{width:100%;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.loader-meta .pct{font-weight:600;color:var(--sky)}
+.loader-err{margin-top:8px;font-size:13px;color:var(--coral);display:flex;flex-direction:column;gap:8px;align-items:center}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>

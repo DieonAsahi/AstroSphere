@@ -157,7 +157,7 @@ export function createEngine(el) {
   let obsTime = gameTime;               // cabang waktu observasi (Planet & Sejarah)
   let snapshot = null;                  // checkpoint jelajah saat masuk mode belajar/overlay
   const worldMode = () => {
-    if (store.phase === 'splash' || store.phase === 'guide') return 'menu';
+    if (store.phase === 'splash' || store.phase === 'guide' || store.phase === 'loading') return 'menu';
     switch (store.mode) {
       case 'jelajah': return 'jelajah';
       case 'planet': case 'sejarah': return 'observe';
