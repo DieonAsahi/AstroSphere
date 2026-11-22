@@ -1,16 +1,16 @@
 // Pemetaan tombol keyboard (KeyboardEvent.code). Tombol pertama tiap aksi bisa diubah di Profil → Kontrol.
 // Kursor/mouse TIDAK mengemudikan pesawat; seret mouse hanya untuk melihat sekeliling.
 export const ACTIONS = [
-  { id: 'forward', label: 'Maju', sub: 'Tambah kecepatan pendorong', keys: ['KeyW', 'Enter'] },
-  { id: 'back', label: 'Mundur', sub: 'Kurangi kecepatan pendorong', keys: ['KeyS'] },
-  { id: 'left', label: 'Belok Kiri', sub: 'Arahkan moncong ke kiri (banking roll)', keys: ['KeyA', 'ArrowLeft'] },
-  { id: 'right', label: 'Belok Kanan', sub: 'Arahkan moncong ke kanan (banking roll)', keys: ['KeyD', 'ArrowRight'] },
+  { id: 'up', label: 'Hidung Naik (Pitch Up)', sub: 'Arahkan moncong ke atas', keys: ['KeyW', 'ArrowUp'] },
+  { id: 'down', label: 'Hidung Turun (Pitch Down)', sub: 'Arahkan moncong ke bawah', keys: ['KeyS', 'ArrowDown'] },
+  { id: 'left', label: 'Belok Kiri (Yaw)', sub: 'Arahkan moncong ke kiri (tanpa geser samping)', keys: ['KeyA', 'ArrowLeft'] },
+  { id: 'right', label: 'Belok Kanan (Yaw)', sub: 'Arahkan moncong ke kanan (tanpa geser samping)', keys: ['KeyD', 'ArrowRight'] },
+  { id: 'forward', label: 'Maju / Tambah Gas', sub: 'Tarik tuas dorong ke atas', keys: ['KeyE', 'Enter'] },
+  { id: 'back', label: 'Mundur / Kurangi Gas', sub: 'Tarik tuas dorong ke bawah', keys: ['KeyQ'] },
   { id: 'turnL', label: 'Putar Kiri', sub: 'Arahkan moncong ke kiri', keys: ['KeyA', 'ArrowLeft'] },
   { id: 'turnR', label: 'Putar Kanan', sub: 'Arahkan moncong ke kanan', keys: ['KeyD', 'ArrowRight'] },
-  { id: 'up', label: 'Naik', sub: 'Hidung pesawat ke atas (Pitch Up)', keys: ['KeyE', 'ArrowUp'] },
-  { id: 'down', label: 'Turun', sub: 'Hidung pesawat ke bawah (Pitch Down)', keys: ['KeyQ', 'ArrowDown'] },
   { id: 'turbo', label: 'Turbo', sub: 'Tahan untuk melesat', keys: ['ShiftLeft', 'ShiftRight'] },
-  { id: 'brake', label: 'Rem', sub: 'Tahan untuk melambat', keys: ['ControlLeft', 'ControlRight'] },
+  { id: 'brake', label: 'Rem', sub: 'Tahan untuk melambat', keys: ['KeyQ', 'ControlLeft', 'ControlRight'] },
   { id: 'stop', label: 'Berhenti', sub: 'Langsung diam di tempat', keys: ['Space'] },
   { id: 'map', label: 'Peta', sub: 'Pilih tujuan penjelajahan', keys: ['KeyM'] },
 ];

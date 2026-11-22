@@ -62,12 +62,13 @@ export function createEngine(el) {
   }
   function applyQuality() {
     const hi = settings.graphics === 'tinggi';
-    const pr = Math.min(devicePixelRatio || 1, hi ? 1.5 : 1);
+    const pr = Math.min(devicePixelRatio || 1, hi ? 1.25 : 1.0);
     renderer.setPixelRatio(pr); composer.setPixelRatio(pr);
     renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
-    U.uOct.value = hi ? 6 : 4;
+    U.uOct.value = hi ? 5 : 3;
     if (bloomPass) bloomPass.enabled = hi;
     if (starsMat) starsMat.uniforms.uPR.value = pr;
+    if (hi && !blackHole && !bhLoading) loadBlackHole();
   }
   function bakeSky() {
     const size = isTouch || settings.graphics !== 'tinggi' ? 1024 : 2048;
@@ -101,7 +102,7 @@ export function createEngine(el) {
     const pts = new THREE.Points(g, starsMat); pts.frustumCulled = false; pts.renderOrder = -10; skyGroup.add(pts);
   }
   function buildDust() {
-    const N = isTouch ? 500 : 900, B = 240, base = new Float32Array(N * 3);
+    const N = isTouch || settings.graphics !== 'tinggi' ? 240 : 360, B = 240, base = new Float32Array(N * 3);
     for (let i = 0; i < N * 3; i++) base[i] = Math.random() * B;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 6), 3));
@@ -111,6 +112,12 @@ export function createEngine(el) {
     dust = { N, B, base, lines, g };
   }
   function updateDust(vel) {
+    if (!dust) return;
+    if (ship.speed < 5) {
+      if (dust.lines.visible) dust.lines.visible = false;
+      return;
+    }
+    if (!dust.lines.visible) dust.lines.visible = true;
     const { N, B, base, g } = dust, P = g.attributes.position.array, C = g.attributes.color.array;
     const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z, hB = B / 2, sp = vel.length();
     const k = Math.min(0.07, 18 / Math.max(sp, 1)), inten = Math.min(1, .15 + sp / 60);
@@ -131,9 +138,9 @@ export function createEngine(el) {
   const BH_POS = BH_DIR.clone().multiplyScalar(BH_DIST), bhNormal = new THREE.Vector3(0, 1, 0);
   let bhLoading = false;
   async function loadBlackHole() {
-    if (bhLoading || blackHole || !renderer) return;
+    if (settings.graphics !== 'tinggi' || bhLoading || blackHole || !renderer) return;
     bhLoading = true;
-    const m = await loadDecor('black_hole'); if (!m) return;
+    const m = await loadDecor('black_hole'); if (!m) { bhLoading = false; return; }
     m.position.copy(BH_POS); m.scale.setScalar(BH_SIZE);
     const toSun = BH_DIR.clone().negate();
     const perp = new THREE.Vector3(0, 1, 0).projectOnPlane(toSun).normalize();
@@ -163,7 +170,7 @@ export function createEngine(el) {
   const bodyTime = () => (worldMode() === 'observe' ? obsTime : gameTime);
 
   // ---------- Pesawat ----------
-  const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false };
+  const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, yaw: 0, pitch: 0 };
   const shipRoot = new THREE.Group();
   let shipModel = null; const shipModels = {};
   let camMode = 'chase', target = null, nearest = null;
@@ -188,7 +195,14 @@ export function createEngine(el) {
     const look = k.pos.clone().addScaledVector(side, k.radius * 3.6);
     return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(_m.lookAt(pos, look, up)) };
   }
-  function resetShip(pose) { ship.pos.copy(pose.pos); ship.quat.copy(pose.quat); ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false; }
+  function resetShip(pose) {
+    ship.pos.copy(pose.pos);
+    _e.setFromQuaternion(pose.quat, 'YXZ');
+    ship.yaw = _e.y;
+    ship.pitch = clamp(_e.x, -1.35, 1.35);
+    ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
+    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false;
+  }
   async function ensureShipModel(id) {
     if (!id || !SHIPS[id] || models?.ships?.[id]) return;
     const m = await loadSingleModel('ships', id);
@@ -252,18 +266,19 @@ export function createEngine(el) {
       input.boost = facing > .97 && d > 1600 && !broken;
     }
 
-    // Efek banking roll sayap yang halus saat belok kiri/kanan (yaw), dan auto-leveling terhadap bidang orbit saat dilepas
-    const bankTarget = clamp(yaw * 0.45, -0.6, 0.6);
-    const rightY = _v2.set(1, 0, 0).applyQuaternion(ship.quat).y, fwdY = _up.set(0, 0, -1).applyQuaternion(ship.quat).y;
-    const levelRoll = clamp(rightY * 2.2, -1, 1) * (1 - Math.min(1, Math.abs(fwdY) * 1.15));
     const tr = def.turn;
 
-    ship.rate.x = damp(ship.rate.x, pitch * 1.1 * tr, 6, dt);
-    ship.rate.y = damp(ship.rate.y, -yaw * 1.25 * tr, 6, dt);
-    ship.rate.z = damp(ship.rate.z, bankTarget * 2.2 - levelRoll * 1.4, 5, dt);
+    // Rate rotasi: pitch mengelilingi sumbu X, yaw mengelilingi sumbu Y
+    ship.rate.x = damp(ship.rate.x, pitch * 1.15 * tr, 8, dt);
+    ship.rate.y = damp(ship.rate.y, -yaw * 1.35 * tr, 8, dt);
+    ship.rate.z = 0; // Fisika murni tanpa gimbal drift roll
 
-    _q.setFromEuler(_e.set(ship.rate.x * dt, ship.rate.y * dt, ship.rate.z * dt, 'XYZ'));
-    ship.quat.multiply(_q).normalize();
+    // Integrasi sudut yaw & pitch Euler murni: roll fisika selalu 0 sehingga anti-mendongak/anti-gimbal drift
+    ship.yaw += ship.rate.y * dt;
+    ship.yaw = Math.atan2(Math.sin(ship.yaw), Math.cos(ship.yaw));
+    ship.pitch = clamp(ship.pitch + ship.rate.x * dt, -1.35, 1.35);
+
+    ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
 
     const wantBoost = input.boost && ship.throttle > .05 && !broken;
     if (wantBoost && !wasBoost) sfx.whoosh();
@@ -306,9 +321,9 @@ export function createEngine(el) {
     shipRoot.position.copy(ship.pos); shipRoot.quaternion.copy(ship.quat);
     if (!shipModel) return;
     const g = shipModel.group, wm = worldMode();
-    // Efek visual miring sayap (banking roll) halus saat memutar moncong kiri/kanan
-    g.rotation.z = damp(g.rotation.z, -input.yaw * .45, 5, dt);
-    g.rotation.x = damp(g.rotation.x, ship.rate.x * .08, 4, dt);
+    // Efek visual miring sayap (banking roll) halus saat memutar moncong kiri/kanan HANYA pada mesh 3D anak
+    g.rotation.z = damp(g.rotation.z, -input.yaw * .45, 6, dt);
+    g.rotation.x = damp(g.rotation.x, ship.rate.x * .05, 5, dt);
     const thrust = Math.max(0, ship.throttle), b = ship.boost, def = shipModel.def;
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
     const pw = Math.max(idle, thrust) + b * .8;
@@ -646,10 +661,10 @@ export function createEngine(el) {
   const r2 = (n) => Math.round(n * 100) / 100, r4 = (n) => Math.round(n * 1e4) / 1e4;
   function saveGame(label) {
     if (!sessionActive) return false;
-    const src = snapshot || { pos: ship.pos, quat: ship.quat, gameTime };
-    _e.setFromQuaternion(src.quat, 'XYZ');
+    const src = snapshot || { pos: ship.pos, quat: ship.quat, gameTime, yaw: ship.yaw, pitch: ship.pitch };
+    _e.setFromQuaternion(src.quat, 'YXZ');
     const ok = writeGameState({
-      position: { x: r2(src.pos.x), y: r2(src.pos.y), z: r2(src.pos.z) }, rotation: { x: r4(_e.x), y: r4(_e.y), z: r4(_e.z) },
+      position: { x: r2(src.pos.x), y: r2(src.pos.y), z: r2(src.pos.z) }, rotation: { x: r4(_e.x), y: r4(_e.y), z: 0 },
       gameTime: r4(src.gameTime ?? gameTime), lastSaved: new Date().toISOString(), discovered: [...discovered], nearest: nearest ? nearest.id : null,
       target: target ? target.id : null, ship: store.progress.selectedShip,
     });
@@ -661,7 +676,9 @@ export function createEngine(el) {
     if (Number.isFinite(s.gameTime)) gameTime = s.gameTime;
     updateBodies(sys.bodies, sys.byId, gameTime);
     ship.pos.set(s.position.x, s.position.y, s.position.z);
-    ship.quat.setFromEuler(_e.set(s.rotation.x, s.rotation.y, s.rotation.z, 'XYZ'));
+    ship.yaw = (s.rotation && s.rotation.y) || 0;
+    ship.pitch = clamp((s.rotation && s.rotation.x) || 0, -1.35, 1.35);
+    ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
     ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false;
     discovered.clear(); discovered.add('matahari');
     if (Array.isArray(s.discovered)) for (const id of s.discovered) if (sys.byId[id] || id === BELT.id) discovered.add(id);
@@ -673,7 +690,7 @@ export function createEngine(el) {
   // ---------- Snapshot konteks (PRD §10) ----------
   function takeSnapshot() {
     if (snapshot) return;
-    snapshot = { pos: ship.pos.clone(), quat: ship.quat.clone(), vel: ship.vel.clone(), throttle: ship.throttle, gameTime, camPos: camera.position.clone(), camQuat: camera.quaternion.clone(), target: target ? target.id : null, camMode };
+    snapshot = { pos: ship.pos.clone(), quat: ship.quat.clone(), yaw: ship.yaw, pitch: ship.pitch, vel: ship.vel.clone(), throttle: ship.throttle, gameTime, camPos: camera.position.clone(), camQuat: camera.quaternion.clone(), target: target ? target.id : null, camMode };
     obsTime = gameTime; // cabang waktu observasi
     store.obs.day = obsTime;
   }
@@ -681,7 +698,7 @@ export function createEngine(el) {
     if (!snapshot) return;
     const s = snapshot; snapshot = null;
     gameTime = s.gameTime; updateBodies(sys.bodies, sys.byId, gameTime);
-    ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0;
+    ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.yaw = s.yaw ?? 0; ship.pitch = s.pitch ?? 0; ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0;
     camQ.copy(ship.quat); camMode = s.camMode;
     for (const k in keys) keys[k] = false; for (const k in hold) hold[k] = false; joy.x = joy.y = 0; stick.x = stick.y = 0;
   }
@@ -1065,7 +1082,7 @@ export function createEngine(el) {
     camQ.copy(ship.quat); beginCamTransition();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     running(true);
-    setTimeout(loadBlackHole, 3000);
+    if (settings.graphics === 'tinggi') setTimeout(loadBlackHole, 3000);
     setTimeout(queueBackgroundPlanets, 1500);
   }
   let loopOn = false;
@@ -1108,6 +1125,34 @@ export function createEngine(el) {
     renderer.autoClear = true;
   }
 
+  // Auto-FPS Guard: Jika mode 'tinggi' berjalan < 30 FPS selama 3 detik berturut-turut, otomatis turunkan ke 'rendah'
+  let fpsFrames = 0, fpsTimer = 0, lowFpsSecs = 0;
+  function checkFpsGuard(dt) {
+    if (settings.graphics !== 'tinggi' || store.phase !== 'playing') {
+      lowFpsSecs = 0; fpsFrames = 0; fpsTimer = 0;
+      return;
+    }
+    fpsFrames++;
+    fpsTimer += dt;
+    if (fpsTimer >= 1.0) {
+      const currentFps = fpsFrames / fpsTimer;
+      fpsFrames = 0;
+      fpsTimer = 0;
+      if (currentFps < 30) {
+        lowFpsSecs++;
+        if (lowFpsSecs >= 3) {
+          settings.graphics = 'rendah';
+          saveSettings();
+          applyQuality();
+          toast('Mode grafis disesuaikan agar terbang lebih mulus', 3500);
+          lowFpsSecs = 0;
+        }
+      } else {
+        lowFpsSecs = 0;
+      }
+    }
+  }
+
   // ---------- Loop ----------
   const timer = new THREE.Timer();
   let time = 0, autosaveT = 0, labTick = 0, idleN = 0;
@@ -1115,6 +1160,7 @@ export function createEngine(el) {
     timer.update(ts);
     const dt = Math.min(timer.getDelta(), .05);
     time += dt; U.uTime.value = time;
+    checkFpsGuard(dt);
     const wm = worldMode();
     // layar yang menutupi dunia (jeda, kuis, peta, profil): render cukup ± 20 fps
     if ((store.phase === 'paused' || wm === 'frozen') && (++idleN % 3)) return;
@@ -1182,7 +1228,18 @@ export function createEngine(el) {
     const facing = clamp(_v.divideScalar(sd || 1).dot(_v2.set(0, 0, -1).applyQuaternion(camera.quaternion)), 0, 1);
     const glare = (1 - smooth(sunB.radius * 2, sunB.radius * 10, sd)) * (.35 + .65 * facing);
     renderer.toneMappingExposure = damp(renderer.toneMappingExposure, 1 - glare * .55, 2.5, dt);
-    for (const b of sys.bodies) if (b.atm) b.atm.material.side = camera.position.distanceTo(b.pos) < b.radius * b.atmoScale ? THREE.BackSide : THREE.FrontSide;
+    // Distance culling atmosfer planet: jika jarak > 25x radius, sembunyikan atmosfer untuk menghemat GPU
+    for (const b of sys.bodies) {
+      if (b.atm) {
+        const dCam = camera.position.distanceTo(b.pos);
+        if (dCam > b.radius * 25) {
+          b.atm.visible = false;
+        } else {
+          b.atm.visible = true;
+          b.atm.material.side = dCam < b.radius * b.atmoScale ? THREE.BackSide : THREE.FrontSide;
+        }
+      }
+    }
     renderWorld();
     updateHUD(dt); updatePOIs();
     sfx.update(wm === 'jelajah' && store.phase === 'playing', ship);

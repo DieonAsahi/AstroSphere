@@ -201,8 +201,8 @@ const FAQ = [
           <div class="ctl card flat">
             <div class="ch"><span class="ic"><UiIcon name="sentuh" :size="22" /></span><div><h3 class="h3">Layar sentuh</h3></div></div>
             <div class="tcs">
-              <div class="tile"><UiIcon name="target" :size="24" /><b>Kemudi Analog</b><small>Sentuh stik analog di kiri bawah untuk mengarahkan moncong pesawat.</small></div>
-              <div class="tile"><UiIcon name="gas" :size="24" /><b>Tuas Dorong & Rem</b><small>Tarik tuas dorong di kanan bawah untuk mengatur maju, turbo, dan rem.</small></div>
+              <div class="tile"><UiIcon name="target" :size="24" /><b>Kemudi Analog</b><small>Sentuh stik analog di kiri bawah untuk mengarahkan moncong pesawat (W/S Naik-Turun, A/D Belok).</small></div>
+              <div class="tile"><UiIcon name="gas" :size="24" /><b>Tuas Dorong &amp; Rem</b><small>Tarik tuas dorong di kanan bawah untuk mengatur maju (E), turbo (Shift), dan rem (Q/Ctrl).</small></div>
               <div class="tile"><UiIcon name="mata" :size="24" /><b>Lihat sekeliling</b><small>Geser area tengah layar dengan tetikus atau jari.</small></div>
             </div>
           </div>

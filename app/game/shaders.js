@@ -340,8 +340,8 @@ varying vec3 vObj; varying vec3 vWorldPos; varying vec3 vN; varying vec3 vCenter
 ${GLSL_NOISE}
 void main(){
   vec3 p = normalize(vObj);
-  float n = fbm(p * 3.5 + vec3(0.0, uTime * 0.03, 0.0), 5);
-  float g = fbm(p * 14.0 + vec3(uTime * 0.05), 4);
+  float n = fbm(p * 3.5 + vec3(0.0, uTime * 0.03, 0.0), 3);
+  float g = fbm(p * 14.0 + vec3(uTime * 0.05), 2);
   float cells = 0.5 + 0.5 * n + 0.25 * g;
   vec3 col = mix(vec3(1.0, 0.36, 0.05), vec3(1.0, 0.76, 0.34), smoothstep(0.2, 0.8, cells));
   col = mix(col, vec3(1.0, 0.95, 0.8), smoothstep(0.75, 1.1, cells));

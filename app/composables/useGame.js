@@ -32,8 +32,7 @@ const ls = {
 };
 
 const touch = typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches));
-const isLowEnd = typeof window !== 'undefined' && (touch || (typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency) && navigator.hardwareConcurrency <= 4));
-const DEFAULT_SETTINGS = { soundEnabled: true, hudOpacity: 1, sensitivity: 1, invertY: false, graphics: isLowEnd ? 'rendah' : 'tinggi', reduceMotion: false, tutorialSeen: false, events: true, keys: {} };
+const DEFAULT_SETTINGS = { soundEnabled: true, hudOpacity: 1, sensitivity: 1, invertY: false, graphics: 'rendah', reduceMotion: false, tutorialSeen: false, events: true, keys: {} };
 const DEFAULT_PROGRESS = { points: 0, earned: 0, best: {}, attempts: {}, owned: ['astra'], selectedShip: 'astra', ledger: [], quizVersion: QUIZ_VERSION, predict: {}, myths: {}, cards: {}, found: { matahari: true }, events: {}, missions: {} };
 
 function sanitizeSettings(s) {

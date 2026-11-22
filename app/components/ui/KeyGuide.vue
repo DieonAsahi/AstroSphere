@@ -19,27 +19,28 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
       <section class="grp">
         <div class="pad">
           <div class="r">
-            <span class="key"><b class="kbd">{{ k('down') }}</b><small>Turun</small></span>
-            <span class="key hl"><b class="kbd">{{ k('forward') }}</b><small>Maju</small></span>
-            <span class="key"><b class="kbd">{{ k('up') }}</b><small>Naik</small></span>
+            <span class="key"><b class="kbd">{{ k('brake') }}</b><small>Rem</small></span>
+            <span class="key hl"><b class="kbd">{{ k('up') }}</b><small>Naik</small></span>
+            <span class="key"><b class="kbd">{{ k('forward') }}</b><small>Gas</small></span>
           </div>
           <div class="r">
-            <span class="key"><b class="kbd">{{ k('left') }}</b><small>Belok</small></span>
-            <span class="key"><b class="kbd">{{ k('back') }}</b><small>Mundur</small></span>
-            <span class="key"><b class="kbd">{{ k('right') }}</b><small>Belok</small></span>
+            <span class="key"><b class="kbd">{{ k('left') }}</b><small>Kiri</small></span>
+            <span class="key"><b class="kbd">{{ k('down') }}</b><small>Turun</small></span>
+            <span class="key"><b class="kbd">{{ k('right') }}</b><small>Kanan</small></span>
           </div>
         </div>
-        <p class="cap">Terbang &amp; arah</p>
+        <p class="cap">Kendali Hidung &amp; Gas</p>
       </section>
       <section class="grp">
         <div class="pad arrows">
           <span class="key"><b class="kbd">↑</b><small>Naik</small></span>
           <span class="key"><b class="kbd">↓</b><small>Turun</small></span>
         </div>
-        <p class="cap">Arah hidung</p>
+        <p class="cap">Arah Hidung</p>
       </section>
       <section class="grp">
         <div class="pad col">
+          <span class="key wide"><b class="kbd">{{ k('forward') }}</b><small>Gas / Maju</small></span>
           <span class="key wide"><b class="kbd">{{ k('turbo') }}</b><small>Turbo</small></span>
           <span class="key wide"><b class="kbd">{{ k('brake') }}</b><small>Rem</small></span>
           <span class="key wide"><b class="kbd sp">{{ k('stop') }}</b><small>Berhenti</small></span>

@@ -11,7 +11,7 @@ const banner = computed(() => {
     if (ev.phase === 'warn') return { cls: 'warn', icon: 'matahari', t: E.value.warn, s: ev.safe ? 'Kamu sudah di bayangan — tetap di sana' : `Berlindung di bayangan ${ev.shelterName}`, n: ev.left };
     return { cls: ev.safe ? 'safe' : 'danger', icon: 'matahari', t: E.value.hit, s: ev.safe ? 'Aman di bayangan' : 'Terkena radiasi — cepat ke bayangan!', n: ev.left };
   }
-  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: E.value.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D belok · Q/E atau ↑/↓ naik-turun', n: ev.left };
+  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: E.value.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D belok · W/S naik-turun', n: ev.left };
   return { cls: ev.hits > 3 ? 'danger' : 'warn', icon: 'info', t: E.value.hit, s: ev.hits ? `Tertabrak ${ev.hits} kali` : 'Belum tertabrak', n: ev.left };
 });
 const showShield = computed(() => ev.phase || ev.damaged || ev.shield < 99.5);

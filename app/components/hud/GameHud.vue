@@ -138,7 +138,7 @@ const stickVisualTransform = computed(() => {
     return `translate(${stickState.dragX}px, ${stickState.dragY}px)`;
   }
   const kx = (store.hud.stick?.x || 0) * STICK_R;
-  const ky = (store.hud.stick?.y || 0) * STICK_R;
+  const ky = -(store.hud.stick?.y || 0) * STICK_R;
   return `translate(${kx}px, ${ky}px)`;
 });
 
@@ -320,8 +320,8 @@ function handleQuickStop() {
         </div>
       </div>
       <div class="stick-label-box">
-        <span class="stick-label">Kemudi Moncong</span>
-        <small v-if="!store.touch" class="stick-keys">A · D · Manuver</small>
+        <span class="stick-label">Kemudi Analog</span>
+        <small v-if="!store.touch" class="stick-keys">W/S Naik-Turun · A/D Belok</small>
       </div>
     </div>
 
