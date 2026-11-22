@@ -830,7 +830,16 @@ export function createEngine(el) {
       const actorLabel = e.nama_wahana || e.actor || 'Observasi';
       const yearLabel = e.year || e.tahun_kejadian || '—';
       const titleLabel = e.judul || e.title || '';
-      node.innerHTML = `<i></i><span><b>${actorLabel}</b><em>${yearLabel} · ${titleLabel}</em></span>`;
+      const icon = document.createElement('i');
+      const span = document.createElement('span');
+      const bEl = document.createElement('b');
+      bEl.textContent = actorLabel;
+      const emEl = document.createElement('em');
+      emEl.textContent = `${yearLabel} · ${titleLabel}`;
+      span.appendChild(bEl);
+      span.appendChild(emEl);
+      node.appendChild(icon);
+      node.appendChild(span);
       node.addEventListener('click', () => { store.sejarah.selected = e.id; selectEvent(e.id); });
       el.poi.appendChild(node);
       pois.push({ e, el: node, local: latLonToLocal(coords.lat, coords.lon), body: b, coords });
@@ -868,7 +877,16 @@ export function createEngine(el) {
         new THREE.LineDashedMaterial({ color: '#a8edeb', dashSize: R * .12, gapSize: R * .08, transparent: true, opacity: .9, depthWrite: false }));
       line.computeLineDistances(); b.holder.add(line); pathObj = line;
       const node = document.createElement('div'); node.className = 'poi path';
-      node.innerHTML = `<i></i><span><b>${label}</b><em>Bukan titik pendaratan</em></span>`;
+      const icon = document.createElement('i');
+      const span = document.createElement('span');
+      const bEl = document.createElement('b');
+      bEl.textContent = label;
+      const emEl = document.createElement('em');
+      emEl.textContent = 'Bukan titik pendaratan';
+      span.appendChild(bEl);
+      span.appendChild(emEl);
+      node.appendChild(icon);
+      node.appendChild(span);
       el.poi.appendChild(node); pathLabel = { el: node, local: anchor, body: b };
     }
     if (!quiet) sfx.click();

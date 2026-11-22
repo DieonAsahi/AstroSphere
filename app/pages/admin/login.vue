@@ -160,7 +160,7 @@ async function handleLogin() {
                 type="email"
                 required
                 autocomplete="email"
-                placeholder="admin@astrosphere.edu"
+                placeholder="admin@contoh.id"
                 :disabled="loading || cooldownSeconds > 0"
               />
             </div>

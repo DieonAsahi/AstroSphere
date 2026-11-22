@@ -1,24 +1,35 @@
-node_modules
-.nuxt
-.output
+# Dependensi & Hasil Build
+node_modules/
+.nuxt/
+.output/
+dist/
 .data
 .nitro
 .cache
-dist
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Variabel Lingkungan Rahasia
 .env
 .env.*
 !.env.example
-*.log
-.DS_Store
-# Sumber model 3D mentah dari Sketchfab (±250 MB). Game memakai hasil optimasinya di public/models (npm run models).
+
+# Sumber Model 3D Mentah dari Sketchfab (±250 MB)
 /3D Pesawat/
 /3D Planet/
 graphify-out/
+
+# Berkas Privat, Seed Data & Arsip Lama
 /docs/
 /supabase/
 /structure.sql
 /src/
 /agent/
-*.tsbuildinfo
+*.xlsx
+scratch_*
+measure_*
 
-
+# Berkas Dokumentasi & Hasil Pembahasan (.md kecuali README.md)
+*.md
+!README.md
