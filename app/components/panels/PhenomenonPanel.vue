@@ -69,9 +69,17 @@ const status = computed(() => {
     : s === 'penumbra' ? ['Gerhana penumbra', 'Bulan hanya sedikit meredup'] : ['Belum gerhana', 'Bulan purnama biasa'];
 });
 
-const why = computed(() => sun.value
-  ? ['Kenapa bisa pas menutup?', 'Matahari sekitar 400 kali lebih lebar dari Bulan, tapi juga sekitar 400 kali lebih jauh. Dari Bumi, ukurannya tampak hampir sama.']
-  : ['Kenapa Bulan jadi merah?', 'Cahaya Matahari menembus atmosfer Bumi. Biru dihamburkan, merah dibelokkan sampai ke Bulan — seperti semua matahari terbenam di Bumi terlihat sekaligus.']);
+const why = computed(() => {
+  if (sun.value && phenoData.value?.penjelasan_matahari) {
+    return [phenoData.value.judul_matahari || 'Kenapa bisa pas menutup?', phenoData.value.penjelasan_matahari];
+  }
+  if (!sun.value && phenoData.value?.penjelasan_bulan) {
+    return [phenoData.value.judul_bulan || 'Kenapa Bulan jadi merah?', phenoData.value.penjelasan_bulan];
+  }
+  return sun.value
+    ? ['Kenapa bisa pas menutup?', 'Matahari sekitar 400 kali lebih lebar dari Bulan, tapi juga sekitar 400 kali lebih jauh. Dari Bumi, ukurannya tampak hampir sama.']
+    : ['Kenapa Bulan jadi merah?', 'Cahaya Matahari menembus atmosfer Bumi. Biru dihamburkan, merah dibelokkan sampai ke Bulan — seperti semua matahari terbenam di Bumi terlihat sekaligus.'];
+});
 
 const dia = computed(() => store.lab.dia && store.lab.dia.kind === store.lab.type ? store.lab.dia : null);
 const marks = computed(() => store.lab.marks || []);

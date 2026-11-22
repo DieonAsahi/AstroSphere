@@ -1,8 +1,14 @@
 <script setup>
 // Cangkang AstroSphere. Layar awal (Splash) hanya HTML+gambar; mesin 3D (Three.js) baru diunduh & dijalankan
 // saat pemain masuk ke "Cara terbang", sehingga halaman pertama ringan dan tidak patah-patah.
-import { ref, computed, watch, watchEffect, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import { store, setEngine, game } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
+
+const { loadAll } = useSupabaseContent();
+onMounted(() => {
+  loadAll();
+});
 
 const canvas = ref(null), markers = ref(null), arrow = ref(null), poi = ref(null), labLabels = ref(null), compass = ref(null);
 const crosshair = ref(null), vignette = ref(null), boostFx = ref(null);

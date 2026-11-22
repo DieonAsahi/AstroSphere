@@ -171,6 +171,17 @@ watch([selectedEarthEra, selectedCentury, selectedNonEarthEra], async () => {
   game()?.buildPOIs(filteredList.value);
 });
 
+// Watch perubahan daftar ketika data Supabase baru selesai dimuat
+watch(filteredList, async (newList) => {
+  if (newList && newList.length) {
+    if (!newList.some((e) => e.id === store.sejarah.selected)) {
+      store.sejarah.selected = newList[0]?.id || null;
+    }
+    await nextTick();
+    game()?.buildPOIs(newList);
+  }
+});
+
 // Keterangan titik lokasi (mendukung 100% data Supabase & fallback via Fibonacci Sphere)
 function where(e) {
   if (!e) return '—';

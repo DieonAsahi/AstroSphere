@@ -56,6 +56,21 @@ const EARTH_6_ZAMAN = [
   { id: 'modern', label: 'Zaman Modern (1500–Sekarang)', min: 1500, max: Infinity },
 ];
 
+const NON_EARTH_ERAS = [
+  { id: 'kuno', label: 'Kuno (SM–1609)', min: -Infinity, max: 1609 },
+  { id: 'teleskopik', label: 'Teleskopik (1610–1956)', min: 1610, max: 1956 },
+  { id: 'antariksa', label: 'Era Antariksa (1957–kini)', min: 1957, max: Infinity },
+  { id: 'geologi', label: 'Sejarah Geologi & Kawah Purba', min: -Infinity, max: Infinity },
+  { id: 'atmosfer', label: 'Fenomena Cuaca & Fitur Atmosfer', min: -Infinity, max: Infinity },
+];
+
+const eraOptions = computed(() => {
+  if (formData.value.planet_id === 'earth') {
+    return EARTH_6_ZAMAN.map((z) => z.label);
+  }
+  return NON_EARTH_ERAS.map((e) => e.label);
+});
+
 const DEFAULT_EVENT = {
   planet_id: 'earth',
   era_label: 'Zaman Modern (1500–Sekarang)',
@@ -497,8 +512,17 @@ onMounted(() => {
 
           <div class="grid-2">
             <label class="field">
-              <span>Status / Era Sejarah</span>
-              <input v-model="formData.era_label" type="text" placeholder="misal: Zaman Modern / Era Antariksa" required />
+              <span>Status / Era Sejarah (Pilih Cepat / Ketik)</span>
+              <div class="era-input-group">
+                <select
+                  class="adm-select mb-1"
+                  @change="(e) => { if (e.target.value) formData.era_label = e.target.value; }"
+                >
+                  <option value="">-- Rekomendasi Era Baku --</option>
+                  <option v-for="opt in eraOptions" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+                <input v-model="formData.era_label" type="text" placeholder="misal: Zaman Modern / Era Antariksa" required />
+              </div>
             </label>
             <label class="field">
               <span>Kategori POI / Jenis Observasi</span>
@@ -883,6 +907,8 @@ onMounted(() => {
   gap: 14px;
 }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.era-input-group { display: flex; flex-direction: column; gap: 4px; }
+.mb-1 { margin-bottom: 2px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
 .field input, .field textarea, .field select {
   padding: 8px 12px;

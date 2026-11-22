@@ -29,10 +29,10 @@ onBeforeUnmount(() => { if (store.hangarPreview !== store.progress.selectedShip)
     <div class="stage-bottom">
       <div class="ships" role="listbox" aria-label="Pilih pesawat">
         <button v-for="id in SHIP_IDS" :key="id" class="sc" role="option" :aria-selected="id === store.hangarPreview" :class="{ on: id === store.hangarPreview }" @click="preview(id)">
-          <b>{{ SHIPS[id].name }}</b>
+          <b>{{ shipOf(id).name }}</b>
           <span v-if="id === store.progress.selectedShip" class="tag green"><UiIcon name="cek" :size="13" />Dipakai</span>
           <span v-else-if="owned(id)" class="tag">Dimiliki</span>
-          <span v-else class="tag star"><UiIcon name="kunci" :size="13" />{{ SHIPS[id].price }}</span>
+          <span v-else class="tag star"><UiIcon name="kunci" :size="13" />{{ shipOf(id).price }}</span>
         </button>
       </div>
     </div>

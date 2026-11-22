@@ -211,6 +211,8 @@ CREATE INDEX IF NOT EXISTS idx_history_planet_year
 DO $$
 BEGIN
   ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+  ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS penjelasan_matahari TEXT DEFAULT '';
+  ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS penjelasan_bulan TEXT DEFAULT '';
 EXCEPTION WHEN others THEN
   NULL;
 END $$;
@@ -231,6 +233,8 @@ CREATE TABLE IF NOT EXISTS public.phenomena (
   ),
   deskripsi_edukatif TEXT NOT NULL,
   konfigurasi_visual JSONB NOT NULL DEFAULT '{}'::jsonb,
+  penjelasan_matahari TEXT DEFAULT '',
+  penjelasan_bulan TEXT DEFAULT '',
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

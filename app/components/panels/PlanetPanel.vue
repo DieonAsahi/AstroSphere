@@ -116,8 +116,8 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
 <template>
   <div>
     <div class="stage-title">
-      <span class="tag">{{ p.kind }} · planet ke-{{ p.order }}</span>
-      <h1 class="h1">{{ p.name }}</h1>
+      <span class="tag">{{ p.kind }} · planet ke-{{ planetData?.urutan_planet || p.order }}</span>
+      <h1 class="h1">{{ planetData?.nama || p.name }}</h1>
     </div>
     <div v-if="!store.pheno.on" class="stage-bottom"><PanelsTimeBar :body="p.id" /></div>
     <div v-else class="stage-bottom"><div class="card flat mini"><UiOrbitInset :body="p.id" :w="120" :h="80" /></div></div>
@@ -189,7 +189,7 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
             <p>{{ planetData.deskripsi_rotasi }}</p>
           </div>
 
-          <button v-if="ph" class="phc" :class="{ ask: pq && !predicted }" @click="phenomenon">
+          <button v-if="ph && ph.is_active !== false" class="phc" :class="{ ask: pq && !predicted }" @click="phenomenon">
             <span class="ic"><UiIcon :name="pq && !predicted ? 'kuis' : 'fenomena'" :size="22" /></span>
             <span class="t"><small>{{ pq && !predicted ? 'Tebak dulu' : 'Fenomena' }}</small><b>{{ pq && !predicted ? pq.q : ph.title }}</b></span>
             <UiIcon name="putar" :size="20" />

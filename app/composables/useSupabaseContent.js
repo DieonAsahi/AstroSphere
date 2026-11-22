@@ -172,12 +172,20 @@ export async function fetchAllPublicContent(force = false) {
         const localPh = PHENOMENA[localId] || {};
         phMap[localId] = {
           ...localPh,
+          phenomenon_id: row.phenomenon_id,
+          planet_id: row.planet_id,
           title: row.judul || localPh.title,
+          judul: row.judul || localPh.title,
           short: row.deskripsi_edukatif || row.deskripsi_singkat || localPh.short,
           deskripsi_edukatif: row.deskripsi_edukatif || row.deskripsi_singkat || localPh.short,
           tombol_aksi_label: row.tombol_aksi_label || localPh.tombol_aksi_label || 'Putar Simulasi Fenomena',
           tipe_animasi: row.tipe_animasi || localPh.tipe_animasi || 'CUSTOM_ALIGNMENT',
           konfigurasi_visual: row.konfigurasi_visual || localPh.konfigurasi_visual || {},
+          penjelasan_matahari: row.penjelasan_matahari || row.konfigurasi_visual?.penjelasan_matahari || '',
+          penjelasan_bulan: row.penjelasan_bulan || row.konfigurasi_visual?.penjelasan_bulan || '',
+          judul_matahari: row.judul_matahari || row.konfigurasi_visual?.judul_matahari || '',
+          judul_bulan: row.judul_bulan || row.konfigurasi_visual?.judul_bulan || '',
+          is_active: row.is_active !== false,
         };
       }
       state.phenomena = phMap;
@@ -245,6 +253,9 @@ export async function fetchAllPublicContent(force = false) {
 
     state.fromSupabase = true;
     state.loaded = true;
+    const totalEvents = Object.values(state.historyEvents).flat().length;
+    const totalQuizzes = Object.values(state.questions).reduce((acc, q) => acc + (q.questions?.length || 0), 0);
+    console.info(`[AstroSphere] Data LIVE Supabase berhasil dimuat: ${Object.keys(state.planets).length} planet, ${Object.keys(state.phenomena).length} fenomena, ${totalEvents} sejarah, ${totalQuizzes} kuis, ${Object.keys(state.ships).length} pesawat.`);
   } catch (err) {
     console.warn('[AstroSphere] Gagal mengambil data Supabase, menggunakan data lokal:', err);
     state.error = err.message || String(err);
@@ -315,6 +326,8 @@ export function useSupabaseContent() {
   return {
     state,
     fetchAllPublicContent,
+    loadAll: fetchAllPublicContent,
+    fetchAll: fetchAllPublicContent,
     isLoaded: computed(() => state.loaded),
     isLoading: computed(() => state.loading),
     fromSupabase: computed(() => state.fromSupabase),
