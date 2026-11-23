@@ -14,6 +14,10 @@ import {
   logoutPlayerFromCloud,
   scheduleCloudSave,
   sanitizeUsername,
+  signInWithGoogle,
+  syncGooglePlayerSession,
+  resetPlayerCloudProgress,
+  deletePlayerAccountFromCloud,
 } from '../utils/playerCloudSync.js';
 import { getSupabaseClient } from '../utils/supabaseClient.js';
 
@@ -35,6 +39,13 @@ const touch = typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').
 const DEFAULT_SETTINGS = { soundEnabled: true, hudOpacity: 1, sensitivity: 1, invertY: false, graphics: 'rendah', reduceMotion: false, tutorialSeen: false, events: true, keys: {} };
 const DEFAULT_PROGRESS = { points: 0, earned: 0, best: {}, attempts: {}, owned: ['astra'], selectedShip: 'astra', ledger: [], quizVersion: QUIZ_VERSION, predict: {}, myths: {}, cards: {}, found: { matahari: true }, events: {}, missions: {} };
 
+/** Menghitung skor kuis maksimal yang sah per planet (atau default 4 soal × 50 poin = 200) */
+export function quizMax(planet) {
+  return (planet && QUIZ[planet]?.questions?.length)
+    ? QUIZ[planet].questions.length * POINTS_PER_QUESTION
+    : POINTS_PER_QUESTION * 4;
+}
+
 function sanitizeSettings(s) {
   const o = { ...DEFAULT_SETTINGS, keys: {} };
   if (!s || typeof s !== 'object') return o;
@@ -51,7 +62,7 @@ function sanitizeProgress(p) {
   if (!p || typeof p !== 'object') return o;
   if (Number.isFinite(p.points) && p.points >= 0) o.points = Math.floor(p.points);
   if (Number.isFinite(p.earned) && p.earned >= 0) o.earned = Math.floor(p.earned);
-  if (p.best && typeof p.best === 'object') for (const [k, v] of Object.entries(p.best)) if (QUIZ[k] && Number.isFinite(v)) o.best[k] = Math.min(150, Math.max(0, v));
+  if (p.best && typeof p.best === 'object') for (const [k, v] of Object.entries(p.best)) if (QUIZ[k] && Number.isFinite(v)) o.best[k] = Math.min(quizMax(k), Math.max(0, v));
   if (p.attempts && typeof p.attempts === 'object') for (const [k, v] of Object.entries(p.attempts)) if (QUIZ[k] && Number.isFinite(v)) o.attempts[k] = v;
   if (Array.isArray(p.owned)) o.owned = [...new Set(['astra', ...p.owned.filter((id) => SHIPS[id])])];
   if (SHIPS[p.selectedShip] && o.owned.includes(p.selectedShip)) o.selectedShip = p.selectedShip;
@@ -92,7 +103,7 @@ export const store = reactive({
   toast: { show: false, html: '' },
   msg: { show: false, text: '' },
   saved: { show: false, label: '' },
-  look: { active: false },
+  look: { active: false, freeLook: false },
   camMode: 'chase',
   settings: sanitizeSettings(ls.read(KEYS.settings)),
   progress: sanitizeProgress(ls.read(KEYS.progress)),
@@ -335,6 +346,16 @@ export async function logoutUser() {
   saveAccount();
 }
 
+// Masuk dengan Google OAuth
+export async function loginUserWithGoogle() {
+  const res = await signInWithGoogle();
+  if (!res.ok) {
+    showToast(res.err || 'Gagal menghubungkan Google.', 3500);
+  }
+  return res;
+}
+export const loginWithGoogle = loginUserWithGoogle;
+
 function applyMergedData(merged) {
   if (!merged) return;
   if (Number.isFinite(merged.points)) store.progress.points = merged.points;
@@ -376,6 +397,89 @@ export function wipeAll() {
   for (const k of Object.values(KEYS)) ls.remove(k);
 }
 
+export async function resetAllGameData() {
+  // 1. Bersihkan localStorage data progres & posisi 3D
+  ls.remove(KEYS.state);
+  ls.remove(KEYS.progress);
+
+  // Reset tutorialSeen agar onboarding dapat muncul kembali
+  store.settings.tutorialSeen = false;
+  ls.write(KEYS.settings, store.settings);
+
+  // 2. Reset state reaktif progres & penemuan
+  const cleanProgress = JSON.parse(JSON.stringify(DEFAULT_PROGRESS));
+  Object.assign(store.progress, cleanProgress);
+  store.discovered = ['matahari'];
+  store.hasSave = false;
+  store.saveMeta = '';
+
+  // 3. Jika login akun awan, sinkronkan reset bersih ke Supabase (akun tetap aktif)
+  if (store.account.loggedIn && store.account.id) {
+    await resetPlayerCloudProgress(store.account.id);
+  }
+
+  // 4. Tutup seluruh modal dan hentikan mesin/sesi game ke splash screen
+  store.modal = null;
+  store.journalId = null;
+  const eng = game();
+  if (eng) {
+    try {
+      eng.toSplash(true);
+    } catch {}
+  } else {
+    store.phase = 'splash';
+    store.screen = 'welcome';
+    store.mode = 'jelajah';
+  }
+  showToast('Seluruh data permainan berhasil diatur ulang dari awal.', 3200);
+}
+
+export async function deleteUserAccount() {
+  // 1. Panggil RPC Supabase jika login
+  if (store.account.loggedIn) {
+    await deletePlayerAccountFromCloud();
+  }
+
+  // 2. Hapus seluruh data di localStorage
+  if (store.account.name) {
+    const users = ls.read(KEYS.users) || {};
+    delete users[store.account.name.toLowerCase()];
+    ls.write(KEYS.users, users);
+  }
+  for (const k of Object.values(KEYS)) ls.remove(k);
+
+  // 3. Reset state akun
+  store.account.loggedIn = false;
+  store.account.name = 'Penjelajah Tamu';
+  store.account.id = null;
+  store.account.email = null;
+  store.account.username = '';
+
+  // 4. Reset progress & settings
+  const cleanProgress = JSON.parse(JSON.stringify(DEFAULT_PROGRESS));
+  Object.assign(store.progress, cleanProgress);
+  const cleanSettings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  Object.assign(store.settings, cleanSettings);
+  store.discovered = ['matahari'];
+  store.hasSave = false;
+  store.saveMeta = '';
+
+  // 5. Kembali ke splash screen bersih
+  store.modal = null;
+  store.journalId = null;
+  const eng = game();
+  if (eng) {
+    try {
+      eng.toSplash(true);
+    } catch {}
+  } else {
+    store.phase = 'splash';
+    store.screen = 'welcome';
+    store.mode = 'jelajah';
+  }
+  showToast('Akun dan seluruh progres berhasil dihapus permanen.', 3500);
+}
+
 /** Ringkasan simpanan untuk tombol "Lanjutkan" — bisa dibaca sebelum dunia 3D dimuat. */
 export function refreshSaveInfo() {
   const s = readGameState();
@@ -389,17 +493,95 @@ if (typeof window !== 'undefined') {
   // Pulihkan sesi aktif Supabase Auth saat halaman dibuka jika ada
   const client = getSupabaseClient();
   if (client) {
-    client.auth.getSession().then(({ data }) => {
-      if (data?.session?.user) {
+    let authHandled = false;
+
+    async function handleUserSession(user, fromOAuth = false) {
+      if (!user) return;
+      if (window.location.pathname.startsWith('/admin')) return;
+
+      // Cek apakah user adalah admin (jangan sentuh sesi admin)
+      try {
+        const { data: adminRow } = await client
+          .from('admin_users')
+          .select('id')
+          .eq('email', user.email)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (adminRow) {
+          // Akun admin, jangan kelola di sesi game pemain
+          return;
+        }
+      } catch {}
+
+      const isSyntheticPlayer = user.email?.endsWith('@player.astrosphere.app');
+      const isGoogle = user.app_metadata?.provider === 'google' ||
+                       user.identities?.some(i => i.provider === 'google') ||
+                       !isSyntheticPlayer;
+
+      if (isGoogle) {
+        const syncRes = await syncGooglePlayerSession(user, {
+          progress: store.progress,
+          settings: store.settings,
+          gameState: readGameState(),
+        });
+
+        if (syncRes.ok) {
+          if (syncRes.mergedData) {
+            applyMergedData(syncRes.mergedData);
+          }
+          Object.assign(store.account, {
+            loggedIn: true,
+            name: syncRes.displayName || syncRes.username,
+            username: syncRes.username,
+            userId: user.id,
+            cloudSynced: true,
+          });
+          saveAccount();
+          saveProgress();
+          saveSettings();
+
+          // Deteksi jika baru kembali dari redirect Google OAuth
+          const isRedirectReturn = fromOAuth || 
+            window.location.hash.includes('access_token') || 
+            window.location.search.includes('code=');
+
+          if (isRedirectReturn) {
+            if (window.history?.replaceState) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            store.settings.tutorialSeen = true;
+            saveSettings();
+            showToast(`Selamat datang, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
+            store.startFromSave = store.hasSave;
+            store.phase = 'loading';
+          }
+        }
+      } else {
+        // Akun pemain sintetis biasa
         store.account.loggedIn = true;
-        store.account.userId = data.session.user.id;
+        store.account.userId = user.id;
         store.account.cloudSynced = true;
-        if (!store.account.name && data.session.user.user_metadata?.username) {
-          store.account.name = data.session.user.user_metadata.username;
-          store.account.username = data.session.user.user_metadata.username;
+        if (!store.account.name && user.user_metadata?.username) {
+          store.account.name = user.user_metadata.username;
+          store.account.username = user.user_metadata.username;
         }
       }
+    }
+
+    client.auth.getSession().then(({ data }) => {
+      if (data?.session?.user && !authHandled) {
+        authHandled = true;
+        handleUserSession(data.session.user);
+      }
     }).catch(() => {});
+
+    client.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        authHandled = true;
+        handleUserSession(session.user, event === 'SIGNED_IN');
+      }
+    });
   }
 }
 
@@ -429,8 +611,6 @@ export function unlockShip(id) {
   saveProgress();
   return { ok: true };
 }
-
-export const quizMax = (planet) => (planet && QUIZ[planet]?.questions?.length ? QUIZ[planet].questions.length * POINTS_PER_QUESTION : POINTS_PER_QUESTION * 3);
 
 // ---- Tebak dulu & Mitos atau Fakta (data/learning.js) ----
 function addPoints(n) {

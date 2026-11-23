@@ -35,7 +35,7 @@ onBeforeUnmount(closeMissionMenu);
       <span v-if="store.mode === 'jelajah'" class="brand"><UiIcon name="logo" :size="26" /><b>AstroSphere</b></span>
       <template v-else>
         <button class="btn sm back" @click="game()?.back()"><UiIcon name="kembali" :size="18" />{{ backLabel }}</button>
-        <span class="tag">{{ store.mode === 'planet' && store.focus === 'matahari' ? 'Bintang' : LABEL[store.mode] }}</span>
+        <span v-if="store.mode !== 'hanggar'" class="tag">{{ store.mode === 'planet' && store.focus === 'matahari' ? 'Bintang' : LABEL[store.mode] }}</span>
       </template>
     </div>
     <div class="r">
@@ -101,15 +101,50 @@ onBeforeUnmount(closeMissionMenu);
 .l,.r{display:flex;align-items:center;gap:10px}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-size:20px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
 .brand b{font-weight:500}
-.back{background:var(--surface-a);box-shadow:inset 0 0 0 1px var(--line)}
+.back{
+  height:40px;
+  min-height:40px;
+  border-radius:10px !important;
+  background:rgba(11,16,36,.78);
+  border:1px solid rgba(148,174,255,.18);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  color:var(--text);
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+  transition:all .15s ease;
+}
+.back:hover{
+  background:rgba(22,33,70,.88);
+  border-color:rgba(148,174,255,.35);
+  color:#fff;
+}
 .menu{position:relative}
-.badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-family:var(--display);font-weight:600;font-size:12px;box-shadow:0 0 0 2px var(--bg, #060a1a)}
+.badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-family:var(--display);font-weight:600;font-size:10.5px;line-height:1;box-shadow:0 0 0 2px rgba(6,10,26,.85)}
 
 /* TOMBOL CEPAT & POPOVER MISI */
 .mission-wrapper{position:relative}
-.mission-top-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-weight:500;padding:0 12px;border-radius:999px;transition:background .15s}
-.mission-top-btn:hover{background:var(--surface-3);color:#fff}
-.badge-mini{background:var(--star);color:#2b1d00;font-size:10.5px;font-weight:600;padding:1px 5px;border-radius:999px}
+.mission-top-btn{display:inline-flex;align-items:center;gap:6px;height:40px;min-height:40px;background:rgba(11,16,36,.78);border:1px solid rgba(148,174,255,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:var(--text);font-weight:500;padding:0 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.35);transition:all .15s ease}
+.mission-top-btn:hover{background:rgba(22,33,70,.88);border-color:rgba(148,174,255,.35);color:#fff}
+.badge-mini{background:rgba(234,179,8,.2);border:1px solid rgba(234,179,8,.4);color:var(--star);font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:6px}
+
+.r .ib{
+  width:40px;
+  height:40px;
+  min-height:40px;
+  border-radius:10px;
+  background:rgba(11,16,36,.78);
+  border:1px solid rgba(148,174,255,.18);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  color:var(--text);
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+  transition:all .15s ease;
+}
+.r .ib:hover{
+  background:rgba(22,33,70,.88);
+  border-color:rgba(148,174,255,.35);
+  color:#fff;
+}
 .mission-popover{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 12px 30px rgba(0,0,0,.6);padding:12px;display:flex;flex-direction:column;gap:10px;z-index:40}
 .pop-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px}
 .pop-header b{font-family:var(--display);font-size:14px;color:var(--text)}

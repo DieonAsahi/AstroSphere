@@ -9,13 +9,13 @@ export const ACTIONS = [
   { id: 'back', label: 'Mundur / Kurangi Gas', sub: 'Tarik tuas dorong ke bawah', keys: ['KeyQ'] },
   { id: 'turnL', label: 'Putar Kiri', sub: 'Arahkan moncong ke kiri', keys: ['KeyA', 'ArrowLeft'] },
   { id: 'turnR', label: 'Putar Kanan', sub: 'Arahkan moncong ke kanan', keys: ['KeyD', 'ArrowRight'] },
-  { id: 'turbo', label: 'Turbo', sub: 'Tahan untuk melesat', keys: ['ShiftLeft', 'ShiftRight'] },
+  { id: 'turbo', label: 'Turbo', sub: 'Tahan untuk melesat cepat', keys: ['AltLeft', 'AltRight'] },
   { id: 'brake', label: 'Rem', sub: 'Tahan untuk melambat', keys: ['ControlLeft', 'ControlRight', 'KeyQ'] },
   { id: 'stop', label: 'Berhenti', sub: 'Langsung diam di tempat', keys: ['Space'] },
   { id: 'map', label: 'Peta', sub: 'Pilih tujuan penjelajahan', keys: ['KeyM'] },
 ];
 export const ACTION_IDS = ACTIONS.map((a) => a.id);
-const RESERVED = ['Escape', 'Tab', 'MetaLeft', 'MetaRight', 'AltLeft', 'AltRight', 'F5', 'F11', 'F12'];
+const RESERVED = ['Escape', 'Tab', 'MetaLeft', 'MetaRight', 'F5', 'F11', 'F12'];
 export const canBind = (code) => !!code && !RESERVED.includes(code);
 
 /** Gabungkan pemetaan bawaan dengan ubahan pemain (hanya tombol pertama yang diganti). */
@@ -25,7 +25,7 @@ export function resolveKeymap(custom) {
     const keys = [...a.keys];
     const c = custom && custom[a.id];
     if (typeof c === 'string' && canBind(c)) {
-      // tombol kembar kiri/kanan (Shift/Ctrl) ikut diganti seluruhnya
+      // tombol kembar kiri/kanan (Shift/Ctrl/Alt) ikut diganti seluruhnya
       if (/(Left|Right)$/.test(keys[0]) && keys[1] && /(Left|Right)$/.test(keys[1]) && keys[0].replace(/(Left|Right)$/, '') === keys[1].replace(/(Left|Right)$/, '')) keys.splice(0, 2, c);
       else keys[0] = c;
     }
@@ -40,7 +40,7 @@ export function sanitizeKeys(k) {
 }
 
 const NAMES = { Space: 'Spasi', Enter: 'Enter', Escape: 'Esc', Backspace: '⌫', Tab: 'Tab', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
-  ShiftLeft: 'Shift', ShiftRight: 'Shift', ControlLeft: 'Ctrl', ControlRight: 'Ctrl', CapsLock: 'Caps', Comma: ',', Period: '.', Slash: '/', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']', Minus: '-', Equal: '=', Backquote: '`', Backslash: '\\' };
+  ShiftLeft: 'Shift', ShiftRight: 'Shift', ControlLeft: 'Ctrl', ControlRight: 'Ctrl', AltLeft: 'Alt', AltRight: 'Alt', CapsLock: 'Caps', Comma: ',', Period: '.', Slash: '/', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']', Minus: '-', Equal: '=', Backquote: '`', Backslash: '\\' };
 export function keyLabel(code) {
   if (!code) return '—';
   if (NAMES[code]) return NAMES[code];

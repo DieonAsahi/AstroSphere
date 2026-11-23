@@ -136,7 +136,7 @@ function setAction(act) {
       actionStatus.value = 'Pendorong Maju Aktif (Enter) — Kecepatan Naik';
       break;
     case 'turbo':
-      actionStatus.value = 'Pendorong Turbo Aktif (Shift) — Kecepatan Maksimal!';
+      actionStatus.value = 'Pendorong Turbo Aktif (Alt) — Kecepatan Maksimal!';
       break;
     case 'brake':
       actionStatus.value = 'Rem Pendorong Balik Aktif (Ctrl) — Perlambatan';
@@ -220,7 +220,7 @@ function onKeyDown(e) {
       setAction('forward');
     }
     else if (['ControlLeft', 'ControlRight'].includes(e.code)) { e.preventDefault(); setAction('brake'); }
-    else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) { e.preventDefault(); setAction('turbo'); }
+    else if (['AltLeft', 'AltRight'].includes(e.code)) { e.preventDefault(); setAction('turbo'); }
     else if (e.code === 'Space') { e.preventDefault(); setAction('stop'); }
     else if (e.code === 'KeyW' || e.code === 'ArrowUp') { e.preventDefault(); setAction('up'); }
     else if (e.code === 'KeyS' || e.code === 'ArrowDown') { e.preventDefault(); setAction('down'); }
@@ -233,7 +233,7 @@ function onKeyUp(e) {
   if (slide.value === TOTAL_SLIDES) {
     if (['Enter', 'NumpadEnter'].includes(e.code)) clearAction('forward');
     else if (['ControlLeft', 'ControlRight'].includes(e.code)) clearAction('brake');
-    else if (['ShiftLeft', 'ShiftRight'].includes(e.code)) clearAction('turbo');
+    else if (['AltLeft', 'AltRight'].includes(e.code)) clearAction('turbo');
     else if (e.code === 'Space') clearAction('stop');
     else if (e.code === 'KeyW' || e.code === 'ArrowUp') clearAction('up');
     else if (e.code === 'KeyS' || e.code === 'ArrowDown') clearAction('down');
@@ -311,12 +311,10 @@ onBeforeUnmount(() => {
               <h1 class="briefing-title">{{ item.title }}</h1>
               <p class="briefing-lead">{{ item.lead }}</p>
 
-              <!-- DAFTAR 3 POIN FITUR VERTIKAL BERSIH (TANPA KOTAK KARTU TEBAL) -->
+              <!-- DAFTAR 3 POIN FITUR VERTIKAL BERSIH DENGAN PENANDA ANGKA MODERN -->
               <div class="points-list">
                 <div v-for="(pt, pIdx) in item.points" :key="pIdx" class="point-item">
-                  <span class="pt-icon" :class="{ 'star-pt': pt.icon === 'bintang' }">
-                    <UiIcon :name="pt.icon" :size="18" />
-                  </span>
+                  <span class="pt-badge" aria-hidden="true">{{ String(pIdx + 1).padStart(2, '0') }}</span>
                   <div class="pt-text">
                     <b class="pt-title">{{ pt.title }}</b>
                     <p class="pt-desc">{{ pt.desc }}</p>
@@ -493,44 +491,59 @@ onBeforeUnmount(() => {
                   </button>
                 </div>
               </div>
+
+              <!-- Baris Kontrol Kamera Bebas -->
+              <div class="ctrl-subgroup">
+                <span class="ctrl-sublabel">Kamera Bebas (Free-Look POV)</span>
+                <div class="cam-hint-grid">
+                  <div class="cam-hint-item">
+                    <b class="kbd">Klik Kiri 1&times;</b>
+                    <span>Atur POV Kamera Bebas</span>
+                  </div>
+                  <div class="cam-hint-item">
+                    <b class="kbd">Klik Kanan 1&times; / Klik Kiri 2&times;</b>
+                    <span>Keluar &amp; Luruskan Kamera</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </main>
 
-      <!-- NAVIGASI BAWAH 1 BARIS TERPADU TANPA DUPLIKASI TOMBOL -->
+      <!-- NAVIGASI BAWAH 1 BARIS TERPADU -->
       <footer class="bottom-bar">
-        <!-- KIRI: TOMBOL SEBELUMNYA -->
+        <!-- KIRI: TOMBOL SEBELUMNYA (TERSEMBUNYI VISUAL PADA SLIDE 1 AGAR SIMETRIS) -->
         <button
           type="button"
-          class="btn line sm nav-btn"
-          :disabled="slide <= 1"
+          class="btn nav-btn nav-btn-prev"
+          :class="{ 'hidden-step': slide <= 1 }"
+          :aria-hidden="slide <= 1"
+          :tabindex="slide <= 1 ? -1 : 0"
           @click="prevSlide"
         >
           <UiIcon name="kembali" :size="16" /> Sebelumnya
         </button>
 
-        <!-- TENGAH: INDIKATOR 5 TITIK SLIDE -->
-        <div class="dots-track" role="tablist" aria-label="Navigasi slide">
+        <!-- TENGAH: INDIKATOR 5 GARIS PROGRES RAMPING -->
+        <div class="progress-track" role="tablist" aria-label="Navigasi slide">
           <button
             v-for="s in TOTAL_SLIDES"
             :key="s"
             type="button"
-            class="dot-node"
+            class="progress-bar-seg"
             :class="{ active: slide === s }"
             :aria-label="`Buka slide ${s}`"
             @click="slide = s"
-          >
-            <span class="dot-text">{{ s }}</span>
-          </button>
+          />
         </div>
 
-        <!-- KANAN: TOMBOL BERIKUTNYA / MULAI TERBANG TUNGGAL -->
+        <!-- KANAN: TOMBOL AKSI UTAMA TUNGGAL (BERIKUTNYA / MULAI TERBANG) -->
         <div class="action-slot">
           <button
             v-if="slide < TOTAL_SLIDES"
             type="button"
-            class="btn primary sm nav-btn"
+            class="btn primary nav-btn nav-btn-next"
             @click="nextSlide"
           >
             Berikutnya <UiIcon name="lanjut" :size="16" />
@@ -541,7 +554,7 @@ onBeforeUnmount(() => {
             <button
               v-if="!store.ready"
               type="button"
-              class="btn primary sm nav-btn loading"
+              class="btn primary nav-btn nav-btn-next loading"
               disabled
             >
               <span class="mini-spinner" /> Memuat 3D ({{ Math.round(store.loading.p * 100) }}%)
@@ -549,7 +562,7 @@ onBeforeUnmount(() => {
             <button
               v-else
               type="button"
-              class="btn primary sm nav-btn ready-pulse"
+              class="btn primary nav-btn nav-btn-next ready-pulse"
               @click="start"
             >
               Mulai Terbang <UiIcon name="putar" :size="16" />
@@ -562,13 +575,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.guide{position:fixed;inset:0;z-index:40;display:grid;place-items:center;overflow-y:auto;padding:calc(16px + var(--safe-t)) 16px calc(16px + var(--safe-b));
+.guide{position:fixed;inset:0;z-index:40;display:grid;place-items:center;overflow-y:auto;padding:calc(18px + var(--safe-t)) 28px calc(28px + var(--safe-b));
   background:radial-gradient(ellipse at 50% 0%,#131c44 0%,#080e26 55%,#040716 100%)}
 .wrap{width:min(1040px,100%);display:flex;flex-direction:column;gap:18px}
 
 /* HEADER MINIMAL & BERSIH */
 .head{display:flex;align-items:center;justify-content:space-between;padding-bottom:4px}
-.skip-link{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--muted);background:transparent;padding:6px 12px;border-radius:999px;transition:all .15s}
+.skip-link{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--muted);background:transparent;padding:6px 12px;border-radius:8px;transition:all .15s}
 .skip-link:hover{color:var(--text);background:rgba(255,255,255,.05)}
 .skip-link.ready{color:var(--sky)}
 .skip-loading{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--faint)}
@@ -602,11 +615,10 @@ onBeforeUnmount(() => {
 .briefing-title{font-family:var(--display);font-size:clamp(26px,3vw,34px);font-weight:600;color:var(--text);line-height:1.15;margin:0}
 .briefing-lead{font-size:15px;color:var(--muted);line-height:1.55;margin:0 0 4px}
 
-/* DAFTAR 3 POIN FITUR VERTIKAL BERSIH */
+/* DAFTAR 3 POIN FITUR VERTIKAL BERSIH DENGAN PENANDA ANGKA MODERN */
 .points-list{display:flex;flex-direction:column;gap:14px}
 .point-item{display:flex;align-items:flex-start;gap:12px}
-.pt-icon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.14);color:var(--sky);flex:none;margin-top:2px}
-.pt-icon.star-pt{background:rgba(234,179,8,.14);color:var(--star)}
+.pt-badge{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(59,130,246,.08);border:1px solid rgba(148,174,255,.16);font-size:12px;font-weight:500;color:#60a5fa;letter-spacing:.02em;flex:none;margin-top:2px}
 .pt-text{display:flex;flex-direction:column;gap:2px}
 .pt-title{font-family:var(--display);font-size:14.5px;font-weight:500;color:var(--text)}
 .pt-desc{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
@@ -673,7 +685,7 @@ onBeforeUnmount(() => {
 .stage-status.turbo .status-ic{background:rgba(234,179,8,.2);color:var(--star)}
 
 /* PANEL KONTROL KANAN DI SLIDE 5 */
-.ctrl-testing-panel{display:flex;flex-direction:column;gap:12px;margin-top:2px}
+.ctrl-testing-panel{display:flex;flex-direction:column;gap:10px;margin-top:2px}
 .ctrl-subgroup{display:flex;flex-direction:column;gap:6px}
 .ctrl-sublabel{font-size:11px;font-weight:600;color:var(--sky);letter-spacing:.05em;text-transform:uppercase}
 .wasd-layout{display:flex;flex-direction:column;gap:5px;align-items:center}
@@ -696,15 +708,25 @@ onBeforeUnmount(() => {
 .test-key-wide .kbd{min-width:42px;height:22px;font-size:11.5px;border:none;background:rgba(0,0,0,.25);box-shadow:none}
 .test-key-wide .kbd.sp{min-width:50px}
 
-/* NAVIGASI BAWAH 1 BARIS TERPADU */
-.bottom-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:14px}
-.nav-btn{min-width:115px}
+.cam-hint-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cam-hint-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line-2);font-size:11.5px;color:var(--text);min-width:0}
+.cam-hint-item .kbd{font-size:10px;text-align:center;height:22px;line-height:22px;padding:0 6px;border:none;background:rgba(0,0,0,.35);color:#93c5fd;border-radius:5px;flex:none;white-space:nowrap}
+.cam-hint-item span{color:var(--muted);font-size:11px;line-height:1.2}
 
-/* Indikator Titik Slide */
-.dots-track{display:flex;align-items:center;gap:8px}
-.dot-node{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--faint);font-family:var(--display);font-size:11.5px;font-weight:500;cursor:pointer;transition:all .15s}
-.dot-node:hover{background:var(--surface-3);color:var(--text)}
-.dot-node.active{background:var(--blue);border-color:var(--blue-d);color:#fff;transform:scale(1.1);box-shadow:0 0 10px rgba(59,130,246,.5)}
+/* NAVIGASI BAWAH 1 BARIS TERPADU */
+.bottom-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:16px}
+.nav-btn{height:42px;min-height:42px;min-width:120px;padding:0 20px;border-radius:10px !important;font-size:14px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-shadow:none;transition:all .15s ease;cursor:pointer}
+.nav-btn-prev{background:rgba(255,255,255,.04);border:1px solid rgba(148,174,255,.2);color:rgba(241,244,255,.9)}
+.nav-btn-prev:hover{background:rgba(255,255,255,.08);border-color:rgba(148,174,255,.35);color:#fff}
+.nav-btn-prev.hidden-step{visibility:hidden;pointer-events:none}
+.nav-btn-next{background:var(--blue);color:#ffffff;border:none;box-shadow:0 4px 14px rgba(37,99,235,.4)}
+.nav-btn-next:hover{filter:brightness(1.12)}
+
+/* Indikator Garis Progres Ramping */
+.progress-track{display:flex;align-items:center;gap:8px}
+.progress-bar-seg{width:12px;height:4px;border-radius:4px;background:rgba(148,174,255,.24);border:none;padding:0;cursor:pointer;transition:all .25s ease}
+.progress-bar-seg:hover{background:rgba(148,174,255,.45)}
+.progress-bar-seg.active{width:32px;height:4px;border-radius:4px;background:#3b82f6;box-shadow:0 0 8px rgba(59,130,246,.5)}
 
 /* Slot Kanan Navigasi */
 .action-slot{display:flex;align-items:center;justify-content:flex-end}
@@ -719,8 +741,9 @@ onBeforeUnmount(() => {
   .visual-frame{aspect-ratio:16 / 9;max-height:220px}
   .stage-sky{min-height:180px}
   .briefing-title{font-size:24px}
+  .cam-hint-grid{grid-template-columns:1fr}
   .bottom-bar{flex-wrap:wrap;justify-content:center;gap:12px}
   .bottom-bar .nav-btn{flex:1 1 120px}
-  .dots-track{order:-1;width:100%;justify-content:center}
+  .progress-track{order:-1;width:100%;justify-content:center}
 }
 </style>

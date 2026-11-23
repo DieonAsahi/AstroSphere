@@ -197,6 +197,37 @@ REVOKE ALL ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 5. REFRESH SCHEMA CACHE POSTGREST
+-- 5. FUNGSI RPC: HAPUS AKUN SENDIRI SECARA PERMANEN (Zero-Residual User Deletion)
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.delete_my_account()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: pengguna belum masuk.';
+  END IF;
+
+  -- Tolak jika akun adalah administrator whitelist
+  IF EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = v_uid) THEN
+    RAISE EXCEPTION 'Forbidden: akun administrator tidak dapat dihapus lewat jalur pemain.';
+  END IF;
+
+  DELETE FROM public.player_progress WHERE user_id = v_uid;
+  DELETE FROM auth.users WHERE id = v_uid;
+
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
+
+-- ----------------------------------------------------------------------------
+-- 6. REFRESH SCHEMA CACHE POSTGREST
 -- ----------------------------------------------------------------------------
 NOTIFY pgrst, 'reload schema';

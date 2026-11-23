@@ -276,6 +276,100 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
   }
 }
 
+// Otentikasi Google OAuth via Supabase
+export async function signInWithGoogle() {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { ok: false, err: 'Koneksi Supabase tidak aktif.' };
+  }
+  try {
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+      },
+    });
+    if (error) throw error;
+    return { ok: true, data };
+  } catch (err) {
+    console.error('[AstroSphere] Gagal memulai Google OAuth:', err);
+    return { ok: false, err: err.message || 'Gagal terhubung ke Google.' };
+  }
+}
+
+// Buat username unik & valid untuk pengguna Google baru
+export function generateGoogleUsername(user) {
+  const raw = user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : '') || 'penjelajah';
+  let base = sanitizeUsername(raw).slice(0, 14);
+  if (base.length < 3) base = 'penjelajah';
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  let candidate = `${base}_${rand}`.slice(0, 20);
+  if (!isValidUsername(candidate)) {
+    candidate = `user_${Date.now().toString().slice(-6)}`;
+  }
+  return candidate;
+}
+
+// Sinkronisasi Sesi Pemain Google (OAuth) dengan public.player_progress
+export async function syncGooglePlayerSession(user, localStoreData) {
+  if (!user) return { ok: false };
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, offline: true };
+
+  try {
+    // 1. Cek tabel public.player_progress untuk user_id tersebut
+    const { data: progressRow, error: pErr } = await client
+      .from('player_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (pErr) {
+      console.warn('[AstroSphere] Peringatan saat mengambil player_progress untuk Google user:', pErr);
+    }
+
+    let username = progressRow?.username;
+    let displayName = progressRow?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || (user.email ? user.email.split('@')[0] : 'Penjelajah');
+
+    if (!username) {
+      username = generateGoogleUsername(user);
+    }
+
+    // 2. Gabungkan capaian tamu lokal (mergeProgress) ke akun Google tersebut
+    const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+
+    // 3. Upsert baris progres di public.player_progress
+    const { error: upsertErr } = await client.from('player_progress').upsert({
+      user_id: user.id,
+      username,
+      display_name: displayName,
+      points: merged.points,
+      earned: merged.earned,
+      selected_ship: merged.selected_ship,
+      owned_ships: merged.owned_ships,
+      progress_data: merged.progress_data,
+      game_state: merged.game_state,
+      settings_data: merged.settings_data,
+    });
+
+    if (upsertErr) {
+      console.warn('[AstroSphere] Gagal menyimpan data player_progress Google user:', upsertErr);
+    }
+
+    return {
+      ok: true,
+      user,
+      username,
+      displayName,
+      mergedData: merged,
+    };
+  } catch (err) {
+    console.error('[AstroSphere] Gagal sinkronisasi sesi Google user:', err);
+    return { ok: false, err: err.message };
+  }
+}
+
 // Keluar Akun Supabase
 export async function logoutPlayerFromCloud() {
   const client = getSupabaseClient();
@@ -327,4 +421,62 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
       isSaving = false;
     }
   }, 2000);
+}
+
+// Reset bersih data progres pemain di Supabase (tetap mempertahankan akun)
+export async function resetPlayerCloudProgress(userId) {
+  if (!userId) return { ok: false };
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, offline: true };
+
+  try {
+    const cleanData = {
+      points: 0,
+      earned: 0,
+      selected_ship: 'astra',
+      owned_ships: ['astra'],
+      progress_data: {
+        best: {},
+        attempts: {},
+        ledger: [],
+        predict: {},
+        myths: {},
+        cards: {},
+        found: { matahari: true },
+        events: {},
+        missions: {},
+      },
+      game_state: null,
+      settings_data: {},
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await client.from('player_progress').update(cleanData).eq('user_id', userId);
+    if (error) {
+      console.warn('[AstroSphere] Gagal mereset player_progress di awan:', error);
+      return { ok: false, err: error.message };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error('[AstroSphere] Error saat mereset progres awan:', err);
+    return { ok: false, err: err.message };
+  }
+}
+
+// Hapus akun pemain secara permanen via RPC delete_my_account
+export async function deletePlayerAccountFromCloud() {
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, offline: true };
+
+  try {
+    const { data, error } = await client.rpc('delete_my_account');
+    if (error) {
+      console.warn('[AstroSphere] Gagal memanggil delete_my_account:', error);
+      return { ok: false, err: error.message };
+    }
+    await client.auth.signOut().catch(() => {});
+    return { ok: true, data };
+  } catch (err) {
+    console.error('[AstroSphere] Error saat menghapus akun awan:', err);
+    return { ok: false, err: err.message };
+  }
 }

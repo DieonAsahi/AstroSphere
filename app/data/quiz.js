@@ -1,4 +1,4 @@
-// Kuis per planet (PRD §11.2): 3 soal × 50 poin, maksimum 150 per planet.
+// Kuis per planet (PRD §11.2): 4 soal × 50 poin, maksimum 200 per planet.
 // Hadiah = maks(0, skor baru − skor terbaik). Jawaban salah tidak mengurangi poin.
 export const QUIZ_VERSION = '1.0';
 export const POINTS_PER_QUESTION = 50;
@@ -6,68 +6,140 @@ export const POINTS_PER_QUESTION = 50;
 const q = (text, options, answer, explanation) => ({ text, options, answer, explanation });
 
 export const QUIZ = {
-  merkurius: { topic: 'Planet terdekat dari Matahari', questions: [
-    q('Mengapa Merkurius sangat panas di siang hari tetapi sangat dingin di malam hari?', ['Hampir tidak memiliki atmosfer untuk menahan panas', 'Letaknya paling jauh dari Matahari', 'Berotasi sangat cepat', 'Permukaannya tertutup es'], 0,
-      'Tanpa atmosfer berarti, panas Matahari langsung lepas kembali ke luar angkasa saat malam. Suhu bisa berkisar dari sekitar 430 °C hingga −180 °C.'),
-    q('Berapa lama Merkurius mengelilingi Matahari (satu revolusi)?', ['Sekitar 88 hari', 'Sekitar 225 hari', 'Sekitar 365 hari', 'Sekitar 687 hari'], 0,
-      'Periode orbit Merkurius 0,241 tahun atau sekitar 88 hari — tercepat di antara semua planet.'),
-    q('Wahana apa yang pertama kali mengorbit Merkurius?', ['MESSENGER', 'Voyager 1', 'Cassini', 'Juno'], 0,
-      'MESSENGER (NASA) mengorbit Merkurius sejak 2011 dan memetakan seluruh permukaannya.'),
-  ] },
-  venus: { topic: 'Planet terpanas dan atmosfernya', questions: [
-    q('Mengapa Venus menjadi planet terpanas, padahal Merkurius lebih dekat ke Matahari?', ['Efek rumah kaca dari atmosfer karbon dioksida yang sangat tebal', 'Inti Venus jauh lebih panas', 'Venus sama sekali tidak berotasi', 'Venus memantulkan sangat sedikit cahaya'], 0,
-      'Atmosfer CO₂ yang sangat tebal memerangkap panas sehingga suhu permukaan sekitar 465 °C, siang maupun malam.'),
-    q('Ke arah mana Venus berotasi dibandingkan kebanyakan planet?', ['Berlawanan arah (retrograd)', 'Searah, tetapi lebih cepat', 'Tidak berotasi', 'Bergantian setiap tahun'], 0,
-      'Sumbu Venus miring sekitar 177°, sehingga rotasinya terlihat berlawanan arah. Satu rotasinya juga sangat lambat: 243 hari.'),
-    q('Wahana apa yang pertama kali mengirim foto dari permukaan Venus?', ['Venera 9', 'Mariner 2', 'Magellan', 'Pioneer 10'], 0,
-      'Venera 9 milik Uni Soviet mengirim foto permukaan Venus pada 1975.'),
-  ] },
-  bumi: { topic: 'Rotasi, revolusi & musim', questions: [
-    q('Berapa lama Bumi menyelesaikan satu rotasi sideris pada sumbunya?', ['Tepat 24 jam', 'Sekitar 23 jam 56 menit', 'Sekitar 365 hari', 'Sekitar 12 jam'], 1,
-      'Rotasi sideris Bumi 0,997 hari ≈ 23 jam 56 menit. Hari matahari (24 jam) sedikit lebih panjang karena Bumi juga bergerak di orbitnya.'),
-    q('Mengapa Bumi mengalami pergantian musim?', ['Jarak Bumi ke Matahari berubah sangat jauh', 'Sumbu rotasi Bumi miring sekitar 23,4° terhadap bidang orbit', 'Kecepatan rotasi Bumi berubah sepanjang tahun', 'Bulan menutupi sebagian cahaya Matahari'], 1,
-      'Karena sumbu miring, belahan utara dan selatan bergantian lebih condong ke Matahari selama revolusi. Sudut datang cahaya dan lama siang berubah.'),
-    q('Apa yang menyebabkan terjadinya siang dan malam?', ['Revolusi Bumi mengelilingi Matahari', 'Rotasi Bumi pada sumbunya', 'Perubahan jarak Bumi–Matahari', 'Gerhana Matahari'], 1,
-      'Rotasi membuat setiap tempat di Bumi bergantian menghadap dan membelakangi Matahari.'),
-  ] },
-  mars: { topic: 'Geologi & atmosfer', questions: [
-    q('Apa yang membuat permukaan Mars berwarna kemerahan?', ['Debu dan batuan yang mengandung oksida besi', 'Lava pijar yang masih mengalir', 'Pantulan cahaya Matahari yang merah', 'Tumbuhan berwarna merah'], 0,
-      'Mineral besi di batuan Mars teroksidasi — mirip karat — sehingga debunya berwarna jingga kemerahan.'),
-    q('Gunung api terbesar di tata surya berada di Mars. Apa namanya?', ['Olympus Mons', 'Valles Marineris', 'Mauna Kea', 'Kawah Gale'], 0,
-      'Olympus Mons tingginya sekitar 22 km, hampir 2,5 kali Gunung Everest. Valles Marineris adalah ngarai, bukan gunung.'),
-    q('Berapa satelit alami yang dimiliki Mars?', ['Tidak ada', 'Satu', 'Dua: Phobos dan Deimos', 'Empat'], 2,
-      'Mars memiliki dua satelit kecil, Phobos dan Deimos, yang ditemukan Asaph Hall pada 1877.'),
-  ] },
-  jupiter: { topic: 'Raksasa gas & satelitnya', questions: [
-    q('Apa itu Bintik Merah Besar di Jupiter?', ['Badai raksasa yang bertahan ratusan tahun', 'Gunung api aktif', 'Danau metana', 'Bayangan salah satu bulannya'], 0,
-      'Bintik Merah Besar adalah badai antisiklon yang lebih lebar dari Bumi dan sudah teramati sejak abad ke-19 atau lebih awal.'),
-    q('Siapa yang menemukan empat satelit besar Jupiter pada 1610?', ['Isaac Newton', 'Galileo Galilei', 'Johannes Kepler', 'Nicolaus Copernicus'], 1,
-      'Galileo menemukan Io, Europa, Ganymede, dan Callisto — kini disebut satelit Galilean.'),
-    q('Jupiter tergolong planet jenis apa?', ['Planet kebumian (batuan)', 'Planet kerdil', 'Raksasa gas', 'Satelit alami'], 2,
-      'Jupiter sebagian besar tersusun dari hidrogen dan helium, tanpa permukaan padat.'),
-  ] },
-  saturnus: { topic: 'Cincin & Titan', questions: [
-    q('Cincin Saturnus terutama tersusun dari apa?', ['Gas panas', 'Bongkahan es dan batuan', 'Logam cair', 'Cahaya pantulan atmosfer'], 1,
-      'Cincin Saturnus berisi miliaran partikel es air dan batuan, dari sebesar butir debu hingga sebesar rumah.'),
-    q('Wahana apa yang mengorbit Saturnus selama 13 tahun (2004–2017)?', ['Juno', 'Voyager 2', 'Cassini', 'Galileo'], 2,
-      'Cassini mengorbit Saturnus dari 2004 hingga 2017 dan mengakhiri misinya dengan menukik ke atmosfer planet.'),
-    q('Satelit terbesar Saturnus yang memiliki atmosfer tebal adalah …', ['Titan', 'Europa', 'Ganymede', 'Triton'], 0,
-      'Titan memiliki atmosfer nitrogen tebal serta danau metana dan etana cair.'),
-  ] },
-  uranus: { topic: 'Raksasa es yang berguling', questions: [
-    q('Apa keunikan sumbu rotasi Uranus?', ['Tegak lurus sempurna', 'Miring hampir 98° sehingga seperti berguling', 'Berubah arah setiap hari', 'Uranus tidak berotasi'], 1,
-      'Kemiringan sumbu Uranus 97,77°, sehingga kutubnya bergantian menghadap Matahari selama orbit 84 tahun.'),
-    q('Siapa yang menemukan Uranus pada 1781?', ['William Herschel', 'Galileo Galilei', 'Urbain Le Verrier', 'Christiaan Huygens'], 0,
-      'Uranus adalah planet pertama yang ditemukan dengan teleskop, oleh William Herschel.'),
-    q('Wahana apa yang pernah melintas dekat Uranus?', ['Cassini', 'Juno', 'Voyager 2', 'New Horizons'], 2,
-      'Voyager 2 melintasi Uranus pada 1986 dan hingga kini menjadi satu-satunya wahana yang mengunjunginya.'),
-  ] },
-  neptunus: { topic: 'Planet terjauh', questions: [
-    q('Bagaimana Neptunus ditemukan pada 1846?', ['Terlihat dengan mata telanjang', 'Diprediksi lewat perhitungan dari gangguan orbit Uranus', 'Difoto oleh Voyager 2', 'Ditemukan Teleskop Hubble'], 1,
-      'Urbain Le Verrier menghitung posisinya dari penyimpangan orbit Uranus, lalu Johann Galle menemukannya lewat teleskop.'),
-    q('Berapa lama Neptunus mengelilingi Matahari?', ['Sekitar 12 tahun', 'Sekitar 29 tahun', 'Sekitar 84 tahun', 'Sekitar 165 tahun'], 3,
-      'Periode orbit Neptunus 164,79 tahun. Sejak ditemukan, Neptunus baru menyelesaikan satu orbit pada 2011.'),
-    q('Mengapa Neptunus terlihat biru?', ['Metana di atmosfernya menyerap cahaya merah', 'Permukaannya tertutup samudra', 'Pantulan cahaya dari Uranus', 'Tertutup es air murni'], 0,
-      'Gas metana menyerap cahaya merah dan memantulkan cahaya biru.'),
-  ] },
+  merkurius: {
+    topic: 'Planet Terdekat & Geologi Ekstrem',
+    questions: [
+      q('Apa nama cekungan kawah tumbukan raksasa berdiameter 1.550 km yang berada di permukaan Merkurius?',
+        ['Kawah Jezero', 'Cekungan Caloris (Caloris Basin)', 'Kawah Gale', 'Kawah Chicxulub'], 1,
+        'Cekungan Caloris adalah kawah tumbukan terbesar di Merkurius selebar 1.550 km yang dikelilingi pegunungan cincin setinggi 2 km.'),
+      q('Mengapa di permukaan Merkurius banyak ditemukan tebing patahan tinggi seperti Enterprise Rupes?',
+        ['Karena kikisan air sungai deras', 'Karena inti besi raksasanya mendingin sehingga kerak planet menyusut dan mengerut', 'Karena tarikan cincin es', 'Karena badai angin amonia'], 1,
+        'Saat inti besi Merkurius perlahan mendingin, ukuran planet menyusut sekitar 14 km dan membuat kerak batuannya terlipat menjadi tebing tinggi.'),
+      q('Meskipun siang hari di Merkurius mencapai 430°C, di bagian manakah wahana MESSENGER menemukan cadangan es air murni?',
+        ['Di puncak gunung berapi khatulistiwa', 'Di dasar kawah kutub yang gelap abadi dan tidak pernah terkena sinar Matahari', 'Di lapisan awan atas', 'Di lembah lava panas'], 1,
+        'Karena kemiringan poros Merkurius hampir 0°, dasar kawah dalam di kutub utaranya seperti Kawah Prokofiev selalu berada dalam bayangan abadi bersuhu -180°C.'),
+      q('Mengapa suhu permukaan Merkurius berubah sangat ekstrem antara siang (430°C) dan malam (-180°C)?',
+        ['Karena Merkurius tidak memiliki atmosfer tebal untuk menahan panas', 'Karena jaraknya paling jauh dari Matahari', 'Karena tertutup samudra cair', 'Karena berputar terlalu cepat'], 0,
+        'Tanpa selimut atmosfer tebal, panas sinar Matahari di siang hari langsung terlepas kembali ke ruang hampa saat malam tiba.')
+    ]
+  },
+  venus: {
+    topic: 'Atmosfer Ekstrem & Rotasi Retrograd',
+    questions: [
+      q('Apa keunikan puncak Pegunungan Maxwell Montes setinggi 11 km di planet Venus menurut pengamatan radar?',
+        ['Tertutup es air biasa', "Dilapisi 'salju logam' mengilap dari timbal sulfida dan bismut sulfida", 'Ditumbuhi lumut hijau', 'Berisi danau air tawar'], 1,
+        'Di ketinggian 11 km pada Maxwell Montes, uap timbal sulfida dan bismut mengembun menjadi lapisan salju logam yang memantulkan gelombang radar dengan terang.'),
+      q('Arah rotasi Venus berlawanan dengan mayoritas planet di Tata Surya (retrograde), yang menyebabkan...',
+        ['Matahari tampak terbit dari arah barat dan terbenam di timur', 'Venus tidak pernah mengelilingi Matahari', 'Venus memiliki 10 bulan besar', 'Suhu Venus menjadi sangat dingin'], 0,
+        'Rotasi retrograde (-5.832,5 jam) berarti Venus berputar searah jarum jam dari timur ke barat.'),
+      q('Faktor utama yang membuat Venus menjadi planet terpanas di Tata Surya (465°C) adalah...',
+        ['Jaraknya paling dekat ke Matahari', 'Efek rumah kaca ekstrem dari atmosfer karbon dioksida tebal dan awan asam sulfat', 'Gesekan cincin batu', 'Pantulan cahaya Bulan'], 1,
+        'Atmosfer Venus terdiri atas 96,5% karbon dioksida bertekanan 90 bar yang mengurung panas Matahari secara ekstrem.'),
+      q('Apa nama gunung berapi perisai tertinggi di Venus (8 km) yang menjadi bukti aktivitas vulkanik planet tersebut?',
+        ['Olympus Mons', 'Maat Mons', 'Mauna Kea', 'Gunung Everest'], 1,
+        'Maat Mons di wilayah Atla Regio menjulang setinggi 8 km dan merupakan gunung berapi tertinggi di permukaan Venus.')
+    ]
+  },
+  bumi: {
+    topic: 'Atmosfer, Samudra & Biosfer Bumi',
+    questions: [
+      q('Bagaimana fenomena cahaya aurora (seperti Aurora Borealis dan Australis) dapat terbentuk di langit kutub Bumi?',
+        ['Akibat gesekan awan badai petir di lapisan troposfer rendah', 'Akibat interaksi partikel bermuatan angin Matahari dengan medan magnetosfer dan gas atmosfer Bumi', 'Akibat pantulan sinar Bulan pada hamparan kristal es kutub', 'Akibat pembakaran gas metana yang menguap dari dasar samudra'], 1,
+        'Medan magnetosfer Bumi membelokkan partikel bermuatan dari angin Matahari menuju wilayah kutub. Di lapisan atmosfer atas, partikel berenergi ini bertabrakan dengan atom oksigen dan nitrogen, memancarkan pendaran cahaya warna-warni yang memukau.'),
+      q('Mengapa efek rumah kaca alami di atmosfer Bumi sangat penting bagi kelangsungan hidup di Bumi?',
+        ['Mencegah seluruh radiasi sinar Matahari masuk ke permukaan Bumi', 'Menahan sebagian panas radiasi Matahari agar suhu rata-rata Bumi tetap hangat dan layak huni (sekitar 15°C)', 'Menghentikan siklus penguapan air di seluruh samudra', 'Membuat atmosfer Bumi kehilangan seluruh kandungan gas karbon dioksida'], 1,
+        'Gas rumah kaca alami seperti uap air dan karbon dioksida memerangkap sebagian radiasi inframerah termal. Tanpa efek rumah kaca alami ini, suhu rata-rata permukaan Bumi akan anjlok hingga sekitar -18°C, membekukan seluruh perairan dan mematikan kehidupan.'),
+      q('Berapa perkiraan persentase permukaan Bumi yang tertutup oleh air, dan berapa proporsi air asin di samudra dari total seluruh air tersebut?',
+        ['Sekitar 30% tertutup air, dengan 50% di antaranya berupa air asin samudra', 'Sekitar 71% tertutup air, dengan sekitar 97% di antaranya berupa air asin samudra', 'Sekitar 50% tertutup air, dengan 10% di antaranya berupa air asin samudra', 'Sekitar 90% tertutup air, dengan seluruhnya berupa air tawar layak minum'], 1,
+        'Sekitar 71% permukaan Bumi diselimuti perairan, dengan sekitar 97% tersimpan sebagai air asin di lautan dan samudra. Hanya sekitar 3% merupakan air tawar, yang sebagian besarnya terperangkap dalam gletser dan tudung es kutub.'),
+      q('Faktor astronomis dan fisik utama apakah yang memungkinkan planet Bumi menopang keanekaragaman hayati (biosfer) dengan jutaan spesies kehidupan?',
+        ['Karena Bumi memiliki cincin es pemantul radiasi kosmik', 'Letaknya di zona layak huni Matahari, memiliki air cair stabil, serta atmosfer beroksigen dan berpelindung ozon', 'Karena inti Bumi sepenuhnya berhenti berotasi sehingga tidak ada getaran tektonik', 'Karena Bumi tidak mengalami perubahan musim sepanjang tahun'], 1,
+        'Bumi mengorbit di zona layak huni (Goldilocks zone) yang suhunya pas untuk mempertahankan air dalam wujud cair. Hal ini didukung oleh atmosfer pelindung kaya nitrogen dan oksigen, lapisan ozon penyaring radiasi ultraviolet berbahaya, serta siklus biogeokimia yang stabil.')
+    ]
+  },
+  mars: {
+    topic: 'Bentang Alam & Eksplorasi Rover',
+    questions: [
+      q('Apa nama gunung berapi perisai tertinggi di planet Mars sekaligus gunung tertinggi di seluruh Tata Surya (21,9 km)?',
+        ['Maxwell Montes', 'Olympus Mons', 'Mauna Kea', 'Gunung Sharp'], 1,
+        'Olympus Mons menjulang setinggi 21,9 km (hampir tiga kali tinggi Gunung Everest) dengan diameter kaki gunung mencapai 600 km.'),
+      q('Sistem ngarai patahan tektonik raksasa di ekuator Mars yang membentang sepanjang 4.000 km dan sedalam 7 km adalah...',
+        ['Grand Canyon', 'Valles Marineris', 'Palung Mariana', 'Ngarai Olduvai'], 1,
+        'Valles Marineris membentang sepanjang 4.000 km (seperlima keliling Mars) akibat merekahnya kerak planet saat dataran vulkanik Tharsis terangkat.'),
+      q('Mengapa gunung berapi Olympus Mons di Mars bisa tumbuh jauh lebih tinggi daripada gunung berapi di Bumi?',
+        ['Karena lempeng kerak Mars diam (tidak bergerak), sehingga lava terus menumpuk di satu titik selama ratusan juta tahun', 'Karena Mars terbuat dari es murni', 'Karena ditarik oleh cincin Saturnus', 'Karena disiram hujan air setiap hari'], 0,
+        'Tidak adanya pergerakan lempeng tektonik di Mars membuat titik panas magma terus memuntahkan lava di lokasi yang sama, didukung gravitasi Mars yang lebih rendah dari Bumi.'),
+      q('Bukti ilmiah apa yang ditemukan rover Curiosity (Kawah Gale) dan Perseverance (Kawah Jezero) tentang masa lalu Mars?',
+        ['Mars dulunya adalah bintang panas', 'Jejak kipas delta sungai dan endapan danau air cair purba', 'Hutan pohon raksasa modern', 'Lautan logam cair di permukaan'], 1,
+        'Endapan batu lempung dan struktur delta sungai di Kawah Jezero dan Gale membuktikan bahwa miliaran tahun silam Mars memiliki danau air cair.')
+    ]
+  },
+  jupiter: {
+    topic: 'Raksasa Gas, Magnetosfer & Bulan Galilea',
+    questions: [
+      q('Apakah sebenarnya Bintik Merah Raksasa (Great Red Spot) yang tampak di belahan selatan planet Jupiter?',
+        ['Gunung batu merah setinggi 50 km', 'Badai antisiklon raksasa bertekanan tinggi yang ukurannya lebih besar dari planet Bumi', 'Kawah tumbukan meteor besi', 'Danau lava belerang'], 1,
+        'Great Red Spot adalah pusaran badai antisiklon abadi berdiameter lebih dari 16.000 km dengan kecepatan angin mencapai 680 km/jam.'),
+      q('Lapisan apakah di bagian dalam Jupiter yang membangkitkan medan magnet terkuat dan memicu aurora raksasa di kutubnya?',
+        ['Batu kapur kering', 'Lautan hidrogen metalik cair bertekanan jutaan atmosfer', 'Pasir kuarsa', 'Es karbon dioksida'], 1,
+        'Tekanan ekstrem di dalam Jupiter memampatkan gas hidrogen menjadi cairan logam penghantar listrik yang menghasilkan magnetosfer raksasa.'),
+      q('Manakah dari keempat bulan Galilea Jupiter yang memiliki ratusan gunung berapi belerang paling aktif di Tata Surya?',
+        ['Callisto', 'Io', 'Ganymede', 'Triton'], 1,
+        'Gaya pasang surut gravitasi dari Jupiter, Europa, dan Ganymede terus meremas bagian dalam bulan Io hingga memicu ratusan gunung berapi aktif.'),
+      q('Berapa lama waktu yang dibutuhkan raksasa gas Jupiter untuk berputar satu kali penuh pada porosnya (satu hari Jupiter)?',
+        ['243 hari Bumi', 'Sekitar 9 jam 55 menit (rotasi tercepat di Tata Surya)', '365 hari', '58,6 hari'], 1,
+        'Meskipun ukurannya paling besar, Jupiter berputar paling cepat pada porosnya yaitu hanya 9,93 jam per putaran.')
+    ]
+  },
+  saturnus: {
+    topic: 'Cincin Megah & Samudra Es Enceladus',
+    questions: [
+      q("Fenomena cuaca unik apakah yang berputar di kutub utara Saturnus dengan lebar mencapai 29.000 kilometer?",
+        ['Bintik Gelap Persegi', "Pusaran Badai Segi Enam Sempurna (Saturn's Hexagon)", 'Badai Debu Karat', 'Awan Asam Sulfat'], 1,
+        'Kutub utara Saturnus memiliki pola gelombang arus jet atmosfer berbentuk segi enam (heksagon) selebar dua kali diameter Bumi.'),
+      q('Apakah materi penyusun utama cincin berkilauan Saturnus dan apa nama celah selebar 4.800 km yang memisahkan Cincin A dan B?',
+        ['Debu besi panas & Celah Mariner', 'Miliaran bongkahan es air murni & Celah Divisi Cassini', 'Gas neon & Celah Kuiper', 'Batu bara & Celah Gale'], 1,
+        'Cincin Saturnus tersusun 99% atas es air murni, dan celah Divisi Cassini terbentuk akibat resonansi gravitasi bulan Mimas.'),
+      q('Di bulan terbesar Saturnus, yaitu Titan, wahana Huygens menemukan sungai, hujan, dan danau cair yang tersusun dari...',
+        ['Air laut asin hangat', 'Hidrokarbon metana dan etana cair pada suhu -179°C', 'Besi cair panas', 'Asam sulfat pekat'], 1,
+        'Pada suhu dingin -179°C di Titan, gas metana dan etana mencair membentuk siklus hujan, sungai, dan danau hidrokarbon.'),
+      q('Bulan es milik Saturnus yang menyemburkan geyser uap air asin dari samudra bawah permukaannya di kutub selatan adalah...',
+        ['Phobos', 'Enceladus', 'Deimos', 'Io'], 1,
+        'Wahana Cassini menemukan semburan geyser air asin dan aktivitas hidrotermal dari celah es kutub selatan bulan Enceladus.')
+    ]
+  },
+  uranus: {
+    topic: 'Raksasa Es, Sumbu Rebah & Verona Rupes',
+    questions: [
+      q('Fenomena hujan unik apakah yang terjadi di kedalaman mantel es Uranus dan Neptunus akibat tekanan 6 juta atmosfer?',
+        ['Hujan air biasa', 'Hujan Kristal Berlian (Diamond Rain) dari pemecahan molekul metana', 'Hujan pasir besi', 'Hujan debu belerang'], 1,
+        'Tekanan jutaan atmosfer dan suhu ribuan derajat di mantel Uranus serta Neptunus memisahkan atom karbon dari metana (CH4) dan memampatkannya menjadi hujan berlian.'),
+      q('Apa dampak dari kemiringan poros rotasi Uranus yang rebah ekstrem hingga 97,77 derajat?',
+        ['Uranus tidak pernah mengelilingi Matahari', 'Uranus tampak menggelinding miring di orbitnya dan kutubnya mengalami 42 tahun siang diikuti 42 tahun malam', 'Suhu Uranus menjadi 500°C', 'Uranus kehilangan seluruh atmosfernya'], 1,
+        'Poros 97,77° membuat Uranus berputar miring seperti bola yang menggelinding bersama 13 cincin vertikalnya.'),
+      q('Gas apakah di atmosfer bagian atas Uranus yang menyerap spektrum cahaya merah dan memberi warna biru-kehijauan (cyan)?',
+        ['Karbon Dioksida', 'Metana (CH4)', 'Oksigen Murni', 'Uap Besi'], 1,
+        'Metana di atmosfer atas Uranus menyerap cahaya merah Matahari dan memantulkan cahaya biru-kehijauan kembali ke ruang angkasa.'),
+      q('Apa nama tebing patahan es setinggi 20 km (tertinggi di Tata Surya) yang dipotret Voyager 2 di bulan Miranda milik Uranus?',
+        ['Enterprise Rupes', 'Verona Rupes', 'Valles Marineris', 'Palung Mariana'], 1,
+        'Verona Rupes di bulan Miranda menjulang setinggi 20 km—hampir dua kali lipat kedalaman Palung Mariana di Bumi.')
+    ]
+  },
+  neptunus: {
+    topic: 'Angin Supersonik & Misteri Triton',
+    questions: [
+      q('Berapakah rekor kecepatan angin badai supersonik di atmosfer Neptunus yang menjadikannya angin tercepat di Tata Surya?',
+        ['100 km/jam', 'Lebih dari 2.100 km/jam (melampaui kecepatan suara)', '300 km/jam', '50 km/jam'], 1,
+        'Panas internal Neptunus dan atmosfer es metananya yang minim gesekan memicu angin supersonik hingga 2.100 km/jam di sekitar Bintik Gelap Besar.'),
+      q('Selain di Uranus, mengapa jatuhnya hujan kristal berlian di dalam mantel Neptunus sangat penting bagi kondisi fisik planet tersebut?',
+        ['Membuat Neptunus menjadi kotak', 'Gesekan jatuhnya berlian menuju inti planet menghasilkan panas internal tambahan bagi Neptunus', 'Menghentikan rotasi Neptunus', 'Mengubah warna Neptunus menjadi merah'], 1,
+        'Tenggelamnya kristal berlian padat melalui mantel fluida superionik memicu gesekan gravitasi yang memanaskan bagian dalam Neptunus.'),
+      q('Apa keunikan bulan terbesar Neptunus, yaitu Triton, yang ditemukan oleh wahana Voyager 2 pada tahun 1989?',
+        ['Permukaannya berupa lautan lava pijar', 'Mengorbit berlawanan arah (retrograde) dan memiliki geyser aktif yang menyemburkan nitrogen cair setinggi 8 km', 'Tidak memiliki gravitasi', 'Berbentuk kubus'], 1,
+        'Triton adalah objek Sabuk Kuiper yang tertangkap gravitasi Neptunus dan memiliki gunung api es (cryovolcano) yang menyemburkan gas nitrogen cair.'),
+      q('Mengapa penemuan planet Neptunus pada tahun 1846 menjadi tonggak sejarah besar dalam ilmu astronomi?',
+        ['Karena ditemukan oleh astronot yang mendarat di sana', 'Karena merupakan planet pertama yang posisinya ditemukan lewat perhitungan rumus matematika sebelum diamati teleskop', 'Karena terlihat sebesar Bulan dengan mata telanjang', 'Karena menabrak planet Mars'], 1,
+        'Urbain Le Verrier dan John Couch Adams menghitung posisi Neptunus secara matematis dari gangguan gravitasi pada orbit Uranus sebelum diamati Johann Galle.')
+    ]
+  }
 };

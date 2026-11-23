@@ -4,7 +4,7 @@
 // dan jadi cadangan (mode Hemat untuk lubang hitam, "kurangi gerakan", hemat data, atau perangkat lambat).
 // Dunia 3D game baru dimuat setelah pemain menekan "Main".
 import { reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { store, registerUser, loginUser, logoutUser, showToast, shouldShowGuide } from '~/composables/useGame.js';
+import { store, registerUser, loginUser, logoutUser, loginWithGoogle, showToast, shouldShowGuide } from '~/composables/useGame.js';
 import { PLANETS } from '~/data/solarSystem.js';
 import { SHIP_IDS } from '~/data/ships.js';
 
@@ -31,6 +31,16 @@ async function submit() {
   f.pass = '';
   showToast(`${reg ? 'Akun dibuat' : 'Selamat datang'}, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
   play(store.hasSave);
+}
+async function handleGoogleLogin() {
+  if (f.busy) return;
+  f.busy = true;
+  f.err = '';
+  const r = await loginWithGoogle();
+  f.busy = false;
+  if (!r.ok) {
+    f.err = r.err || 'Gagal menghubungkan Google.';
+  }
 }
 
 // ---- latar hidup ----
@@ -73,7 +83,24 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
     <div class="shade" />
 
     <header class="top">
-      <button class="brand" type="button" aria-label="AstroSphere — ke beranda" @click="go('welcome')"><UiIcon name="logo" :size="30" /><span>AstroSphere</span></button>
+      <button class="brand" type="button" aria-label="AstroSphere — ke beranda" @click="go('welcome')">
+        <UiIcon name="logo" :size="30" />
+        <span>AstroSphere</span>
+      </button>
+
+      <div v-if="store.account.loggedIn" class="user-pill">
+        <span class="user-avatar" aria-hidden="true">{{ store.account.name.slice(0, 1).toUpperCase() }}</span>
+        <span class="user-name">Hai, {{ store.account.name }}</span>
+        <span class="user-sep" aria-hidden="true" />
+        <button class="logout-link" type="button" aria-label="Keluar dari akun" @click="logoutUser">
+          <svg class="logout-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Keluar
+        </button>
+      </div>
     </header>
 
     <Transition name="rise" mode="out-in">
@@ -87,12 +114,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
           </template>
           <button v-else class="btn primary lg" @click="play(false)"><UiIcon name="putar" :size="20" />Mulai bermain</button>
         </div>
-        <div v-if="store.account.loggedIn" class="acct me">
-          <span class="avatar" aria-hidden="true">{{ store.account.name.slice(0, 1).toUpperCase() }}</span>
-          <span class="hi">Hai, <b>{{ store.account.name }}</b></span>
-          <button class="btn ghost sm" @click="logoutUser">Keluar</button>
-        </div>
-        <div v-else class="acct">
+        <div v-if="!store.account.loggedIn" class="acct">
           <button class="btn line" @click="go('login')">
             <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -111,27 +133,98 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
             Daftar
           </button>
         </div>
-        <p v-if="!store.account.loggedIn" class="note">Akun tidak wajib — kamu bisa langsung main.</p>
+        <p v-if="!store.account.loggedIn" class="note">Akun tidak wajib — kamu bisa langsung menjelajah.</p>
       </main>
 
       <main v-else key="f" class="formwrap">
         <form class="card form" novalidate @submit.prevent="submit">
-          <button type="button" class="ib sm back" aria-label="Kembali ke beranda" @click="go('welcome')"><UiIcon name="kembali" :size="20" /></button>
-          <h2 class="h2">{{ store.screen === 'login' ? 'Selamat datang kembali' : 'Buat akun penjelajah' }}</h2>
-          <p class="small">{{ store.screen === 'login' ? 'Masuk dengan nama dan kata sandimu.' : 'Daftar dengan nama unik dan kata sandi.' }}</p>
-          <label class="field">
-            Nama penjelajah
-            <input v-model="f.name" autocomplete="username" autocapitalize="none" placeholder="Contoh: penjelajah_01" maxlength="20">
+          <button type="button" class="back-link" @click="go('welcome')">
+            <span class="back-arrow">&larr;</span> Kembali
+          </button>
+
+          <div class="form-header">
+            <span class="card-eyebrow">OBSERVATORIUM ASTROSPHERE</span>
+            <h2 class="form-title">
+              {{ store.screen === 'login' ? 'Selamat Datang Kembali' : 'Buat Akun AstroSphere' }}
+            </h2>
+            <p class="form-subtitle">
+              {{ store.screen === 'login'
+                ? 'Masuk untuk melanjutkan petualangan eksplorasi tata surya.'
+                : 'Daftar untuk menyimpan progres dan melanjutkan petualanganmu.' }}
+            </p>
+          </div>
+
+          <label class="form-field">
+            <span>Nama Penjelajah</span>
+            <input
+              v-model="f.name"
+              type="text"
+              autocomplete="username"
+              autocapitalize="none"
+              placeholder="Masukkan nama penjelajah"
+              maxlength="20"
+              class="form-input"
+            >
           </label>
-          <label class="field">Kata sandi
-            <span class="pw"><input v-model="f.pass" :type="f.show ? 'text' : 'password'" :autocomplete="store.screen === 'login' ? 'current-password' : 'new-password'" :placeholder="store.screen === 'login' ? 'Kata sandimu' : 'Minimal 6 karakter'"><button type="button" class="eye" :aria-label="f.show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'" @click="f.show = !f.show"><UiIcon name="mata" :size="20" /></button></span>
+
+          <label class="form-field">
+            <span>Kata Sandi</span>
+            <div class="pw-box">
+              <input
+                v-model="f.pass"
+                :type="f.show ? 'text' : 'password'"
+                :autocomplete="store.screen === 'login' ? 'current-password' : 'new-password'"
+                placeholder="Masukkan kata sandi"
+                class="form-input"
+              >
+              <button
+                type="button"
+                class="eye-btn"
+                :aria-label="f.show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
+                @click="f.show = !f.show"
+              >
+                <UiIcon name="mata" :size="18" />
+              </button>
+            </div>
           </label>
-          <p v-if="f.err" class="err" role="alert">{{ f.err }}<button v-if="f.unknown" type="button" class="link" @click="go('register')">Daftar sekarang</button></p>
-          <button class="btn primary block" type="submit" :disabled="f.busy">{{ store.screen === 'login' ? 'Masuk' : 'Daftar' }}</button>
-          <button class="btn ghost block" type="button" @click="play(store.hasSave)">Main sebagai tamu</button>
-          <p class="sw">{{ store.screen === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?' }}
-            <button type="button" class="link" @click="go(store.screen === 'login' ? 'register' : 'login')">{{ store.screen === 'login' ? 'Daftar' : 'Masuk' }}</button></p>
-          <p class="fine">Akun &amp; progres tersinkronisasi aman dengan awan Supabase.</p>
+
+          <p v-if="f.err" class="form-err" role="alert">
+            {{ f.err }}
+            <button v-if="f.unknown" type="button" class="switch-link" @click="go('register')">Daftar sekarang</button>
+          </p>
+
+          <button class="btn primary form-submit-btn" type="submit" :disabled="f.busy">
+            {{ store.screen === 'login' ? 'Masuk' : 'Daftar' }}
+          </button>
+
+          <template v-if="store.screen === 'login'">
+            <div class="form-divider">
+              <span class="divider-line" />
+              <span class="divider-text">ATAU</span>
+              <span class="divider-line" />
+            </div>
+
+            <button class="btn google-btn" type="button" :disabled="f.busy" @click="handleGoogleLogin">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+              </svg>
+              Lanjutkan dengan Google
+            </button>
+
+            <button class="btn guest-btn" type="button" @click="play(store.hasSave)">
+              Masuk sebagai Tamu
+            </button>
+          </template>
+
+          <p class="form-switch">
+            {{ store.screen === 'login' ? 'Belum memiliki akun?' : 'Sudah memiliki akun?' }}
+            <button type="button" class="switch-link" @click="go(store.screen === 'login' ? 'register' : 'login')">
+              {{ store.screen === 'login' ? 'Daftar' : 'Masuk' }}
+            </button>
+          </p>
         </form>
       </main>
     </Transition>
@@ -148,8 +241,16 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 .live{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .6s ease;pointer-events:none}
 .live.on{opacity:1}
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,26,.55) 0%,rgba(5,8,26,0) 34%)}
-.top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;padding:calc(18px + var(--safe-t)) calc(28px + var(--safe-r)) 0 calc(28px + var(--safe-l));z-index:2}
+.top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:calc(18px + var(--safe-t)) calc(28px + var(--safe-r)) 0 calc(28px + var(--safe-l));z-index:2}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:21px}
+.user-pill{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 5px;border-radius:999px;background:rgba(10,16,40,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(148,174,255,.22);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.user-avatar{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#ffffff;font-family:var(--display);font-size:12px;font-weight:600;line-height:1;flex:none}
+.user-name{font-size:13.5px;font-weight:500;color:#f4f7ff;line-height:1;white-space:nowrap}
+.user-sep{width:1px;height:14px;background:rgba(255,255,255,.18);flex:none}
+.logout-link{display:inline-flex;align-items:center;gap:5px;background:none;border:none;padding:0;margin:0;font-family:inherit;font-size:13px;font-weight:500;color:rgba(226,234,255,.8);cursor:pointer;transition:color .15s}
+.logout-link:hover{color:#fca5a5}
+.logout-icon{display:block;flex:none;opacity:.85;transition:transform .15s}
+.logout-link:hover .logout-icon{opacity:1;transform:translateX(1px)}
 .hero{position:absolute;top:50%;left:50%;transform:translate(-50%,-56%);width:min(840px,calc(100vw - 32px));text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px;z-index:2}
 .hero .h1{font-size:clamp(26px,3.4vw,44px);white-space:nowrap;text-shadow:0 4px 28px rgba(0,0,0,.75);letter-spacing:-.01em;line-height:1.15}
 .hero .lead{max-width:58ch;font-size:clamp(14px,1.4vw,16.5px);line-height:1.6;color:rgba(235,241,255,.92);text-shadow:0 2px 12px rgba(4,8,24,.85)}
@@ -157,28 +258,55 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 .cta .btn{min-width:200px;height:48px;min-height:48px;border-radius:12px;font-weight:500;font-size:15.5px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 .cta .btn.primary{background:var(--blue);box-shadow:0 4px 18px rgba(37,99,235,.45)}
 .cta .btn.primary:hover{filter:brightness(1.12)}
-.cta .btn.line{background:rgba(10,16,40,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,174,255,.35);color:#f4f7ff}
-.cta .btn.line:hover{background:rgba(16,26,60,.92);border-color:rgba(148,174,255,.55)}
+.cta .btn.line{background:rgba(14,21,51,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,174,255,.35);color:#f4f7ff}
+.cta .btn.line:hover{background:rgba(20,30,70,.92);border-color:rgba(148,174,255,.55)}
 .cta .btn small{font-family:var(--font);font-weight:400;font-size:12.5px;opacity:.85;margin-left:4px}
 .acct{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.acct .btn{min-width:116px;height:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(10,16,40,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(148,174,255,.25);color:#f4f7ff;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:background .15s,border-color .15s,transform .12s}
-.acct .btn:hover{background:rgba(16,26,60,.9);border-color:rgba(148,174,255,.48)}
+.acct .btn{min-width:116px;height:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(6,10,26,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(226,234,255,.28);color:rgba(241,244,255,.92);box-shadow:none;transition:background .15s,border-color .15s,transform .12s}
+.acct .btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.45);color:#ffffff}
 .btn-icon{flex:none;display:block;opacity:.92}
-.acct.me{align-items:center;gap:12px;padding:6px 12px 6px 8px;border-radius:12px;background:rgba(10,16,40,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(148,174,255,.25)}
-.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight:500}
-.hi{color:var(--muted);font-size:15px}.hi b{color:var(--text);font-family:var(--display);font-weight:500}
 .note{font-size:13px;color:rgba(235,241,255,.88);text-shadow:0 2px 12px rgba(4,8,24,.98)}
-.formwrap{position:absolute;inset:0;display:grid;place-items:center;padding:80px 16px 24px;z-index:2;overflow-y:auto}
-.form{position:relative;width:min(420px,100%);padding:30px 28px 22px;display:flex;flex-direction:column;gap:14px;background:rgba(10,15,40,.9);border-radius:16px}
-.form .btn{border-radius:12px;height:46px;font-weight:500}
-.form .h2{font-size:26px;padding-right:44px}
-.back{position:absolute;right:16px;top:16px}
-.pw{position:relative;display:block}.pw input{padding-right:52px}
-.eye{position:absolute;right:6px;top:5px;width:40px;height:40px;display:grid;place-items:center;color:var(--muted);border-radius:10px}
-.err{color:var(--coral);font-size:14px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
-.sw{text-align:center;font-size:14px;color:var(--muted)}
-.link{color:var(--sky);font-weight:500;text-decoration:underline;text-underline-offset:3px}
-.fine{text-align:center;font-size:12px;color:var(--faint)}
+.formwrap{position:absolute;inset:0;display:grid;place-items:center;padding:40px 16px;z-index:2;overflow-y:auto}
+.form{position:relative;width:min(420px,100%);padding:28px;display:flex;flex-direction:column;gap:16px;background:rgba(15,20,38,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,174,255,.16);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.65)}
+.back-link{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:rgba(170,182,224,.85);cursor:pointer;background:none;border:none;padding:0;margin-bottom:2px;transition:color .15s}
+.back-link:hover{color:#f4f7ff}
+.back-arrow{font-size:14px;line-height:1}
+.form-header{display:flex;flex-direction:column;gap:6px;text-align:left}
+.card-eyebrow{font-size:11px;letter-spacing:.08em;color:#38bdf8;font-weight:600;text-transform:uppercase}
+.form-title{font-size:22px;font-weight:600;color:#f4f7ff;line-height:1.2;margin:0}
+.form-subtitle{font-size:13.5px;color:var(--muted);line-height:1.45}
+.form-field{display:flex;flex-direction:column;gap:7px;text-align:left;font-size:13px;font-weight:500;color:#cbd5e1}
+.form-input{width:100%;height:44px;padding:0 14px;background:#161d36;border:1px solid #2a355c;border-radius:10px;color:#f4f7ff;font-size:14px;transition:border-color .15s,box-shadow .15s}
+.form-input:focus{outline:none;border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.2)}
+.form-input::placeholder{color:rgba(148,163,184,.65);font-size:13.5px}
+.form-input:-webkit-autofill,
+.form-input:-webkit-autofill:hover,
+.form-input:-webkit-autofill:focus,
+.form-input:-webkit-autofill:active{
+  -webkit-text-fill-color:#f4f7ff !important;
+  -webkit-box-shadow:0 0 0 1000px #161d36 inset !important;
+  box-shadow:0 0 0 1000px #161d36 inset !important;
+  transition:background-color 5000s ease-in-out 0s;
+  caret-color:#f4f7ff;
+}
+.pw-box{position:relative;width:100%}
+.pw-box .form-input{padding-right:44px}
+.eye-btn{position:absolute;right:4px;top:4px;width:36px;height:36px;display:grid;place-items:center;color:var(--muted);background:none;border:none;border-radius:8px;cursor:pointer;transition:color .15s}
+.eye-btn:hover{color:#f4f7ff}
+.form-err{color:var(--coral);font-size:13px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:8px 12px;border-radius:8px}
+.form-submit-btn{width:100%;height:44px;min-height:44px;margin-top:12px;border-radius:10px;font-weight:500;font-size:14.5px;background:var(--blue);color:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(37,99,235,.4)}
+.form-submit-btn:hover{filter:brightness(1.12)}
+.form-divider{display:flex;align-items:center;gap:12px;margin:2px 0}
+.divider-line{flex:1;height:1px;background:rgba(148,174,255,.18)}
+.divider-text{font-size:11.5px;font-weight:600;letter-spacing:.06em;color:rgba(170,182,224,.75)}
+.google-btn{width:100%;height:44px;min-height:44px;border-radius:10px;font-size:14px;font-weight:500;background:#ffffff;color:#0f172a;border:1px solid rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;transition:background .15s,filter .15s,transform .12s}
+.google-btn:hover{background:#f8fafc;filter:brightness(1.02)}
+.google-btn:active{transform:translateY(1px)}
+.guest-btn{width:100%;height:44px;min-height:44px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(255,255,255,.03);border:1px solid rgba(148,174,255,.22);color:#f4f7ff;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.guest-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(148,174,255,.4)}
+.form-switch{text-align:center;font-size:13.5px;color:var(--muted);margin-top:2px}
+.switch-link{color:#38bdf8;font-weight:500;margin-left:4px;cursor:pointer;background:none;border:none;padding:0;transition:color .15s}
+.switch-link:hover{color:#7dd3fc;text-decoration:underline;text-underline-offset:3px}
 .login .shade{background:linear-gradient(90deg,rgba(5,8,26,.35),rgba(5,8,26,0) 55%)}
 .register .shade{background:radial-gradient(ellipse at center,rgba(0,0,0,0),rgba(0,0,0,.35) 80%)}
 @media (max-width:760px){
@@ -189,9 +317,13 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
   .hero .lead{font-size:14px;line-height:1.5}
   .cta{flex-direction:column;width:100%;max-width:340px}
   .cta .btn{width:100%}
-  .acct:not(.me){width:100%;max-width:340px;flex-wrap:nowrap;gap:8px}
-  .acct:not(.me) .btn{flex:1;min-width:0}
-  .form{padding:24px 18px 18px}
+  .acct{width:100%;max-width:340px;flex-wrap:nowrap;gap:8px}
+  .acct .btn{flex:1;min-width:0}
+  .user-pill{padding:3px 10px 3px 4px;gap:7px}
+  .user-name{font-size:12.5px}
+  .formwrap{padding:20px 12px}
+  .form{padding:22px 18px;gap:14px}
+  .form-title{font-size:20px}
 }
 @media (max-width:760px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
 </style>

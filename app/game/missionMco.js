@@ -8,7 +8,7 @@ import { texturedPlanet } from './system.js';
 import { clamp, lerp } from './util.js';
 import { MCO } from '../data/missions.js';
 
-const R = 40, RP_PLAN = R + 12, RP_ACT = R + 1.5, ATMO = R * 1.06, KM_PER = 3390 / R, E = 1.35;
+const R = 58, RP_PLAN = R + 17, RP_ACT = R + 2.1, ATMO = R * 1.06, KM_PER = 3390 / R, E = 1.35;
 const TASKS = ['investigate', 'p0', 'p1', 'p2'];
 
 function soft(inner, outer) {
@@ -67,7 +67,7 @@ export function createMcoMission(mainScene, models, store, sfx) {
   const orbitLine = line(orbitPts, '#8fb0ff', false, .6);
   const iPeri = (pts) => { let k = 0; pts.forEach((p, i) => { if (p.length() < pts[k].length()) k = i; }); return k / N; };
   const iDist = (pts, d) => { const k = pts.findIndex((p) => p.length() <= d); return (k < 0 ? 0 : k) / N; };
-  const U = { pre: iDist(aPts, 150), periA: iPeri(aPts), periP: iPeri(pPts), burn: iDist(aPts, 75), preP: iDist(pPts, 150), burnP: iDist(pPts, 80) };
+  const U = { pre: iDist(aPts, 210), periA: iPeri(aPts), periP: iPeri(pPts), burn: iDist(aPts, 105), preP: iDist(pPts, 210), burnP: iDist(pPts, 112) };
 
   // ---- wahana MCO ----
   const craft = new THREE.Group(); scene.add(craft);
@@ -128,10 +128,10 @@ export function createMcoMission(mainScene, models, store, sfx) {
   }
   function camGoal() {
     const mode = CAM[M.step] || 'follow';
-    if (mode === 'wide') { _goal.set(-170, 230, 330); _look.set(30, 0, 0); }
-    else if (mode === 'top') { _goal.set(40, 260, 120); _look.set(30, 0, 0); }
-    else if (mode === 'earth') { _goal.set(-150, 52, 70); _look.set(8, 0, -6); }
-    else { _goal.copy(_p).addScaledVector(_t, -26).addScaledVector(UPV, 10); _look.copy(_p).lerp(marsC, .35); }
+    if (mode === 'wide') { _goal.set(-200, 270, 390); _look.set(30, -30, 0); }
+    else if (mode === 'top') { _goal.set(40, 310, 150); _look.set(30, -25, 0); }
+    else if (mode === 'earth') { _goal.set(-180, 62, 85); _look.set(10, -12, -6); }
+    else { _goal.copy(_p).addScaledVector(_t, -30).addScaledVector(UPV, 11); _look.copy(_p).lerp(marsC, .35); }
   }
 
   function update(dt) {

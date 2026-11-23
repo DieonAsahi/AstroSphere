@@ -263,6 +263,20 @@ CREATE TABLE IF NOT EXISTS public.ships (
   deskripsi TEXT NOT NULL
 );
 
+-- 2.7 Tabel Bank Soal Mitos atau Fakta (Tab Mitos atau Fakta)
+CREATE TABLE IF NOT EXISTS public.myths (
+  myth_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug TEXT UNIQUE,
+  benda_langit TEXT NOT NULL DEFAULT 'bumi',
+  pernyataan TEXT NOT NULL,
+  is_fact BOOLEAN NOT NULL,
+  penjelasan TEXT NOT NULL,
+  sumber_referensi TEXT NOT NULL DEFAULT 'NASA',
+  bobot_poin INT NOT NULL DEFAULT 10 CHECK (bobot_poin > 0),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==============================================================================
 -- 3. FUNGSI KEAMANAN & HELPER ADMIN (DENGAN search_path AMAN DARI HIJACKING)
 -- ==============================================================================
@@ -343,6 +357,7 @@ ALTER TABLE public.history_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.phenomena ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.myths ENABLE ROW LEVEL SECURITY;
 
 -- 5.1 Policies: public.admin_users (Zero Anon Access + Anti Self-Escalation)
 REVOKE ALL ON TABLE public.admin_users FROM PUBLIC, anon;
@@ -471,9 +486,9 @@ CREATE POLICY "Admins can modify ships"
   WITH CHECK (public.is_admin() = true);
 
 -- 5.7 Revokasi Hak Modifikasi dari Anon & Publik (Anti-Jebol REST API)
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.admin_users FROM anon, PUBLIC;
-GRANT SELECT ON public.planets, public.history_events, public.phenomena, public.questions, public.ships TO anon, authenticated;
-GRANT ALL ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.admin_users TO authenticated;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.admin_users FROM anon, PUBLIC;
+GRANT SELECT ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths TO anon, authenticated;
+GRANT ALL ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.admin_users TO authenticated;
 
 
 -- ==============================================================================

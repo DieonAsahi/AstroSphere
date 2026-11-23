@@ -1,58 +1,232 @@
 <script setup>
-// Panduan kontrol bergambar (dipakai di layar "Cara terbang" dan menu Kontrol). Label tombol mengikuti pemetaan pemain.
+// Panduan kontrol bergambar lengkap (dipakai di modal jeda dan profil).
+// Label tombol mengikuti pemetaan aksi pemain.
 import { computed, ref } from 'vue';
 import { store } from '~/composables/useGame.js';
 import { resolveKeymap, keyLabel } from '~/data/keymap.js';
+
 const props = defineProps({ compact: Boolean });
 const tab = ref(store.touch ? 'sentuh' : 'keyboard');
 const km = computed(() => resolveKeymap(store.settings.keys));
 const k = (id) => keyLabel(km.value[id]?.[0]);
 </script>
+
 <template>
-  <div class="kg" :class="{ compact }">
-    <div class="seg" role="tablist" aria-label="Jenis kontrol">
-      <button role="tab" :aria-selected="tab === 'keyboard'" :class="{ on: tab === 'keyboard' }" @click="tab = 'keyboard'"><UiIcon name="papan-ketik" :size="18" /> Keyboard</button>
-      <button role="tab" :aria-selected="tab === 'sentuh'" :class="{ on: tab === 'sentuh' }" @click="tab = 'sentuh'"><UiIcon name="sentuh" :size="18" /> Layar sentuh</button>
+  <div class="kg" :class="{ compact, 'tab-sentuh': tab === 'sentuh' }">
+    <!-- TAB SEGMENTED MODERN BERADIUS 10px -->
+    <div class="ctrl-tabs" role="tablist" aria-label="Jenis kontrol">
+      <button
+        type="button"
+        role="tab"
+        class="ctrl-tab-btn"
+        :class="{ active: tab === 'keyboard' }"
+        :aria-selected="tab === 'keyboard'"
+        @click="tab = 'keyboard'"
+      >
+        <UiIcon name="papan-ketik" :size="17" />
+        <span>Keyboard</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="ctrl-tab-btn"
+        :class="{ active: tab === 'sentuh' }"
+        :aria-selected="tab === 'sentuh'"
+        @click="tab = 'sentuh'"
+      >
+        <UiIcon name="sentuh" :size="17" />
+        <span>Layar Sentuh</span>
+      </button>
     </div>
 
-    <div v-if="tab === 'keyboard'" class="kb">
-      <!-- Kolom 1: Kendali Hidung (W A S D) -->
-      <section class="grp">
-        <div class="pad wasd">
-          <div class="r single">
-            <span class="key hl"><b class="kbd">{{ k('up') }}</b><small>Naik</small></span>
+    <!-- TAB KEYBOARD: 4 KELOMPOK LENGKAP -->
+    <div v-if="tab === 'keyboard'" class="kg-grid">
+      <!-- 1. KENDALI HIDUNG -->
+      <section class="kg-card">
+        <div class="kg-card-head">
+          <UiIcon name="target" :size="16" class="head-ic" />
+          <span class="head-title">Kendali Hidung</span>
+        </div>
+        <div class="kg-list">
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('up') }}</b>
+              <span class="sep">/</span>
+              <b class="kbd">↑</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Hidung Naik (Pitch Up)</b>
+              <small class="kg-sub">Arahkan moncong ke atas</small>
+            </div>
           </div>
-          <div class="r">
-            <span class="key"><b class="kbd">{{ k('left') }}</b><small>Kiri</small></span>
-            <span class="key"><b class="kbd">{{ k('down') }}</b><small>Turun</small></span>
-            <span class="key"><b class="kbd">{{ k('right') }}</b><small>Kanan</small></span>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('down') }}</b>
+              <span class="sep">/</span>
+              <b class="kbd">↓</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Hidung Turun (Pitch Down)</b>
+              <small class="kg-sub">Arahkan moncong ke bawah</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('left') }}</b>
+              <span class="sep">/</span>
+              <b class="kbd">←</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Belok Kiri (Yaw)</b>
+              <small class="kg-sub">Arahkan haluan ke kiri</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('right') }}</b>
+              <span class="sep">/</span>
+              <b class="kbd">→</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Belok Kanan (Yaw)</b>
+              <small class="kg-sub">Arahkan haluan ke kanan</small>
+            </div>
           </div>
         </div>
-        <p class="cap">Kendali Hidung</p>
       </section>
 
-      <!-- Kolom 2: Kecepatan & Dorongan (Enter, Shift, Ctrl, Spasi) -->
-      <section class="grp">
-        <div class="pad col">
-          <span class="key wide hl-wide"><b class="kbd">{{ k('forward') }}</b><small>Gas / Maju</small></span>
-          <span class="key wide"><b class="kbd">{{ k('turbo') }}</b><small>Turbo</small></span>
-          <span class="key wide"><b class="kbd">{{ k('brake') }}</b><small>Rem</small></span>
-          <span class="key wide"><b class="kbd sp">{{ k('stop') }}</b><small>Berhenti</small></span>
+      <!-- 2. KECEPATAN & DORONGAN -->
+      <section class="kg-card">
+        <div class="kg-card-head">
+          <UiIcon name="gas" :size="16" class="head-ic" />
+          <span class="head-title">Kecepatan &amp; Dorongan</span>
         </div>
-        <p class="cap">Kecepatan</p>
+        <div class="kg-list">
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd wide-key">{{ k('forward') }}</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Gas / Maju</b>
+              <small class="kg-sub">Akselerasi daya dorong maju</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd wide-key">{{ k('turbo') }}</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Turbo</b>
+              <small class="kg-sub">Tahan untuk melesat cepat</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd wide-key">{{ k('brake') }}</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Rem</b>
+              <small class="kg-sub">Tahan untuk perlambatan laju</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd wide-key sp">{{ k('stop') }}</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Berhenti Seketika</b>
+              <small class="kg-sub">Langsung diam di tempat</small>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <!-- Kolom 3: Pintasan & Pandangan -->
-      <section class="grp">
-        <div class="pad col">
-          <span class="key wide"><b class="kbd">{{ k('map') }}</b><small>Peta</small></span>
-          <span class="key wide"><b class="kbd">Esc</b><small>Menu</small></span>
-          <span class="key wide"><b class="kbd"><UiIcon name="mouse" :size="18" /></b><small>Seret = lihat sekitar</small></span>
+      <!-- 3. KAMERA & SUDUT PANDANG -->
+      <section class="kg-card">
+        <div class="kg-card-head">
+          <UiIcon name="mata" :size="16" class="head-ic" />
+          <span class="head-title">Kamera &amp; Sudut Pandang</span>
         </div>
-        <p class="cap">Pintasan</p>
+        <div class="kg-list">
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">V</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Ganti Sudut Pandang Kamera</b>
+              <small class="kg-sub">Kamera Belakang / Kokpit Pengemudi</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd badge-mouse">Klik Kiri 1&times;</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Aktifkan Kamera Bebas (POV)</b>
+              <small class="kg-sub">Gerakkan kursor/trackpad untuk lihat 360&deg;</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd badge-mouse wide">Klik Kanan 1&times; / Klik Kiri 2&times;</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Matikan Kamera Bebas</b>
+              <small class="kg-sub">Keluar &amp; luruskan kamera ke depan</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. NAVIGASI & MENU -->
+      <section class="kg-card">
+        <div class="kg-card-head">
+          <UiIcon name="orbit" :size="16" class="head-ic" />
+          <span class="head-title">Navigasi &amp; Menu</span>
+        </div>
+        <div class="kg-list">
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('map') }}</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Buka Peta Tata Surya</b>
+              <small class="kg-sub">Pilih tujuan penjelajahan sistem</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">T</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Ganti Target Tujuan</b>
+              <small class="kg-sub">Pilih planet / target berikutnya</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">Esc</b>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Menu Jeda / Kembali</b>
+              <small class="kg-sub">Buka menu opsi atau kembali</small>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
 
+    <!-- TAB LAYAR SENTUH -->
     <div v-else class="tc">
       <div class="phone" aria-hidden="true">
         <div class="stick-mock">
@@ -61,60 +235,223 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
           <span>Analog Kemudi</span>
         </div>
         <div class="throttle-mock">
-          <div class="slots">
-            <span class="slot hot">TURBO</span>
-            <span class="slot act">MAJU</span>
-            <span class="slot">NETRAL</span>
-            <span class="slot warn">REM</span>
+          <div class="mock-speedo">
+            <span class="mock-speedo-val">0 <small>km/s</small></span>
+            <div class="mock-thrust-line"><i /></div>
           </div>
-          <div class="rail"><i class="lever" /></div>
+          <div class="mock-body">
+            <div class="slots">
+              <span class="slot hot">TURBO</span>
+              <span class="slot act">MAJU</span>
+              <span class="slot">NETRAL</span>
+              <span class="slot warn">REM</span>
+            </div>
+            <div class="rail"><i class="lever" /></div>
+          </div>
         </div>
-        <div class="stop-mock">STOP</div>
       </div>
       <ul class="tl">
         <li><b>Kemudi Analog (Kiri)</b> — seret stik analog di kiri bawah untuk mengarahkan haluan moncong pesawat (belok kiri/kanan &amp; naik/turun).</li>
-        <li><b>Tuas Dorong (Kanan)</b> — geser tuas dorong di kanan bawah ke slot Turbo, Maju, Netral, atau Rem. Tekan tombol <b>STOP</b> untuk langsung diam.</li>
-        <li><b>Seret tengah layar</b> dengan tetikus atau jari untuk melihat sekeliling kokpit dengan bebas.</li>
+        <li><b>Tuas Dorong &amp; Speedometer (Kanan)</b> — geser tuas dorong ke atas untuk <b>Maju / Turbo</b>, ke <b>Netral</b> untuk berhenti, atau ke bawah untuk <b>Rem</b>.</li>
+        <li><b>Kamera Bebas &amp; Lihat Sekeliling</b> — ketuk 1× di area tengah layar lalu geser jari untuk melihat 360°, atau ketuk 2× untuk meluruskan kamera kembali ke depan.</li>
+        <li><b>Peta &amp; Menu</b> — ketuk tombol Menu di pojok kanan atas untuk membuka Peta Tata Surya, Misi, dan Hanggar.</li>
       </ul>
     </div>
   </div>
 </template>
+
 <style scoped>
-.kg{display:flex;flex-direction:column;gap:20px;align-items:center}
-.seg button{display:inline-flex;align-items:center;gap:6px}
-.kb{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;width:100%}
-.grp{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 18px 12px;border-radius:var(--r);background:var(--surface-2);min-width:150px}
-.pad{display:flex;flex-direction:column;gap:8px;align-items:center}
-.pad .r{display:flex;gap:8px}
-.pad.wasd .r.single{justify-content:center}
-.key{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px}
-.key .kbd{min-width:48px;height:46px;font-size:17px;border-radius:11px}
-.key.hl .kbd{background:var(--blue);border-color:var(--blue-d)}
-.key.wide.hl-wide .kbd{background:var(--blue);border-color:var(--blue-d)}
-.key small{font-size:12px;color:var(--muted)}
-.pad.col{flex-direction:column;gap:8px;align-items:stretch}
-.key.wide{flex-direction:row;gap:10px;justify-content:flex-start}
-.key.wide .kbd{min-width:70px;height:40px;font-size:15px}
-.key.wide .kbd.sp{min-width:110px}
-.key.wide small{font-size:13.5px;color:var(--text)}
-.cap{font-family:var(--display);font-weight:500;font-size:14px;color:var(--faint)}
-.tc{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center}
+.kg{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  align-items:center;
+  width:100%;
+}
+
+/* TAB SEGMENTED MODERN */
+.ctrl-tabs{
+  display:inline-flex;
+  padding:4px;
+  gap:6px;
+  border-radius:10px;
+  background:rgba(11,16,36,.85);
+  border:1px solid rgba(148,174,255,.16);
+}
+.ctrl-tab-btn{
+  min-height:36px;
+  padding:0 16px;
+  border-radius:8px;
+  font-size:13.5px;
+  font-weight:500;
+  font-family:var(--display);
+  color:var(--muted);
+  background:transparent;
+  border:none;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.ctrl-tab-btn:hover{
+  color:#fff;
+  background:rgba(255,255,255,.05);
+}
+.ctrl-tab-btn.active{
+  background:var(--blue);
+  color:#fff;
+  box-shadow:0 2px 10px rgba(37,99,235,.4);
+}
+
+/* GRID 4 KELOMPOK KONTROL */
+.kg-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+  width:100%;
+}
+
+.kg-card{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:14px 16px;
+  border-radius:12px;
+  background:rgba(11,16,36,.65);
+  border:1px solid rgba(148,174,255,.14);
+}
+.kg-card-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-bottom:6px;
+  border-bottom:1px solid rgba(148,174,255,.1);
+}
+.head-ic{
+  color:#38bdf8;
+  flex:none;
+}
+.head-title{
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:600;
+  color:#fff;
+  letter-spacing:.02em;
+}
+
+.kg-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.kg-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:36px;
+}
+
+.kg-keys{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  flex:none;
+}
+.sep{
+  font-size:11px;
+  color:rgba(148,174,255,.4);
+}
+
+.kg-info{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  gap:1px;
+}
+.kg-act{
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:600;
+  color:#fff;
+  line-height:1.2;
+}
+.kg-sub{
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.25;
+}
+
+/* TOMBOL KBD */
+.kbd{
+  min-width:32px;
+  height:28px;
+  line-height:28px;
+  padding:0 6px;
+  font-size:12px;
+  border-radius:7px;
+  text-align:center;
+  box-shadow:none;
+  background:rgba(148,174,255,.1);
+  border:1px solid rgba(148,174,255,.2);
+  color:var(--text);
+}
+.wide-key{
+  min-width:54px;
+}
+.wide-key.sp{
+  min-width:64px;
+}
+
+.badge-mouse{
+  padding:0 8px;
+  font-size:11px;
+  height:28px;
+  line-height:28px;
+  white-space:nowrap;
+  flex:none;
+  background:rgba(59,130,246,.18);
+  border-color:rgba(148,174,255,.28);
+  color:#93c5fd;
+  border-radius:7px;
+}
+.badge-mouse.wide{
+  font-size:10.5px;
+  padding:0 9px;
+}
+
+/* TAB LAYAR SENTUH */
+:global(.kg.tab-sentuh + .small.c),
+:global(.mb:has(.kg.tab-sentuh) > .small.c) {
+  display: none !important;
+}
+.tc{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px 0}
 .phone{position:relative;width:290px;height:154px;border-radius:26px;border:3px solid var(--line-2);background:linear-gradient(160deg,#141d45,#0b1130);flex:none;overflow:hidden}
-.stick-mock{position:absolute;left:20px;bottom:18px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,rgba(22,33,70,.85) 0%,rgba(10,16,38,.95) 100%);border:2px solid rgba(143,176,255,.25);display:grid;place-items:center}
+.stick-mock{position:absolute;left:20px;bottom:22px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,rgba(22,33,70,.85) 0%,rgba(10,16,38,.95) 100%);border:2px solid rgba(143,176,255,.25);display:grid;place-items:center}
 .stick-mock .grid-ring{position:absolute;inset:12px;border-radius:50%;border:1px dashed rgba(143,176,255,.2)}
 .stick-mock .knob{position:relative;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b6cf0 0%,#1e3a8a 100%);box-shadow:0 0 10px rgba(59,108,240,.5)}
-.stick-mock span{position:absolute;bottom:-20px;font-size:10.5px;color:var(--muted);white-space:nowrap}
-.throttle-mock{position:absolute;right:18px;bottom:22px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(16,23,58,.8);border:1px solid rgba(143,176,255,.2)}
-.throttle-mock .slots{display:flex;flex-direction:column;gap:3px}
-.throttle-mock .slot{font-size:9px;font-weight:600;color:var(--faint);letter-spacing:.04em}
-.throttle-mock .slot.hot{color:#ffc947}
+.stick-mock span{position:absolute;bottom:-20px;font-size:10px;font-weight:500;color:var(--muted);white-space:nowrap}
+.throttle-mock{position:absolute;right:18px;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;background:rgba(16,23,58,.88);border:1px solid rgba(143,176,255,.2)}
+.mock-speedo{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+.mock-speedo-val{font-family:var(--display);font-size:10.5px;font-weight:600;color:#fff;line-height:1}
+.mock-speedo-val small{font-size:8px;font-weight:500;color:#38bdf8}
+.mock-thrust-line{width:100%;height:2px;border-radius:2px;background:rgba(148,174,255,.2);overflow:hidden}
+.mock-thrust-line i{display:block;width:32%;height:100%;background:#38bdf8;border-radius:2px}
+.mock-body{display:flex;align-items:center;gap:6px}
+.throttle-mock .slots{display:flex;flex-direction:column;gap:2px}
+.throttle-mock .slot{font-size:8px;font-weight:600;color:var(--faint);letter-spacing:.03em}
+.throttle-mock .slot.hot{color:#f59e0b}
 .throttle-mock .slot.act{color:#60a5fa}
-.throttle-mock .slot.warn{color:#ff6b6b}
-.throttle-mock .rail{position:relative;width:6px;height:68px;border-radius:999px;background:rgba(10,16,38,.9);border:1px solid rgba(143,176,255,.25);overflow:hidden}
-.throttle-mock .lever{position:absolute;left:0;right:0;top:20px;height:12px;border-radius:999px;background:#60a5fa;box-shadow:0 0 6px #60a5fa}
-.stop-mock{position:absolute;right:84px;bottom:14px;padding:2px 7px;border-radius:6px;background:rgba(255,107,107,.18);border:1px solid rgba(255,107,107,.4);color:#ff8585;font-size:9.5px;font-weight:600}
-.tl{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:360px;font-size:14.5px;color:var(--muted)}
-.tl b{color:var(--text);font-weight:500}
-.compact .grp{min-width:0;padding:12px 12px 10px}
-@media (max-width:760px){ .grp{min-width:0;flex:1 1 140px} .key .kbd{min-width:42px;height:42px} }
+.throttle-mock .slot.warn{color:#f87171}
+.throttle-mock .rail{position:relative;width:5px;height:52px;border-radius:999px;background:rgba(10,16,38,.9);border:1px solid rgba(143,176,255,.25);overflow:hidden}
+.throttle-mock .lever{position:absolute;left:0;right:0;top:16px;height:10px;border-radius:999px;background:#60a5fa;box-shadow:0 0 6px #60a5fa}
+.tl{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:360px;font-size:13.5px;color:var(--muted);line-height:1.45}
+.tl b{color:var(--text);font-weight:600}
+
+@media (max-width:760px){
+  .kg-grid{
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+}
 </style>

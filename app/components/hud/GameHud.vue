@@ -150,18 +150,16 @@ const isStickEngaged = computed(() => {
 // -------------------------------------------------------------
 // 2. TUAS DORONG PESAWAT ANTARIKSA (KANAN BAWAH)
 // -------------------------------------------------------------
-const TRACK_HEIGHT = 124; // Tinggi efektif rel tuas (px)
-// Titik acuan Y tuas:
-// 0 px   = TURBO (paling atas)
-// 30 px  = MAJU MAKSIMAL
-// 78 px  = NETRAL / DIAM (garis tengah)
-// 120 px = REM / MUNDUR (bawah)
+const TRACK_HEIGHT = 76; // Tinggi efektif rel tuas (px)
+const HANDLE_HEIGHT = 18;
+const MAX_TRAVEL = TRACK_HEIGHT - HANDLE_HEIGHT; // 58px
+const NEUTRAL_Y = 39; // Titik netral tuas
 
 const throttleState = reactive({
   dragging: false,
   pointerId: null,
   trackRect: null,
-  dragY: 78,
+  dragY: NEUTRAL_Y,
 });
 const trackRef = ref(null);
 
@@ -182,21 +180,22 @@ function onTrackPointerMove(e) {
 function updateThrottleFromPointer(clientY) {
   const rect = throttleState.trackRect || trackRef.value?.getBoundingClientRect();
   if (!rect) return;
-  const relY = Math.max(0, Math.min(TRACK_HEIGHT, clientY - rect.top));
+  const rawY = clientY - rect.top;
+  const relY = Math.max(0, Math.min(MAX_TRAVEL, rawY - HANDLE_HEIGHT / 2));
   throttleState.dragY = relY;
 
-  if (relY <= 14) {
+  if (relY <= 8) {
     // Posisi Paling Atas: Turbo
     game()?.setThrottle?.(1.0);
     game()?.setBoost?.(true);
     game()?.setBrake?.(false);
-  } else if (relY <= 72) {
+  } else if (relY <= NEUTRAL_Y - 6) {
     // Posisi Maju
     game()?.setBoost?.(false);
     game()?.setBrake?.(false);
-    const frac = (72 - relY) / 58; // 0..1
-    game()?.setThrottle?.(Math.max(0.1, frac));
-  } else if (relY <= 88) {
+    const frac = (NEUTRAL_Y - 6 - relY) / (NEUTRAL_Y - 12);
+    game()?.setThrottle?.(Math.max(0.1, Math.min(1.0, frac)));
+  } else if (relY <= NEUTRAL_Y + 6) {
     // Posisi Netral / Diam
     game()?.setBoost?.(false);
     game()?.setBrake?.(false);
@@ -221,20 +220,30 @@ function onTrackPointerUp(e) {
 // Posisi Y visual gagang tuas (sinkron dua arah: keyboard & drag)
 const leverVisualY = computed(() => {
   if (throttleState.dragging) return throttleState.dragY;
-  if (store.hud.boost) return 4;
-  if (store.hud.braking) return 118;
+  if (store.hud.boost) return 1;
+  if (store.hud.braking) return MAX_TRAVEL;
   const thr = store.hud.thr;
   if (thr > 0) {
-    // 0..100 -> dari 78px ke 30px
+    // 0..100 -> dari NEUTRAL_Y (39px) ke 8px
     const ratio = Math.min(1, thr / 100);
-    return 78 - ratio * 48;
+    return NEUTRAL_Y - ratio * (NEUTRAL_Y - 8);
   }
   if (thr < 0) {
-    // 0..-30 -> dari 78px ke 112px
+    // 0..-30 -> dari NEUTRAL_Y (39px) ke MAX_TRAVEL (58px)
     const ratio = Math.min(1, Math.abs(thr) / 30);
-    return 78 + ratio * 34;
+    return NEUTRAL_Y + ratio * (MAX_TRAVEL - NEUTRAL_Y);
   }
-  return 78; // Netral
+  return NEUTRAL_Y; // Netral
+});
+
+// Lebar persentase bar daya dorong mini speedometer
+const thrustBarWidth = computed(() => {
+  if (store.hud.boost) return '100%';
+  if (store.hud.braking) return '40%';
+  const thr = store.hud.thr;
+  if (thr > 0) return `${Math.max(8, Math.min(100, thr))}%`;
+  if (thr < 0) return `${Math.max(8, Math.min(100, Math.abs(thr) * 3))}%`;
+  return '0%';
 });
 
 function handleQuickStop() {
@@ -246,6 +255,16 @@ function handleQuickStop() {
 
 <template>
   <div class="hud" :class="{ off: store.hudOff }">
+    <!-- INDIKATOR MODE KAMERA BEBAS (FREE-LOOK POV) -->
+    <Transition name="fade">
+      <div v-if="store.look?.freeLook" class="free-look-banner hud-el">
+        <span class="free-look-dot" />
+        <span class="free-look-text">
+          <b>Mode Kamera Bebas</b> &bull; Klik kanan 1&times; atau klik kiri 2&times; untuk kembali
+        </span>
+      </div>
+    </Transition>
+
     <!-- TUJUAN DI BAWAH KOMPAS -->
     <div v-if="store.hud.target.id" class="dest hud-el" :class="{ auto: store.autopilot }">
       <button class="who" aria-haspopup="listbox" :aria-expanded="pickOpen" title="Ganti tujuan (T)" @click="togglePick">
@@ -325,62 +344,63 @@ function handleQuickStop() {
       </div>
     </div>
 
-    <!-- 2. TUAS DORONG PESAWAT ANTARIKSA / THROTTLE LEVER (KANAN BAWAH) -->
+    <!-- 2. SPEEDOMETER KOKPIT & TUAS DORONG VERTIKAL (KANAN BAWAH) -->
     <div class="cockpit-throttle-wrap hud-el">
-      <!-- Panel Telemetri Kecepatan Ringkas & Tombol Berhenti Cepat -->
-      <div class="throttle-telemetry">
-        <div class="telemetry-speed">
-          <b class="num">{{ store.hud.speed }}</b>
-          <span class="unit">km/s</span>
+      <!-- Mini Speedometer Digital & Bar Daya Dorong (Atas) -->
+      <div class="mini-speedo">
+        <div class="speedo-readout">
+          <b class="speedo-val">{{ store.hud.speed }}</b>
+          <span class="speedo-unit">km/s</span>
         </div>
-        <div class="telemetry-badge" :class="{ hot: store.hud.boost, warn: store.hud.braking }">
-          {{ status }}
-        </div>
-        <button
-          type="button"
-          class="btn-stop-quick"
-          title="Berhenti seketika (Spasi)"
-          @click="handleQuickStop"
-        >
-          <UiIcon name="rem" :size="13" />
-          <span>Berhenti</span>
-          <kbd v-if="!store.touch">Spasi</kbd>
-        </button>
-      </div>
-
-      <!-- Rel Vertikal & Gagang Tuas Kokpit -->
-      <div
-        class="throttle-track"
-        ref="trackRef"
-        @pointerdown="onTrackPointerDown"
-        @pointermove="onTrackPointerMove"
-        @pointerup="onTrackPointerUp"
-        @pointercancel="onTrackPointerUp"
-      >
-        <div class="track-slots">
-          <span class="slot turbo" :class="{ active: store.hud.boost }">TURBO</span>
-          <span class="slot fwd" :class="{ active: store.hud.thr > 0 && !store.hud.boost }">MAJU</span>
-          <span class="slot neutral" :class="{ active: store.hud.thr === 0 && !store.hud.braking }">NETRAL</span>
-          <span class="slot brake" :class="{ active: store.hud.braking || store.hud.thr < 0 }">REM</span>
-        </div>
-        <div class="track-channel">
+        <div class="thrust-meter">
           <div
-            class="track-glow-bar"
+            class="thrust-meter-fill"
+            :style="{ width: thrustBarWidth }"
             :class="{ turbo: store.hud.boost, brake: store.hud.braking }"
           />
         </div>
-        <!-- Gagang Tuas Kokpit (bergerak otomatis naik/turun sesuai gas/turbo/rem/berhenti & bisa diseret) -->
+      </div>
+
+      <!-- Rel Tuas Dorong Vertikal & Label Slot Bebas Tertindih (Tengah) -->
+      <div class="throttle-body">
+        <div class="slot-column">
+          <span class="slot-label turbo" :class="{ active: store.hud.boost }">TURBO</span>
+          <span class="slot-label fwd" :class="{ active: store.hud.thr > 0 && !store.hud.boost }">MAJU</span>
+          <span class="slot-label neutral" :class="{ active: store.hud.thr === 0 && !store.hud.braking }">NETRAL</span>
+          <span class="slot-label brake" :class="{ active: store.hud.braking || store.hud.thr < 0 }">REM</span>
+        </div>
         <div
-          class="throttle-handle"
-          :style="{ transform: `translateY(${leverVisualY}px)` }"
-          :class="{ dragging: throttleState.dragging, turbo: store.hud.boost, brake: store.hud.braking }"
+          class="throttle-track"
+          ref="trackRef"
+          @pointerdown="onTrackPointerDown"
+          @pointermove="onTrackPointerMove"
+          @pointerup="onTrackPointerUp"
+          @pointercancel="onTrackPointerUp"
         >
-          <div class="handle-grip">
-            <span class="grip-ridge" />
-            <span class="grip-ridge" />
-            <span class="grip-indicator" />
+          <div class="track-channel">
+            <div
+              class="track-glow-bar"
+              :class="{ turbo: store.hud.boost, brake: store.hud.braking }"
+            />
+          </div>
+          <!-- Gagang Tuas Kokpit (bergerak otomatis naik/turun sesuai gas/turbo/rem/berhenti & bisa diseret) -->
+          <div
+            class="throttle-handle"
+            :style="{ transform: `translateY(${leverVisualY}px)` }"
+            :class="{ dragging: throttleState.dragging, turbo: store.hud.boost, brake: store.hud.braking }"
+          >
+            <div class="handle-grip">
+              <span class="grip-ridge" />
+              <span class="grip-ridge" />
+              <span class="grip-indicator" />
+            </div>
           </div>
         </div>
+      </div>
+
+      <!-- Keterangan Cepat Ringkas (Bawah) -->
+      <div class="throttle-hint-box">
+        <small v-if="!store.touch" class="throttle-keys">Enter Gas · Ctrl Rem</small>
       </div>
     </div>
 
@@ -407,9 +427,9 @@ function handleQuickStop() {
 .hud.off .hud-el{opacity:0;pointer-events:none}
 
 /* TUJUAN DI BAWAH KOMPAS */
-.dest{position:absolute;left:50%;top:calc(var(--top) + 64px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:4px 5px 4px 4px;border-radius:999px;background:var(--surface-a);border:1px solid var(--line);white-space:nowrap;z-index:2}
-.who{display:flex;align-items:center;gap:9px;min-height:36px;padding:0 10px 0 12px;border-radius:999px;transition:background .15s}
-.who:hover{background:var(--surface-3)}
+.dest{position:absolute;left:50%;top:calc(var(--top) + 64px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:10px;background:rgba(11,16,36,.88);border:1px solid rgba(148,174,255,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 8px 24px rgba(0,0,0,.45);white-space:nowrap;z-index:2}
+.who{display:flex;align-items:center;gap:9px;min-height:34px;padding:0 10px;border-radius:8px;transition:background .15s}
+.who:hover{background:rgba(255,255,255,.08)}
 .who small{font-size:11.5px;color:var(--faint)}
 .chev{color:var(--muted);transition:transform .2s}.chev.up{transform:rotate(180deg)}
 .pk-back{position:absolute;inset:0;z-index:1}
@@ -429,15 +449,22 @@ function handleQuickStop() {
 .dest .dot{width:10px;height:10px;border-radius:50%}
 .dest .nm{font-family:var(--display);font-weight:500}
 .dest .d{font-size:13px;color:var(--muted)}
-.pill{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border-radius:999px;background:var(--surface-3);font-family:var(--display);font-weight:500;font-size:13px}
-.pill:hover{filter:brightness(1.15)}
-.pill.on{background:var(--star);color:var(--on-star)}
+.pill{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 12px;border-radius:8px;background:rgba(59,130,246,.18);border:1px solid rgba(148,174,255,.25);color:#93c5fd;font-family:var(--display);font-weight:500;font-size:13px;transition:all .15s}
+.pill:hover{background:rgba(59,130,246,.3);color:#fff}
+.pill.on{background:var(--star);color:var(--on-star);border-color:transparent}
 .dest.auto{border-color:rgba(255,201,71,.5)}
 
+/* INDIKATOR MODE KAMERA BEBAS (FREE-LOOK POV) */
+.free-look-banner{position:absolute;top:calc(var(--top) + 16px + var(--safe-t));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:8px;background:rgba(11,16,36,.92);border:1px solid rgba(56,189,248,.45);box-shadow:0 4px 16px rgba(0,0,0,.5),0 0 12px rgba(56,189,248,.2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:25;white-space:nowrap;pointer-events:none}
+.free-look-dot{width:7px;height:7px;border-radius:50%;background:#38bdf8;box-shadow:0 0 8px #38bdf8;animation:pulseDot 1.4s infinite}
+@keyframes pulseDot{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+.free-look-text{font-size:12.5px;color:#e2e8f0;font-weight:400}
+.free-look-text b{color:#38bdf8;font-weight:500}
+
 /* PESAN KEDEKATAN PLANET — ZONA HIJAU (TENGAH ATAS, DI BAWAH KOMPAS) */
-.approach-green-card{position:absolute;left:50%;top:calc(var(--top) + 112px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:8px 16px;border-radius:999px;background:rgba(8,16,36,.92);border:1px solid rgba(74,222,128,.5);box-shadow:0 0 24px rgba(74,222,128,.22),0 4px 14px rgba(0,0,0,.6);backdrop-filter:blur(10px);white-space:nowrap;z-index:4}
+.approach-green-card{position:absolute;left:50%;top:calc(var(--top) + 116px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:8px 16px;border-radius:10px;background:rgba(8,16,36,.92);border:1px solid rgba(74,222,128,.5);box-shadow:0 0 24px rgba(74,222,128,.22),0 4px 14px rgba(0,0,0,.6);backdrop-filter:blur(10px);white-space:nowrap;z-index:4}
 .approach-txt{display:flex;align-items:center;gap:10px}
-.badge-green-zone{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#4ade80;text-transform:uppercase;letter-spacing:.04em;background:rgba(74,222,128,.12);padding:2px 7px;border-radius:999px}
+.badge-green-zone{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#4ade80;text-transform:uppercase;letter-spacing:.04em;background:rgba(74,222,128,.12);padding:2px 7px;border-radius:6px}
 .green-pulsar{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;animation:pulseGreen 1.4s infinite}
 @keyframes pulseGreen{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 .approach-title{font-family:var(--display);font-size:14px;color:#fff}
@@ -457,39 +484,44 @@ function handleQuickStop() {
 .stick-label{font-family:var(--display);font-size:12px;font-weight:500;color:var(--text)}
 .stick-keys{font-size:10.5px;color:var(--faint)}
 
-/* 2. TUAS DORONG PESAWAT ANTARIKSA (KANAN BAWAH) */
-.cockpit-throttle-wrap{position:absolute;right:calc(var(--gap) + var(--safe-r));bottom:calc(var(--gap) + var(--safe-b));display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:var(--r-lg);background:var(--surface-a);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.4);touch-action:none;user-select:none;z-index:3}
-.throttle-telemetry{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:96px}
-.telemetry-speed{display:flex;align-items:baseline;gap:4px}
-.telemetry-speed b{font-size:30px;font-weight:500;line-height:1}
-.telemetry-speed .unit{font-size:12px;color:var(--muted)}
-.telemetry-badge{font-family:var(--display);font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--surface-3);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.telemetry-badge.hot{background:rgba(255,201,71,.2);color:var(--star)}
-.telemetry-badge.warn{background:rgba(255,107,107,.2);color:var(--coral)}
-.btn-stop-quick{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.35);color:#ff8585;font-size:11.5px;font-weight:500;cursor:pointer;transition:background .15s,transform .08s}
-.btn-stop-quick:hover{background:rgba(255,107,107,.25)}
-.btn-stop-quick:active{transform:scale(.95)}
-.btn-stop-quick kbd{font-size:10px;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.4);color:#ffc9c9}
+/* 2. TUAS DORONG PESAWAT ANTARIKSA & MINI SPEEDOMETER (KANAN BAWAH) */
+.cockpit-throttle-wrap{position:absolute;right:calc(var(--gap) + var(--safe-r));bottom:calc(var(--gap) + var(--safe-b));display:flex;flex-direction:column;align-items:center;gap:10px;width:174px;height:auto;padding:14px 16px;border-radius:12px;background:var(--surface-a);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.4);touch-action:none;user-select:none;box-sizing:border-box;z-index:3}
 
-/* Rel & Notches Tuas */
-.throttle-track{position:relative;width:82px;height:140px;display:flex;align-items:center;justify-content:center;cursor:ns-resize}
-.track-slots{position:absolute;left:2px;top:4px;bottom:4px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;pointer-events:none}
-.slot{font-size:9.5px;font-weight:500;color:var(--faint);letter-spacing:.04em;transition:color .15s}
-.slot.active{color:var(--star)}
-.slot.turbo.active{color:#ff8080}
-.slot.brake.active{color:#ff6b6b}
-.track-channel{position:absolute;right:18px;top:6px;bottom:6px;width:10px;border-radius:999px;background:rgba(10,16,38,.85);border:1px solid rgba(143,176,255,.2);box-shadow:inset 0 2px 4px rgba(0,0,0,.7);overflow:hidden}
+/* Mini Speedometer (Atas) */
+.mini-speedo{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%}
+.speedo-readout{display:flex;align-items:baseline;justify-content:center;gap:3px}
+.speedo-val{font-size:22px;font-weight:600;line-height:1;color:var(--text);letter-spacing:-.02em}
+.speedo-unit{font-size:11px;font-weight:500;color:var(--muted)}
+.thrust-meter{width:100%;height:3px;border-radius:999px;background:rgba(148,174,255,.15);overflow:hidden;margin-bottom:6px}
+.thrust-meter-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#3b82f6,#60a5fa);box-shadow:0 0 6px rgba(59,130,246,.6);transition:width .15s ease-out}
+.thrust-meter-fill.turbo{background:linear-gradient(90deg,#f59e0b,#ef4444);box-shadow:0 0 8px rgba(245,158,11,.8)}
+.thrust-meter-fill.brake{background:linear-gradient(90deg,#ef4444,#dc2626);box-shadow:0 0 6px rgba(239,68,68,.8)}
+
+/* Rel & Notches Tuas (Tengah) */
+.throttle-body{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;margin:0}
+.slot-column{display:flex;flex-direction:column;justify-content:space-between;height:76px;text-align:right;pointer-events:none}
+.slot-label{font-size:9.5px;font-weight:500;color:var(--faint);letter-spacing:.04em;text-align:right;line-height:1;transition:color .15s}
+.slot-label.active{color:var(--star)}
+.slot-label.turbo.active{color:#ff8080}
+.slot-label.brake.active{color:#ff6b6b}
+
+.throttle-track{position:relative;width:32px;height:76px;display:flex;align-items:center;justify-content:center;cursor:ns-resize;flex:none}
+.track-channel{position:absolute;left:50%;top:0;bottom:0;width:6px;transform:translateX(-50%);border-radius:999px;background:rgba(10,16,38,.85);border:1px solid rgba(143,176,255,.2);box-shadow:inset 0 2px 4px rgba(0,0,0,.7);overflow:hidden}
 .track-glow-bar{position:absolute;inset:0;background:linear-gradient(to top,#3b6cf0,#60a5fa);opacity:.4}
 .track-glow-bar.turbo{background:linear-gradient(to top,#f59e0b,#ef4444);opacity:.85}
 .track-glow-bar.brake{background:linear-gradient(to bottom,#ef4444,#b91c1c);opacity:.85}
 
 /* Gagang Tuas Kokpit */
-.throttle-handle{position:absolute;right:3px;top:0;width:40px;height:24px;border-radius:6px;background:linear-gradient(180deg,#3b82f6 0%,#1d4ed8 100%);border:1px solid rgba(255,255,255,.4);box-shadow:0 3px 8px rgba(0,0,0,.6),0 0 10px rgba(59,130,246,.5);display:flex;align-items:center;justify-content:center;transition:transform .08s ease-out;pointer-events:none}
-.throttle-handle.turbo{background:linear-gradient(180deg,#f59e0b 0%,#dc2626 100%);box-shadow:0 3px 12px rgba(220,38,38,.6),0 0 14px #f59e0b}
-.throttle-handle.brake{background:linear-gradient(180deg,#ef4444 0%,#991b1b 100%);box-shadow:0 3px 10px rgba(239,68,68,.5)}
-.handle-grip{display:flex;align-items:center;gap:3px}
-.grip-ridge{width:2px;height:12px;background:rgba(255,255,255,.45);border-radius:1px}
-.grip-indicator{width:4px;height:4px;border-radius:50%;background:#fff;margin-left:2px}
+.throttle-handle{position:absolute;left:50%;top:0;width:28px;height:18px;margin-left:-14px;border-radius:5px;background:linear-gradient(180deg,#3b82f6 0%,#1d4ed8 100%);border:1px solid rgba(255,255,255,.4);box-shadow:0 3px 8px rgba(0,0,0,.6),0 0 8px rgba(59,130,246,.5);display:flex;align-items:center;justify-content:center;transition:transform .08s ease-out;pointer-events:none}
+.throttle-handle.turbo{background:linear-gradient(180deg,#f59e0b 0%,#dc2626 100%);box-shadow:0 3px 10px rgba(220,38,38,.6),0 0 10px #f59e0b}
+.throttle-handle.brake{background:linear-gradient(180deg,#ef4444 0%,#991b1b 100%);box-shadow:0 3px 8px rgba(239,68,68,.5)}
+.handle-grip{display:flex;align-items:center;gap:2px}
+.grip-ridge{width:1.5px;height:8px;background:rgba(255,255,255,.45);border-radius:1px}
+.grip-indicator{width:3px;height:3px;border-radius:50%;background:#fff;margin-left:1px}
+
+/* Keterangan Bawah */
+.throttle-hint-box{display:flex;align-items:center;justify-content:center;width:100%;margin-top:4px}
+.throttle-keys{font-size:10px;color:var(--faint);white-space:nowrap}
 
 /* Notifikasi lainnya */
 .msg{position:absolute;left:50%;top:calc(50% + 48px);transform:translateX(-50%);padding:6px 16px;border-radius:999px;background:var(--surface-a);font-family:var(--display);font-weight:500;white-space:nowrap}
@@ -501,13 +533,15 @@ function handleQuickStop() {
 
 /* Penyesuaian Layar Kecil / HP */
 @media (max-width:768px){
-  .cockpit-stick-wrap{left:calc(10px + var(--safe-l));bottom:calc(10px + var(--safe-b));padding:6px}
+  .cockpit-stick-wrap{left:calc(10px + var(--safe-l));bottom:calc(10px + var(--safe-b));padding:6px;height:auto}
   .stick-base{width:80px;height:80px}
   .stick-knob{width:36px;height:36px;margin-left:-18px;margin-top:-18px}
-  .cockpit-throttle-wrap{right:calc(10px + var(--safe-r));bottom:calc(10px + var(--safe-b));padding:6px 10px;gap:8px}
-  .telemetry-speed b{font-size:24px}
-  .throttle-telemetry{min-width:76px}
-  .throttle-track{width:70px;height:124px}
+  .cockpit-throttle-wrap{right:calc(10px + var(--safe-r));bottom:calc(10px + var(--safe-b));width:138px;height:auto;padding:8px 10px}
+  .speedo-val{font-size:18px}
+  .throttle-body{gap:12px;margin:2px 0}
+  .slot-column{height:68px}
+  .throttle-track{width:28px;height:68px}
+  .throttle-handle{width:24px;height:16px;margin-left:-12px}
   .approach-green-card{left:50%;top:calc(var(--top) + 104px + var(--safe-t));transform:translateX(-50%);padding:6px 12px;gap:8px}
   .approach-title{font-size:13px}
 }

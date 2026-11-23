@@ -11,6 +11,8 @@ import {
   registerUser,
   loginUser,
   logoutUser,
+  resetAllGameData,
+  deleteUserAccount,
 } from '~/composables/useGame.js';
 import { PLANETS, NAME_OF } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
@@ -35,7 +37,7 @@ const tab = computed({
 
 const name = computed(() => store.account.loggedIn ? store.account.name : 'Penjelajah Tamu');
 const visited = computed(() => store.discovered.filter((d) => PLANETS.some((p) => p.id === d)).length);
-const perfect = computed(() => PLANETS.filter((p) => (P.best[p.id] ?? 0) >= quizMax()).length);
+const perfect = computed(() => PLANETS.filter((p) => (P.best[p.id] ?? 0) >= quizMax(p.id)).length);
 const stars = (s) => Math.round((s ?? 0) / POINTS_PER_QUESTION);
 const ledger = computed(() => [...P.ledger].reverse().slice(0, 6));
 
@@ -97,7 +99,8 @@ async function handleAuthSubmit() {
   authForm.password = '';
   const act = isReg ? 'Akun baru berhasil dibuat' : 'Berhasil masuk akun';
   authForm.success = `${act}! Progres lokal Anda telah digabungkan ke awan Supabase.`;
-  showToast(`Selamat datang, <b>${store.account.name}</b>!`, 3200);
+  const safeName = (store.account.name || '').replace(/[<>&"]/g, '');
+  showToast(`Selamat datang, <b>${safeName}</b>!`, 3200);
 }
 
 async function handleLogout() {
@@ -110,11 +113,61 @@ function triggerManualSync() {
   showToast('Progres berhasil disinkronkan ke awan Supabase!', 2200);
 }
 
+const confirmDialog = reactive({
+  show: false,
+  type: '', // 'reset_data' | 'delete_account'
+  title: '',
+  message: '',
+  confirmLabel: '',
+  busy: false,
+});
+
+function promptResetData() {
+  confirmDialog.type = 'reset_data';
+  confirmDialog.title = 'Mulai Ulang Permainan?';
+  confirmDialog.message = 'Seluruh progres bintang, armada pesawat, skor kuis, jurnal, dan posisi kapal akan dihapus total sehingga permainan dimulai ulang dari awal. Lanjutkan?';
+  confirmDialog.confirmLabel = 'Hapus Semua & Reset';
+  confirmDialog.busy = false;
+  confirmDialog.show = true;
+}
+
+function promptDeleteAccount() {
+  confirmDialog.type = 'delete_account';
+  confirmDialog.title = 'Hapus Akun Permanen?';
+  confirmDialog.message = 'Akun serta seluruh progres permainanmu di awan akan dihapus secara permanen dan tidak dapat dipulihkan. Yakin ingin menghapus akun?';
+  confirmDialog.confirmLabel = 'Hapus Akun Permanen';
+  confirmDialog.busy = false;
+  confirmDialog.show = true;
+}
+
+function closeConfirmDialog() {
+  if (confirmDialog.busy) return;
+  confirmDialog.show = false;
+}
+
+async function executeConfirmDialog() {
+  if (confirmDialog.busy) return;
+  confirmDialog.busy = true;
+  try {
+    if (confirmDialog.type === 'reset_data') {
+      await resetAllGameData();
+    } else if (confirmDialog.type === 'delete_account') {
+      await deleteUserAccount();
+    }
+    confirmDialog.show = false;
+  } catch (err) {
+    console.error(err);
+    showToast('Terjadi kesalahan saat memproses permintaan.', 3000);
+  } finally {
+    confirmDialog.busy = false;
+  }
+}
+
 const open = ref({ 0: true });
 const FAQ = [
   ['Apa itu AstroSphere?', 'Game belajar tata surya di browser. Terbangkan pesawat, singgahi delapan planet, lihat fenomenanya, telusuri sejarah eksplorasi, lalu uji dirimu lewat kuis.'],
   ['Bagaimana cara ke planet tertentu?', 'Buka Peta (tombol M atau lewat menu), pilih planet, lalu tekan "Terbang ke sini". Pesawat terbang otomatis dan berhenti sendiri saat tiba.'],
-  ['Bagaimana mendapat bintang?', 'Kerjakan kuis planet: 3 soal, 50 bintang per jawaban benar. Bintang hanya bertambah kalau skormu lebih tinggi dari skor terbaik sebelumnya. Jawaban salah tidak mengurangi bintang.'],
+  ['Bagaimana mendapat bintang?', 'Kerjakan kuis planet: 4 soal, 50 bintang per jawaban benar. Bintang hanya bertambah kalau skormu lebih tinggi dari skor terbaik sebelumnya. Jawaban salah tidak mengurangi bintang.'],
   ['Untuk apa bintang?', 'Membuka pesawat baru di Hanggar: Orion Glider 300 bintang, Nova Voyager 700 bintang.'],
   ['Apakah progres tersimpan di awan?', 'Ya! Saat Anda mendaftar atau masuk akun, seluruh bintang, pesawat, dan catatan perjalanan tersimpan otomatis di basis data awan Supabase. Mode Tamu tetap tersimpan di perangkat ini.'],
   ['Apakah ukuran dan jaraknya asli?', 'Ukuran planet dibandingkan satu sama lain sudah sesuai aslinya. Jarak antarplanet dipadatkan dan Matahari diperkecil agar semuanya bisa dijelajahi.'],
@@ -190,20 +243,43 @@ const FAQ = [
           <div class="ctl card flat">
             <div class="ch"><span class="ic"><UiIcon name="papan-ketik" :size="22" /></span><div><h3 class="h3">Keyboard</h3><p class="small">Tekan "Ubah", lalu tekan tombol baru. Esc untuk batal.</p></div>
               <button class="btn ghost sm" @click="resetKeys"><UiIcon name="ulang" :size="16" />Bawaan</button></div>
-            <div v-for="a in ACTIONS" :key="a.id" class="kr" :class="{ cap: cap === a.id }">
+            <div v-for="a in ACTIONS.filter(x => !['turnL', 'turnR'].includes(x.id))" :key="a.id" class="kr" :class="{ cap: cap === a.id }">
               <div class="kl"><b>{{ a.label }}</b><small>{{ a.sub }}</small></div>
               <span class="ks"><template v-if="cap === a.id"><b class="kbd wait">Tekan tombol…</b></template><b v-else v-for="l in keyLabels(km[a.id])" :key="l" class="kbd">{{ l }}</b></span>
               <button class="btn sm line" @click="cap === a.id ? endCapture() : startCapture(a.id)">{{ cap === a.id ? 'Batal' : 'Ubah' }}</button>
             </div>
-            <div class="kr fixed"><div class="kl"><b>Menu / jeda</b><small>Tidak bisa diubah</small></div><span class="ks"><b class="kbd">Esc</b></span><span /></div>
-            <div class="kr fixed"><div class="kl"><b>Lihat sekeliling</b><small>Kursor tidak mengemudikan pesawat</small></div><span class="ks"><b class="kbd">Seret mouse</b></span><span /></div>
+            <div class="kr fixed">
+              <div class="kl"><b>Ganti Sudut Pandang Kamera</b><small>Beralih antara Kamera Belakang dan Kokpit Pengemudi</small></div>
+              <span class="ks"><b class="kbd">V</b></span>
+              <span />
+            </div>
+            <div class="kr fixed">
+              <div class="kl"><b>Ganti Target Tujuan</b><small>Arahkan kompas target ke planet/destinasi berikutnya</small></div>
+              <span class="ks"><b class="kbd">T</b></span>
+              <span />
+            </div>
+            <div class="kr fixed">
+              <div class="kl"><b>Menu Jeda / Kembali</b><small>Buka menu jeda opsi permainan atau kembali</small></div>
+              <span class="ks"><b class="kbd">Esc</b></span>
+              <span />
+            </div>
+            <div class="kr fixed">
+              <div class="kl"><b>Aktifkan Kamera Bebas (POV)</b><small>Atur sudut pandang 360° dengan gerak mouse/trackpad tanpa tahan klik</small></div>
+              <span class="ks"><b class="kbd kbd-mouse">Klik Kiri 1×</b></span>
+              <span />
+            </div>
+            <div class="kr fixed">
+              <div class="kl"><b>Matikan Kamera Bebas</b><small>Keluar dari mode bebas dan luruskan kamera kembali ke depan pesawat</small></div>
+              <span class="ks"><b class="kbd kbd-mouse wide">Klik Kanan 1× / Klik Kiri 2×</b></span>
+              <span />
+            </div>
           </div>
           <div class="ctl card flat">
             <div class="ch"><span class="ic"><UiIcon name="sentuh" :size="22" /></span><div><h3 class="h3">Layar sentuh</h3></div></div>
             <div class="tcs">
               <div class="tile"><UiIcon name="target" :size="24" /><b>Kemudi Analog</b><small>Sentuh stik analog di kiri bawah untuk mengarahkan moncong pesawat (W/S Naik-Turun, A/D Belok).</small></div>
-              <div class="tile"><UiIcon name="gas" :size="24" /><b>Tuas Dorong &amp; Rem</b><small>Tarik tuas dorong di kanan bawah untuk mengatur maju (Enter), turbo (Shift), dan rem (Ctrl).</small></div>
-              <div class="tile"><UiIcon name="mata" :size="24" /><b>Lihat sekeliling</b><small>Geser area tengah layar dengan tetikus atau jari.</small></div>
+              <div class="tile"><UiIcon name="gas" :size="24" /><b>Tuas Dorong &amp; Rem</b><small>Tarik tuas dorong di kanan bawah untuk mengatur maju (Enter), turbo (Alt), dan rem (Ctrl).</small></div>
+              <div class="tile"><UiIcon name="mata" :size="24" /><b>Lihat Sekeliling</b><small>Geser area tengah layar dengan tetikus atau jari untuk melihat sekeliling kokpit.</small></div>
             </div>
           </div>
           <div class="ctl card flat">
@@ -298,6 +374,41 @@ const FAQ = [
               </div>
             </div>
           </div>
+
+          <!-- SEKSI ZONA BERBAHAYA / KELOLA DATA DI BAGIAN BAWAH TAB AKUN & AWAN -->
+          <div class="danger-panel card flat">
+            <div class="ch">
+              <span class="ic ic-danger"><UiIcon name="silang" :size="20" /></span>
+              <div>
+                <h3 class="h3 text-danger">Zona Berbahaya / Kelola Data</h3>
+                <p class="small">Pengaturan permanen data lokal dan akun permainan.</p>
+              </div>
+            </div>
+
+            <div class="danger-actions-list">
+              <!-- 1. HAPUS SEMUA DATA & MULAI ULANG (SEMUA PEMAIN) -->
+              <div class="danger-action-row">
+                <div class="da-info">
+                  <b class="da-title">Hapus Semua Data &amp; Mulai Ulang</b>
+                  <p class="da-desc">Mereset total seluruh bintang, armada, skor kuis, jurnal, posisi kapal, dan panduan dari awal.</p>
+                </div>
+                <button type="button" class="btn sm danger line" @click="promptResetData">
+                  Reset Data
+                </button>
+              </div>
+
+              <!-- 2. HAPUS AKUN PERMANEN (HANYA MUNCUL JIKA SUDAH LOGIN) -->
+              <div v-if="store.account.loggedIn" class="danger-action-row">
+                <div class="da-info">
+                  <b class="da-title text-danger">Hapus Akun Permanen</b>
+                  <p class="da-desc">Menghapus akun awan dan seluruh progres permainan di Supabase secara permanen tanpa sisa.</p>
+                </div>
+                <button type="button" class="btn sm danger" @click="promptDeleteAccount">
+                  Hapus Akun
+                </button>
+              </div>
+            </div>
+          </div>
         </template>
 
         <!-- FAQ -->
@@ -318,6 +429,32 @@ const FAQ = [
         </template>
       </div>
     </section>
+
+    <!-- POPUP KONFIRMASI RESET / HAPUS AKUN -->
+    <Transition name="fade">
+      <div v-if="confirmDialog.show" class="prof-confirm-overlay" @click.self="closeConfirmDialog">
+        <div class="prof-confirm-dialog card">
+          <div class="pcd-icon" :class="{ danger: confirmDialog.type === 'delete_account' }">
+            <UiIcon :name="confirmDialog.type === 'delete_account' ? 'silang' : 'info'" :size="24" />
+          </div>
+          <h3 class="pcd-title">{{ confirmDialog.title }}</h3>
+          <p class="pcd-msg">{{ confirmDialog.message }}</p>
+          <div class="pcd-acts">
+            <button type="button" class="btn sm line" :disabled="confirmDialog.busy" @click="closeConfirmDialog">
+              Batal
+            </button>
+            <button
+              type="button"
+              class="btn sm danger"
+              :disabled="confirmDialog.busy"
+              @click="executeConfirmDialog"
+            >
+              {{ confirmDialog.busy ? 'Memproses…' : confirmDialog.confirmLabel }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -370,6 +507,8 @@ const FAQ = [
 .ks{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .kbd.wait{background:var(--blue);border-color:var(--blue-d);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.55}}
+.kbd-mouse{padding:0 8px;font-size:11px;white-space:nowrap;color:#93c5fd;background:rgba(59,130,246,.18);border-color:rgba(148,174,255,.28);border-radius:6px}
+.kbd-mouse.wide{font-size:10.5px;padding:0 9px}
 .tcs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:4px}
 .tcs .tile{display:flex;flex-direction:column;gap:6px;color:var(--sky)}
 .tcs b{color:var(--text);font-weight:500;font-size:15px}
@@ -412,4 +551,119 @@ const FAQ = [
 .credits li span{display:inline-block;min-width:120px;color:var(--text)}
 @media (max-width:860px){ .rows{grid-template-columns:1fr} .fleet,.tcs{grid-template-columns:1fr} .back{width:100%} }
 @media (max-width:560px){ .kr{grid-template-columns:1fr auto;row-gap:6px} .kr>.btn{grid-column:1/-1;justify-self:start} .kr.fixed>span:last-child{display:none} .kpi{padding:8px 12px} }
+
+/* ZONA BERBAHAYA DI PROFIL */
+.danger-panel{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  padding:20px;
+  background:rgba(239,68,68,.04);
+  border:1px solid rgba(239,68,68,.2);
+  border-radius:var(--r);
+  margin-top:16px;
+}
+.ic-danger{
+  background:rgba(239,68,68,.14) !important;
+  color:#f87171 !important;
+}
+.text-danger{
+  color:#fca5a5 !important;
+}
+.danger-actions-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.danger-action-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:12px 14px;
+  border-radius:var(--r-sm);
+  background:var(--surface-2);
+  border:1px solid rgba(148,174,255,.1);
+}
+.da-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.da-title{
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:600;
+  color:#fff;
+}
+.da-desc{
+  font-size:12px;
+  color:var(--faint);
+  line-height:1.4;
+}
+
+/* POPUP KONFIRMASI */
+.prof-confirm-overlay{
+  position:fixed;
+  inset:0;
+  z-index:90;
+  background:rgba(6,10,26,.75);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.prof-confirm-dialog{
+  max-width:400px;
+  width:100%;
+  padding:22px;
+  border-radius:16px;
+  background:#0e1533;
+  border:1px solid rgba(148,174,255,.25);
+  box-shadow:0 18px 40px rgba(0,0,0,.65);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:12px;
+}
+.pcd-icon{
+  width:46px;
+  height:46px;
+  border-radius:12px;
+  background:rgba(56,189,248,.12);
+  color:#38bdf8;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.pcd-icon.danger{
+  background:rgba(239,68,68,.14);
+  color:#f87171;
+}
+.pcd-title{
+  font-family:var(--display);
+  font-size:17px;
+  font-weight:600;
+  color:#fff;
+  margin:0;
+}
+.pcd-msg{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.55;
+  margin:0;
+}
+.pcd-acts{
+  display:flex;
+  gap:10px;
+  width:100%;
+  margin-top:6px;
+}
+.pcd-acts button{
+  flex:1;
+  min-height:38px;
+}
 </style>

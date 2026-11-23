@@ -36,7 +36,7 @@ Butuh browser dengan WebGL2 untuk bagian 3D. Bila dunia 3D gagal dimuat, layar "
 | **Fenomena per planet** | Merkurius: sehari > setahun · Venus: Matahari terbit di barat · Bumi: gerhana Matahari & Bulan (lab) · Mars: musim · Jupiter: hari tersingkat · Saturnus: cincin "menghilang" · Uranus: planet menggelinding · Neptunus: setahun = 165 tahun |
 | **Lab gerhana** | Diagram langsung (penampang bayangan Bumi / cakram Matahari), tahap berwarna di bilah waktu (penumbra · sebagian · total), satu fakta "kenapa". Bulan saat gerhana total tetap bertekstur dengan cahaya tembaga dari atmosfer Bumi (lebih terang di tepi umbra, pinggiran kebiruan ozon) |
 | **Sejarah** | Lini masa per planet, filter era, titik lokasi di permukaan (ikut rotasi), lintasan flyby/orbit. Seluruh kartu bisa digulir. Bumi juga memuat **kartu kenangan** Apollo 1 (1967), Challenger (1986), dan Columbia (2003): apa yang terjadi, penyebab, pelajaran keselamatan, dan nama awak — bahasa hormat & ramah anak, tanpa titik/lintasan di 3D |
-| **Kuis** | Terbuka per planet setelah planet itu ditemukan (yang belum: terkunci + tombol *Terbang ke …*). 3 soal per planet, jawaban langsung dinilai, urutan pilihan diacak, hasil berupa 0–3 bintang. Hadiah = maks(0, skor baru − skor terbaik) |
+| **Kuis** | Terbuka per planet setelah planet itu ditemukan (yang belum: terkunci + tombol *Terbang ke …*). 4 soal per planet, jawaban langsung dinilai, urutan pilihan diacak, hasil berupa 0–4 bintang. Hadiah = maks(0, skor baru − skor terbaik) |
 | **Tebak dulu** | Sebelum fenomena diputar, pemain menebak (3 pilihan) → mengamati simulasi → jawaban & penjelasan dibuka (planet: setelah ± 6 detik pengamatan; gerhana: saat mencapai fase total). Judul fenomena yang belum ditebak tampil sebagai pertanyaan supaya jawabannya tidak bocor. Tebakan benar +10 bintang (satu kesempatan per fenomena) |
 | **Mitos atau Fakta?** | Di panel Kuis: 6 pernyataan per ronde dari 24 (miskonsepsi umum & fakta yang jarang diketahui, dengan sumber); tiap pernyataan terbuka setelah benda terkaitnya ditemukan. Jawab dengan tombol, geser kartu (kiri Mitos, kanan Fakta), atau ← / →. Pernyataan baru yang dijawab benar +10 bintang |
 | **Tahukah kamu?** | Kartu koleksi per benda langit (16 benda, 2–3 kartu: judul singkat + satu kalimat + sumber) di **Jurnal**, terbuka setelah benda ditemukan. Lencana angka di tombol menu & ubin Jurnal untuk kartu yang belum dibaca; pintasan dari halaman Planet. Kartu baru +5 bintang |
@@ -47,20 +47,20 @@ Butuh browser dengan WebGL2 untuk bagian 3D. Bila dunia 3D gagal dimuat, layar "
 
 ## Kontrol
 
-Keyboard (bisa diubah di **Profil → Kontrol**): `W`/`Enter` maju, `S` mundur, `A`/`D` geser, `Q`/`E` putar kiri/kanan,
-`↑`/`↓` naik/turun, `Shift` turbo, `Ctrl` rem, `Spasi` berhenti, `M` peta, `Esc` menu. Kursor **tidak** mengemudikan
-pesawat — seret mouse hanya untuk melihat sekeliling, roda mouse untuk zoom.
+Keyboard (bisa diubah di **Profil → Kontrol**): `Enter` gas / maju, `Ctrl` rem, `Alt` turbo, `W`/`S` hidung naik/turun (pitch),
+`A`/`D` belok kiri/kanan (yaw tanpa geser samping), `Spasi` berhenti, `V` ganti kamera belakang/kokpit, `M` peta, `T` ganti target, `Esc` menu jeda.
+Kursor: **Klik Kiri 1×** untuk masuk Kamera Bebas (melihat sekeliling bebas 360°), **Klik Kanan 1×** atau **Klik Kiri 2×** untuk keluar & luruskan kamera. Roda mouse untuk zoom.
 
-Layar sentuh: joystick analog muncul di titik sentuh sisi kiri dan mengikuti jari; tombol **Gas**, **Turbo**, **Rem** di kanan bawah;
-geser sisi kanan untuk melihat sekeliling.
+Layar sentuh: joystick analog kemudi di sisi kiri bawah; tuas dorong kokpit & speedometer di kanan bawah (geser tuas untuk gas, turbo, atau rem);
+geser layar untuk melihat sekeliling.
 
 Karena `Ctrl` dipakai sebagai rem, browser akan bertanya dulu sebelum tab ditutup saat sedang terbang (mencegah `Ctrl+W` tak sengaja).
 
 ## Desain
 
-- Tema "mainan antariksa": navy malam `#060a1a`, biru roket `#3b6cf0`, kuning bintang `#ffc947`; font **Fredoka** (judul, tombol, angka) + **Lexend** (teks).
-- Tombol pil besar yang terasa bisa ditekan, kalimat biasa (bukan huruf kapital berjarak), sedikit teks.
-- Panel padat tanpa `backdrop-filter` (blur di atas kanvas WebGL mahal). Rasio piksel maksimum 1,5. Saat jeda/kuis/peta/profil, dunia dirender ± 20 fps.
+- Tipografi 100% konsisten memakai font **Poppins** (bobot 400, 500, maksimal 600).
+- Desain modern antariksa: tata letak terstruktur elegan, kartu kompak dengan sudut melengkung proporsional (bukan pil oval mainan), dan palet kosmik gelap (`#060a1a`, `#0e1533`) berpadu dengan aksen biru dan cyan (`#38bdf8`, `#3b82f6`).
+- Panel padat dengan pencahayaan dan kontras tajam. Rasio piksel maksimum 1,5. Saat jeda/kuis/peta/profil, dunia dirender ± 20 fps.
 - Token warna & komponen dasar ada di `app/assets/css/main.css`.
 
 ## Latar layar awal

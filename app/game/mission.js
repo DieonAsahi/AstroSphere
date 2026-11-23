@@ -8,9 +8,9 @@ import { texturedPlanet } from './system.js';
 import { clamp, lerp } from './util.js';
 import { APOLLO13 } from '../data/missions.js';
 
-const EARTH_R = 30, MOON_R = 10, MOON = new THREE.Vector3(420, 0, 0);
-const PATH = [[14, 1, -32], [60, 1.5, -44], [130, 1.5, -28], [210, 1.5, 0], [300, 1.5, 28], [372, 1.2, 34], [410, .8, 22], [436, 0, 12], [446, 0, -4],
-  [434, -.5, -20], [404, -1, -28], [300, -1.5, -30], [210, -1.5, 0], [130, -1.5, 30], [60, -1.5, 42], [18, -1, 33]];
+const EARTH_R = 45, MOON_R = 14, MOON = new THREE.Vector3(420, 0, 0);
+const PATH = [[21, 1, -48], [60, 1.5, -44], [130, 1.5, -28], [210, 1.5, 0], [300, 1.5, 28], [372, 1.2, 34], [410, .8, 22], [436, 0, 12], [446, 0, -4],
+  [434, -.5, -20], [404, -1, -28], [300, -1.5, -30], [210, -1.5, 0], [130, -1.5, 30], [60, -1.5, 42], [27, -1, 49]];
 const TASKS = ['decide', 'power', 'burn', 'co2', 'reentry'];
 const ease = (k) => k * k * (3 - 2 * k);
 
@@ -153,14 +153,14 @@ export function createMission(mainScene, models, store, sfx) {
   function camGoal() {
     const mode = CAM[M.step] || 'follow';
     _side.crossVectors(_t, UPV).normalize();
-    if (mode === 'wide') { _goal.set(230, 330, 470); _look.set(225, 0, 0); }
-    else if (mode === 'moon') { _goal.copy(MOON).add(_w.set(-70, 34, 58)); _look.copy(MOON).add(_w.set(14, 0, -4)); }
+    if (mode === 'wide') { _goal.set(215, 290, 420); _look.set(210, -35, 0); }
+    else if (mode === 'moon') { _goal.copy(MOON).add(_w.set(-75, 36, 62)); _look.copy(MOON).add(_w.set(12, -8, -4)); }
     else if (mode === 'close') { _goal.copy(_p).addScaledVector(_t, -9).addScaledVector(UPV, 3.5).addScaledVector(_side, 6); _look.copy(_p); }
-    else if (mode === 'earth') { _goal.copy(_p).addScaledVector(_t, -16).addScaledVector(UPV, 6).addScaledVector(_side, 5); _look.copy(_p).addScaledVector(_t, 25); }
+    else if (mode === 'earth') { _goal.copy(_p).addScaledVector(_t, -20).addScaledVector(UPV, 8).addScaledVector(_side, 6); _look.copy(_p).addScaledVector(_t, 32); }
     else { // follow: di belakang-samping wahana, perlahan mengitari agar hidup
       const a = Math.sin(stepT * .25) * .6;
-      _goal.copy(_p).addScaledVector(_t, -20).addScaledVector(UPV, 7).addScaledVector(_side, 9 * Math.cos(a)).addScaledVector(_t, 6 * Math.sin(a));
-      _look.copy(_p).addScaledVector(_t, 12);
+      _goal.copy(_p).addScaledVector(_t, -22).addScaledVector(UPV, 8).addScaledVector(_side, 10 * Math.cos(a)).addScaledVector(_t, 6 * Math.sin(a));
+      _look.copy(_p).addScaledVector(_t, 14);
     }
   }
 

@@ -6,6 +6,7 @@ import { HISTORY } from '~/data/history.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { QUIZ } from '~/data/quiz.js';
 import { SHIPS } from '~/data/ships.js';
+import { MYTHS } from '~/data/learning.js';
 
 // Pemetaan dua arah ID Planet: Nuxt (lokal) <-> Supabase (bahasa Inggris)
 export const LOCAL_TO_SUPABASE_PLANET = {
@@ -87,6 +88,7 @@ const state = reactive({
   phenomena: {},        // key: local_id
   questions: {},        // key: local_id -> array soal
   ships: {},            // key: local_id
+  myths: [],            // array mitos/fakta
 });
 
 export async function fetchAllPublicContent(force = false) {
@@ -108,12 +110,13 @@ export async function fetchAllPublicContent(force = false) {
   }
 
   try {
-    const [planetsRes, historyRes, phenoRes, questionsRes, shipsRes] = await Promise.all([
+    const [planetsRes, historyRes, phenoRes, questionsRes, shipsRes, mythsRes] = await Promise.all([
       client.from('planets').select('*').eq('is_active', true).order('urutan_planet'),
       client.from('history_events').select('*').order('tahun_kejadian'),
       client.from('phenomena').select('*').eq('is_active', true),
-      client.from('questions').select('*'),
+      client.from('questions').select('*').order('created_at'),
       client.from('ships').select('*'),
+      client.from('myths').select('*').eq('is_active', true).order('created_at'),
     ]);
 
     // Audit galat Supabase tanpa ditelan diam-diam
@@ -136,6 +139,10 @@ export async function fetchAllPublicContent(force = false) {
     }
     if (shipsRes.error) {
       console.warn('[AstroSphere Supabase Error] ships:', shipsRes.error.message);
+      tableErrorCount++;
+    }
+    if (mythsRes.error) {
+      console.warn('[AstroSphere Supabase Error] myths:', mythsRes.error.message);
       tableErrorCount++;
     }
 
@@ -297,14 +304,35 @@ export async function fetchAllPublicContent(force = false) {
       fillShipsFallback();
     }
 
-    const hasAnyLiveSuccess = (planetsRes.data?.length > 0) || (historyRes.data?.length > 0) || (phenoRes.data?.length > 0);
+    // 6. Petakan Mitos atau Fakta (public.myths)
+    if (mythsRes.data && mythsRes.data.length > 0) {
+      state.myths = mythsRes.data.map((row) => ({
+        id: row.slug || row.myth_id,
+        myth_id: row.myth_id,
+        s: row.pernyataan,
+        pernyataan: row.pernyataan,
+        fact: row.is_fact,
+        is_fact: row.is_fact,
+        why: row.penjelasan,
+        penjelasan: row.penjelasan,
+        src: row.sumber_referensi || 'NASA',
+        sumber_referensi: row.sumber_referensi || 'NASA',
+        points: row.bobot_poin || 10,
+        body: row.benda_langit || 'bumi',
+        is_active: row.is_active !== false,
+      }));
+    } else {
+      fillMythsFallback();
+    }
+
+    const hasAnyLiveSuccess = (planetsRes.data?.length > 0) || (historyRes.data?.length > 0) || (phenoRes.data?.length > 0) || (questionsRes.data?.length > 0) || (mythsRes.data?.length > 0);
     state.fromSupabase = hasAnyLiveSuccess;
     state.loaded = true;
 
     if (hasAnyLiveSuccess) {
       const totalEvents = Object.values(state.historyEvents).flat().length;
       const totalQuizzes = Object.values(state.questions).reduce((acc, q) => acc + (q.questions?.length || 0), 0);
-      console.info(`[AstroSphere] Data LIVE Supabase berhasil dimuat: ${planetsRes.data?.length || 0} planet, ${phenoRes.data?.length || 0} fenomena, ${totalEvents} sejarah/POI, ${totalQuizzes} soal kuis, ${shipsRes.data?.length || 0} pesawat.`);
+      console.info(`[AstroSphere] Data LIVE Supabase berhasil dimuat: ${planetsRes.data?.length || 0} planet, ${phenoRes.data?.length || 0} fenomena, ${totalEvents} sejarah/POI, ${totalQuizzes} soal kuis, ${shipsRes.data?.length || 0} pesawat, ${state.myths.length} mitos/fakta.`);
     } else if (tableErrorCount > 0) {
       console.warn('[AstroSphere] Kueri Supabase mengembalikan galat pada seluruh tabel, menggunakan data cadangan lokal.');
     }
@@ -382,13 +410,29 @@ function fillShipsFallback() {
   state.ships = sMap;
 }
 
+function fillMythsFallback() {
+  state.myths = MYTHS.map((m) => ({
+    ...m,
+    is_fact: m.fact,
+    pernyataan: m.s,
+    penjelasan: m.why,
+    sumber_referensi: m.src,
+    bobot_poin: 10,
+    is_active: true,
+  }));
+}
+
 function populateWithFallback() {
   fillPlanetsFallback();
   fillHistoryFallback();
   fillPhenomenaFallback();
   fillQuestionsFallback();
   fillShipsFallback();
+  fillMythsFallback();
 }
+
+// Inisialisasi awal dengan data fallback aman agar state langsung terisi secara reaktif sejak detik pertama
+populateWithFallback();
 
 export function useSupabaseContent() {
   return {
@@ -420,5 +464,7 @@ export function useSupabaseContent() {
       return state.questions[localId] || state.questions[id] || QUIZ[localId] || QUIZ[id] || null;
     },
     getShips: () => (Object.keys(state.ships).length ? state.ships : SHIPS),
+    getMyths: () => (state.myths.length ? state.myths : MYTHS),
+    myths: computed(() => (state.myths.length ? state.myths : MYTHS)),
   };
 }

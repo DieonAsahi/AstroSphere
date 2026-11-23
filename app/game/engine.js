@@ -164,6 +164,7 @@ export function createEngine(el) {
       case 'fenomena': return 'lab';
       case 'misi': return 'misi';
       case 'hanggar': return 'hangar';
+      case 'peta': return 'peta';
       default: return 'frozen';
     }
   };
@@ -347,8 +348,42 @@ export function createEngine(el) {
   const LOOK_DOWN = new THREE.Quaternion().setFromEuler(new THREE.Euler(-.05, 0, 0));
   const lookQ = new THREE.Quaternion(), _eL = new THREE.Euler(), UP = new THREE.Vector3(0, 1, 0), _up = new THREE.Vector3();
   const look = { yaw: 0, pitch: 0, zoom: 1, rmb: false, rmbT: 0, rmbMove: 0, touchId: null, tx: 0, ty: 0, drag: false };
+  let freeLookMode = false;
   const obsCam = { yaw: .9, pitch: .22, dist: 3.4, drag: false };
-  const lookActive = () => worldMode() === 'jelajah' && store.phase === 'playing' && (look.rmb || !!keys.KeyL || look.touchId !== null);
+  const lookActive = () => worldMode() === 'jelajah' && store.phase === 'playing' && (freeLookMode || look.rmb || !!keys.KeyL || look.touchId !== null);
+
+  function enterFreeLook() {
+    if (worldMode() !== 'jelajah' || store.phase !== 'playing') return;
+    freeLookMode = true;
+    store.look.freeLook = true;
+    store.look.active = true;
+    try {
+      if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
+      }
+    } catch {}
+  }
+
+  function exitFreeLook() {
+    if (!freeLookMode && (typeof document === 'undefined' || document.pointerLockElement !== canvas)) return;
+    freeLookMode = false;
+    store.look.freeLook = false;
+    try {
+      if (typeof document !== 'undefined' && document.pointerLockElement === canvas && document.exitPointerLock) {
+        document.exitPointerLock();
+      }
+    } catch {}
+  }
+
+  function clearAllInputs() {
+    for (const k in keys) delete keys[k];
+    for (const k in hold) delete hold[k];
+    joy.x = joy.y = 0;
+    stick.x = stick.y = 0;
+    look.rmb = false;
+    look.drag = false;
+    exitFreeLook();
+  }
   function beginCamTransition() { trans.t = 0; trans.fromPos.copy(camera.position); trans.fromQuat.copy(camera.quaternion); }
   function focusBody() { return sys.byId[store.mode === 'sejarah' ? store.sejarah.body : store.focus] || sys.byId.bumi; }
   const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -637,6 +672,7 @@ export function createEngine(el) {
   let approachShownAt = 0;
   function arrive(b, isNew) {
     autopilotOff();
+    clearAllInputs();
     ship.throttle = 0; ship.braking = true;
     approachShownAt = performance.now();
     const ph = PHENOMENA[b.id];
@@ -702,16 +738,17 @@ export function createEngine(el) {
     gameTime = s.gameTime; updateBodies(sys.bodies, sys.byId, gameTime);
     ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.yaw = s.yaw ?? 0; ship.pitch = s.pitch ?? 0; ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0;
     camQ.copy(ship.quat); camMode = s.camMode;
-    for (const k in keys) keys[k] = false; for (const k in hold) hold[k] = false; joy.x = joy.y = 0; stick.x = stick.y = 0;
+    clearAllInputs();
   }
 
   // ---------- Mode ----------
   function setMode(m, opts = {}) {
     if (!sys) return;
+    exitFreeLook();
     const prev = store.mode;
     if (store.phase !== 'playing' && store.phase !== 'paused') return;
     if (m === prev && !opts.force) return;
-    if (prev === 'jelajah') takeSnapshot();
+    if (prev === 'jelajah' && m !== 'peta') takeSnapshot();
     if (pheno.id && m !== 'planet') stopPheno(true);
     // tombol "Kembali": Sejarah → Planet; Kuis/Fenomena/dll. yang dibuka dari Planet/Sejarah → kembali ke sana
     const learn = prev === 'planet' || prev === 'sejarah';
@@ -719,7 +756,11 @@ export function createEngine(el) {
     store.approach.show = false;
     store.phase = 'playing';
     store.mode = m;
-    if (m === 'jelajah') { restoreSnapshot(); beginCamTransition(); clearPOIs(); orbitsVisible(false); for (const x of sys.bodies) if (x.axisLine) x.axisLine.visible = false; }
+    if (m === 'jelajah') {
+      if (prev !== 'peta') restoreSnapshot();
+      else snapshot = null;
+      beginCamTransition(); clearPOIs(); orbitsVisible(false); for (const x of sys.bodies) if (x.axisLine) x.axisLine.visible = false;
+    }
     else if (m === 'planet' || m === 'sejarah') {
       if (opts.body) { if (m === 'planet') store.focus = opts.body; else store.sejarah.body = opts.body; }
       const b = focusBody();
@@ -980,8 +1021,8 @@ export function createEngine(el) {
     const wm = worldMode();
     keys[e.code] = true;
     if (wm === 'jelajah' && store.phase === 'playing') {
-      // cegah gulir halaman & pintasan browser (Ctrl = rem)
-      if (FLY.some((id) => isAct(id, e.code)) || ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code) || e.ctrlKey) e.preventDefault();
+      // cegah gulir halaman & pintasan browser (Ctrl = rem, Alt = turbo)
+      if (FLY.some((id) => isAct(id, e.code)) || ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'AltLeft', 'AltRight'].includes(e.code) || e.ctrlKey || e.altKey || e.code === 'AltLeft' || e.code === 'AltRight') e.preventDefault();
       if (e.repeat) return;
       if (store.event.result && ['Enter', 'Escape', 'Space', 'NumpadEnter'].includes(e.code)) { store.event.result = null; keys[e.code] = false; return; }
       if (store.approach.show) {
@@ -1007,28 +1048,65 @@ export function createEngine(el) {
       if (e.code === 'Escape' && !e.repeat) back();
     }
   });
-  on(window, 'keyup', (e) => { keys[e.code] = false; });
-  on(window, 'blur', () => { for (const k in keys) keys[k] = false; for (const k in hold) hold[k] = false; look.rmb = false; look.drag = false; });
+  on(window, 'keyup', (e) => {
+    keys[e.code] = false;
+    if (store.phase === 'playing' && (e.code === 'AltLeft' || e.code === 'AltRight' || e.key === 'Alt')) {
+      e.preventDefault();
+    }
+  });
+  on(window, 'blur', () => { clearAllInputs(); });
   function applyLookDelta(dx, dy, k) { look.yaw -= dx * k; look.pitch = clamp(look.pitch - dy * k * (settings.invertY ? -1 : 1), -1.35, 1.35); }
-  let lastTouchT = 0;
+  let lastTouchT = 0, downX = 0, downY = 0, downT = 0;
   on(canvas, 'mousedown', (e) => {
     if (performance.now() - lastTouchT < 800) return;
     const wm = worldMode();
     if ((wm === 'menu' || wm === 'hangar' || wm === 'observe' || wm === 'lab') && e.button === 0) { look.drag = true; obsCam.drag = true; return; }
-    if (wm === 'jelajah' && store.phase === 'playing' && (e.button === 0 || e.button === 2)) look.rmb = true; // seret = lihat sekeliling
+    if (wm === 'jelajah' && store.phase === 'playing') {
+      if (e.button === 0) {
+        downX = e.clientX;
+        downY = e.clientY;
+        downT = performance.now();
+        look.rmb = true;
+      } else if (e.button === 2) {
+        if (freeLookMode) exitFreeLook();
+      }
+    }
   });
   on(window, 'mouseup', (e) => {
-    if (e.button === 0) { look.drag = false; obsCam.drag = false; }
+    if (e.button === 0) {
+      look.drag = false;
+      obsCam.drag = false;
+      look.rmb = false;
+      if (worldMode() === 'jelajah' && store.phase === 'playing') {
+        const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
+        const elapsed = performance.now() - downT;
+        if (moved < 6 && elapsed < 350) {
+          if (!freeLookMode) enterFreeLook();
+        }
+      }
+    }
     if (e.button === 0 || e.button === 2) look.rmb = false;
+  });
+  on(canvas, 'dblclick', (e) => {
+    if (e.button === 0 && freeLookMode) exitFreeLook();
+  });
+  on(document, 'pointerlockchange', () => {
+    if (document.pointerLockElement !== canvas && freeLookMode) exitFreeLook();
   });
   on(window, 'mousemove', (e) => {
     const wm = worldMode();
     if (look.drag && (wm === 'menu' || wm === 'hangar')) { menuAngle -= e.movementX * .006; return; }
     if (obsCam.drag && wm === 'observe') { obsCam.yaw -= e.movementX * .006; obsCam.pitch = clamp(obsCam.pitch + e.movementY * .005, -1.4, 1.4); return; }
     if (obsCam.drag && wm === 'lab') { lab.lookDrag(e.movementX, e.movementY); return; }
-    if (wm === 'jelajah' && store.phase === 'playing' && look.rmb) applyLookDelta(e.movementX, e.movementY, .0042 * settings.sensitivity);
+    if (wm === 'jelajah' && store.phase === 'playing' && (freeLookMode || look.rmb)) {
+      const dx = e.movementX || 0, dy = e.movementY || 0;
+      applyLookDelta(dx, dy, .0042 * settings.sensitivity);
+    }
   });
-  on(canvas, 'contextmenu', (e) => e.preventDefault());
+  on(canvas, 'contextmenu', (e) => {
+    e.preventDefault();
+    if (freeLookMode) exitFreeLook();
+  });
   on(canvas, 'wheel', (e) => {
     const wm = worldMode();
     e.preventDefault();
@@ -1059,7 +1137,7 @@ export function createEngine(el) {
   // Ctrl = rem: tanya dulu sebelum tab tertutup tak sengaja (mis. Ctrl+W) saat sedang terbang
   on(window, 'beforeunload', (e) => { saveGame(); if (sessionActive && store.phase === 'playing' && store.mode === 'jelajah') { e.preventDefault(); e.returnValue = ''; } });
   on(document, 'visibilitychange', () => {
-    if (document.hidden) { saveGame(); if (worldMode() === 'jelajah' && store.phase === 'playing') pause(); if (sfx.ctx) sfx.ctx.suspend(); }
+    if (document.hidden) { clearAllInputs(); saveGame(); if (worldMode() === 'jelajah' && store.phase === 'playing') pause(); if (sfx.ctx) sfx.ctx.suspend(); }
     else if (sfx.ctx && settings.soundEnabled) sfx.ctx.resume();
   });
   on(window, 'resize', () => {
@@ -1098,17 +1176,19 @@ export function createEngine(el) {
   function pause() {
     if (store.phase !== 'playing') return;
     store.phase = 'paused'; saveGame('Tersimpan'); store.approach.show = false;
-    for (const k in hold) hold[k] = false; joy.x = joy.y = 0;
+    clearAllInputs();
   }
   function resume() {
     if (store.phase !== 'paused') return;
     store.modal = null; store.phase = 'playing';
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   }
-  // Keluar ke layar awal: simpan, lalu hentikan loop render (layar awal tidak memakai WebGL)
-  function toSplash() {
+  // Keluar ke layar awal: simpan (kecuali skipSave=true), lalu hentikan loop render (layar awal tidak memakai WebGL)
+  function toSplash(skipSave = false) {
+    exitFreeLook();
     if (store.mode !== 'jelajah') { store.phase = 'playing'; setMode('jelajah'); }
-    saveGame(); sessionActive = false;
+    if (!skipSave) saveGame();
+    sessionActive = false;
     store.modal = null; store.approach.show = false; store.autopilot = false;
     store.phase = 'splash'; store.screen = 'welcome'; store.mode = 'jelajah';
     refreshSaveMeta(); clearPOIs(); running(false);
@@ -1166,9 +1246,12 @@ export function createEngine(el) {
     time += dt; U.uTime.value = time;
     checkFpsGuard(dt);
     const wm = worldMode();
-    // layar yang menutupi dunia (jeda, kuis, peta, profil): render cukup ± 20 fps
-    if ((store.phase === 'paused' || wm === 'frozen') && (++idleN % 3)) return;
-    if (wm === 'jelajah' && store.phase === 'playing') gameTime += dt * TIME_RATE;
+    if ((store.modal || store.approach.show || store.phase !== 'playing' || wm !== 'jelajah') && (freeLookMode || (typeof document !== 'undefined' && document.pointerLockElement === canvas))) {
+      exitFreeLook();
+    }
+    // layar yang menutupi dunia (jeda, kuis, profil): render cukup ± 20 fps, tapi pada mode 'peta' tetap update real-time
+    if ((store.phase === 'paused' || (wm === 'frozen' && store.mode !== 'peta')) && (++idleN % 3)) return;
+    if ((wm === 'jelajah' || wm === 'peta') && store.phase === 'playing') gameTime += dt * TIME_RATE;
     if (wm === 'observe' && store.phase === 'playing') { obsTime += dt * TIME_RATE * store.obs.mul; labTick += dt; if (labTick > .1) { labTick = 0; store.obs.day = obsTime; store.obs.date = fmtSimDate(obsTime); } }
     if (wm === 'lab') {
       syncLabFromStore();
@@ -1367,8 +1450,8 @@ export function createEngine(el) {
     // Peta sistem
     mapData() {
       if (!sys) return null;
-      const fwd = _v.set(0, 0, -1).applyQuaternion(snapshot ? snapshot.quat : ship.quat);
-      const sp = snapshot ? snapshot.pos : ship.pos;
+      const fwd = _v.set(0, 0, -1).applyQuaternion((snapshot && store.mode !== 'peta') ? snapshot.quat : ship.quat);
+      const sp = (snapshot && store.mode !== 'peta') ? snapshot.pos : ship.pos;
       return {
         bodies: sys.bodies.map((b) => ({ id: b.id, name: b.name, kind: b.kind, x: b.pos.x, z: b.pos.z, r: b.radius, color: b.color, isSun: !!b.isSun, isMoon: !!b.isMoon, found: discovered.has(b.id), d: Math.max(0, sp.distanceTo(b.pos) - b.radius) })),
         orbits: sys.bodies.filter((b) => b.orbitPts).map((b) => ({ id: b.id, pts: b.orbitPts.filter((_, i) => i % 4 === 0).map((p) => [p.x, p.z]) })),

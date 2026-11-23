@@ -1,15 +1,23 @@
 <script setup>
 // "Mitos atau Fakta?" — 6 pernyataan per ronde, diutamakan yang belum dikuasai. Jawab dengan tombol, geser kartu
 // (kiri = Mitos, kanan = Fakta), atau keyboard (← / M = Mitos, → / F = Fakta, Enter = lanjut).
-// Bintang hanya untuk pernyataan yang pertama kali dijawab benar (data/learning.js).
+// Bintang hanya untuk pernyataan yang pertama kali dijawab benar (data/learning.js & public.myths).
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, recordMyth, logMythRound, isFound } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { MYTHS, MYTH_ROUND, MYTH_REWARD } from '~/data/learning.js';
+
+const { getMyths, loadAll } = useSupabaseContent();
+
 const Q = store.quiz;
 const deck = ref([]), idx = ref(0), choice = ref(null), score = ref(0), gained = ref(0), lastReward = ref(0), results = ref([]);
+
+// Ambil seluruh mitos secara reaktif dari state Supabase (fallback ke lokal MYTHS)
+const allMyths = computed(() => getMyths() || MYTHS);
+
 // Hanya pernyataan tentang benda yang sudah ditemukan; sisanya terbuka sambil menjelajah.
-const pool = computed(() => MYTHS.filter((m) => isFound(m.body)));
-const mastered = computed(() => MYTHS.filter((m) => store.progress.myths[m.id]).length);
+const pool = computed(() => allMyths.value.filter((m) => isFound(m.body)));
+const mastered = computed(() => allMyths.value.filter((m) => store.progress.myths[m.id]).length);
 const cur = computed(() => deck.value[idx.value]);
 const answered = computed(() => choice.value !== null);
 const right = computed(() => answered.value && choice.value === cur.value.fact);
@@ -53,132 +61,692 @@ function onKey(e) {
     else if (e.code === 'ArrowRight' || e.code === 'KeyF') { e.preventDefault(); answer(true); }
   } else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); next(); }
 }
-onMounted(() => { Q.mythStage = 'intro'; window.addEventListener('keydown', onKey); });
+
+onMounted(() => {
+  loadAll();
+  Q.mythStage = 'intro';
+  window.addEventListener('keydown', onKey);
+});
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 </script>
 
 <template>
-  <!-- PEMBUKA -->
+  <!-- PEMBUKA (INTRO MODERN) -->
   <div v-if="Q.mythStage === 'intro'" class="body intro">
-    <div class="duo" aria-hidden="true"><span class="m"><UiIcon name="silang" :size="22" />Mitos</span><span class="f"><UiIcon name="cek" :size="22" />Fakta</span></div>
-    <h2 class="h2">Mitos atau Fakta?</h2>
-    <p class="lead">{{ Math.min(MYTH_ROUND, pool.length) }} pernyataan tentang tata surya. Mana yang benar?</p>
-    <div class="mast">
-      <div class="nr"><span>Sudah kamu kuasai</span><b class="num">{{ mastered }}/{{ MYTHS.length }}</b></div>
-      <div class="bar green"><i :style="{ width: mastered / MYTHS.length * 100 + '%' }" /></div>
+    <div class="myth-intro-badges" aria-hidden="true">
+      <span class="badge-m"><UiIcon name="silang" :size="16" /> Mitos</span>
+      <span class="badge-sep">vs</span>
+      <span class="badge-f"><UiIcon name="cek" :size="16" /> Fakta</span>
     </div>
-    <p v-if="pool.length < MYTHS.length" class="unl"><UiIcon name="kunci" :size="15" />{{ pool.length }} dari {{ MYTHS.length }} pernyataan terbuka — temukan planet lain untuk membuka sisanya.</p>
-    <button class="btn primary lg" @click="start"><UiIcon name="putar" :size="20" />Mulai</button>
-    <p class="fine">Pernyataan baru yang kamu jawab benar: +{{ MYTH_REWARD }} bintang.</p>
+
+    <div class="header-info-myth">
+      <span class="eyebrow-label">UJI KEBENARAN ASTRONOMI</span>
+      <h2 class="quiz-title">Mitos atau Fakta?</h2>
+    </div>
+
+    <p class="lead-sub">
+      Tebak dengan tepat <b class="num text-sky">{{ Math.min(MYTH_ROUND, pool.length) }} pernyataan</b> seputar alam semesta.
+    </p>
+
+    <div class="mast-card">
+      <div class="nr">
+        <span>Penguasaan Pernyataan</span>
+        <b class="num">{{ mastered }} / {{ allMyths.length }}</b>
+      </div>
+      <div class="bar green">
+        <i :style="{ width: (mastered / (allMyths.length || 1)) * 100 + '%' }" />
+      </div>
+    </div>
+
+    <p v-if="pool.length < allMyths.length" class="unl-modern">
+      <UiIcon name="kunci" :size="14" />
+      <span>{{ pool.length }} dari {{ allMyths.length }} pernyataan terbuka — temukan planet lain untuk membuka sisanya.</span>
+    </p>
+
+    <div class="intro-actions">
+      <button class="btn-quiz-primary" @click="start">
+        <UiIcon name="putar" :size="18" />
+        <span>Mulai Bermain</span>
+      </button>
+    </div>
+
+    <p class="fine-note">Pernyataan baru yang kamu jawab benar berhadiah +{{ MYTH_REWARD }} bintang.</p>
   </div>
 
-  <!-- BERMAIN -->
+  <!-- BERMAIN (PLAY VIEW) -->
   <div v-else-if="Q.mythStage === 'play' && cur" class="body">
-    <div class="qtop">
-      <span class="tag">Mitos atau Fakta</span>
-      <div class="dots" :aria-label="`Pernyataan ${idx + 1} dari ${deck.length}`">
-        <i v-for="(x, i) in deck" :key="x.id" :class="{ cur: i === idx, ok: results[i] === true, bad: results[i] === false }" />
+    <div class="qtop-modern">
+      <span class="planet-tag">
+        <UiIcon name="kuis" :size="15" />
+        <span>Mitos atau Fakta</span>
+      </span>
+      <div class="q-progress-box">
+        <div class="dots" :aria-label="`Pernyataan ${idx + 1} dari ${deck.length}`">
+          <i
+            v-for="(x, i) in deck"
+            :key="x.id"
+            :class="{ cur: i === idx, ok: results[i] === true, bad: results[i] === false }"
+          />
+        </div>
+        <span class="q-counter-num">{{ idx + 1 }} / {{ deck.length }}</span>
       </div>
     </div>
-    <div class="mcard" :class="{ answered, ok: right, bad: answered && !right, l: dx < -30, r: dx > 30 }"
-      :style="dx ? { transform: `translateX(${dx}px) rotate(${dx / 22}deg)` } : null"
-      @pointerdown="down" @pointermove="move" @pointerup="up" @pointercancel="up">
-      <span class="hl" aria-hidden="true">Mitos</span><span class="hr" aria-hidden="true">Fakta</span>
-      <p class="st">{{ cur.s }}</p>
-      <span v-if="answered" class="verdict" :class="cur.fact ? 'f' : 'm'"><UiIcon :name="cur.fact ? 'cek' : 'silang'" :size="18" />{{ cur.fact ? 'Fakta' : 'Mitos' }}</span>
+
+    <div
+      class="mcard-modern"
+      :class="{ answered, ok: right, bad: answered && !right, l: dx < -30, r: dx > 30 }"
+      :style="dx ? { transform: `translateX(${dx}px) rotate(${dx / 24}deg)` } : null"
+      @pointerdown="down"
+      @pointermove="move"
+      @pointerup="up"
+      @pointercancel="up"
+    >
+      <span class="hl-tag" aria-hidden="true">Mitos</span>
+      <span class="hr-tag" aria-hidden="true">Fakta</span>
+      <p class="statement-text">{{ cur.s }}</p>
+      <span v-if="answered" class="verdict-badge" :class="cur.fact ? 'f' : 'm'">
+        <UiIcon :name="cur.fact ? 'cek' : 'silang'" :size="16" />
+        {{ cur.fact ? 'Fakta Ilmiah' : 'Mitos Belaka' }}
+      </span>
     </div>
+
     <template v-if="!answered">
-      <div class="pick">
-        <button class="btn lg mb" @click="answer(false)"><UiIcon name="silang" :size="22" />Mitos</button>
-        <button class="btn lg fb" @click="answer(true)"><UiIcon name="cek" :size="22" />Fakta</button>
+      <div class="pick-modern">
+        <button class="btn-pick-action mb-btn" @click="answer(false)">
+          <UiIcon name="silang" :size="18" />
+          <span>Mitos</span>
+        </button>
+        <button class="btn-pick-action fb-btn" @click="answer(true)">
+          <UiIcon name="cek" :size="18" />
+          <span>Fakta</span>
+        </button>
       </div>
-      <p class="keys">{{ store.touch ? 'Atau geser kartu: kiri Mitos, kanan Fakta' : 'Keyboard: ← Mitos · → Fakta' }}</p>
+      <p class="keys-note">{{ store.touch ? 'Geser kartu ke kiri (Mitos) atau kanan (Fakta)' : 'Tombol Keyboard: ← Mitos · → Fakta' }}</p>
     </template>
-    <div v-else class="res" :class="{ ok: right }" aria-live="polite">
-      <b class="rt">{{ right ? 'Benar!' : 'Belum tepat' }}<span v-if="lastReward" class="rw"><UiIcon name="bintang" :size="14" />+{{ lastReward }}</span></b>
-      <p>{{ cur.why }}</p>
-      <small class="src">Sumber: {{ cur.src }}</small>
-      <button class="btn primary" @click="next">{{ last ? 'Lihat hasil' : 'Berikutnya' }}<UiIcon name="lanjut" :size="18" /></button>
+
+    <div v-else class="fb-modern" :class="{ ok: right }" aria-live="polite">
+      <div class="fb-header">
+        <span class="fb-verdict">
+          <UiIcon :name="right ? 'cek' : 'silang'" :size="16" />
+          {{ right ? 'Jawaban Benar!' : 'Belum Tepat' }}
+        </span>
+        <span v-if="lastReward" class="rw-badge">
+          <UiIcon name="bintang" :size="13" /> +{{ lastReward }} Bintang
+        </span>
+      </div>
+      <p class="fb-explanation">{{ cur.why }}</p>
+      <small class="src-text">Referensi: {{ cur.src }}</small>
+      <div class="fb-acts">
+        <button class="btn-next-action" @click="next">
+          <span>{{ last ? 'Lihat hasil' : 'Berikutnya' }}</span>
+          <UiIcon name="lanjut" :size="16" />
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- HASIL -->
+  <!-- HASIL (RESULT VIEW) -->
   <div v-else class="body intro">
-    <div class="score"><b class="num">{{ score }}</b><span>/{{ deck.length }}</span></div>
-    <h2 class="h2">{{ score === deck.length ? 'Sempurna!' : score * 2 >= deck.length ? 'Kerja bagus!' : 'Ayo coba lagi!' }}</h2>
-    <div class="gain" :class="{ zero: !gained }">
-      <UiIcon name="bintang" :size="22" /><b class="num">+{{ gained }}</b>
-      <span>{{ gained ? 'bintang didapat' : 'tidak ada pernyataan baru yang dijawab benar' }}</span>
+    <div class="score-display">
+      <b class="num score-val">{{ score }}</b>
+      <span class="score-total">/ {{ deck.length }}</span>
     </div>
-    <div class="mast">
-      <div class="nr"><span>Sudah kamu kuasai</span><b class="num">{{ mastered }}/{{ MYTHS.length }}</b></div>
-      <div class="bar green"><i :style="{ width: mastered / MYTHS.length * 100 + '%' }" /></div>
+
+    <h2 class="result-title">
+      {{ score === deck.length ? 'Sempurna, Luar Biasa!' : score * 2 >= deck.length ? 'Kerja Sangat Bagus!' : 'Ayo Coba Lagi!' }}
+    </h2>
+
+    <div class="gain-card" :class="{ zero: !gained }">
+      <UiIcon name="bintang" :size="20" class="gain-icon" />
+      <div class="gain-info">
+        <b class="gain-num num">+{{ gained }} Bintang</b>
+        <span class="gain-desc">
+          {{ gained ? 'Bintang baru didapat dari pernyataan yang baru dikuasai' : 'Tidak ada bintang baru di ronde ini' }}
+        </span>
+      </div>
     </div>
-    <div class="acts">
-      <button class="btn line" @click="start"><UiIcon name="ulang" :size="18" />Main lagi</button>
-      <button class="btn primary" @click="game()?.back()">Selesai</button>
+
+    <div class="mast-card">
+      <div class="nr">
+        <span>Penguasaan Pernyataan</span>
+        <b class="num">{{ mastered }} / {{ allMyths.length }}</b>
+      </div>
+      <div class="bar green">
+        <i :style="{ width: (mastered / (allMyths.length || 1)) * 100 + '%' }" />
+      </div>
+    </div>
+
+    <div class="result-acts">
+      <button class="btn-result-secondary" @click="start">
+        <UiIcon name="ulang" :size="16" />
+        <span>Main Lagi</span>
+      </button>
+      <button class="btn-result-primary" @click="game()?.back()">
+        <span>Selesai &amp; Kembali</span>
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.body{padding:24px 30px 26px;display:flex;flex-direction:column;gap:16px}
-.intro{align-items:center;text-align:center}
-.duo{display:flex;gap:10px}
-.duo span{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;font-family:var(--display);font-weight:500;font-size:17px}
-.duo .m{background:rgba(255,107,107,.16);color:var(--coral);transform:rotate(-4deg)}
-.duo .f{background:rgba(54,211,154,.16);color:var(--green);transform:rotate(4deg)}
-.mast{width:min(360px,100%);display:flex;flex-direction:column;gap:6px}
-.nr{display:flex;justify-content:space-between;font-size:13.5px;color:var(--muted)}
-.nr b{color:var(--green)}
-.fine{font-size:12.5px;color:var(--faint)}
-.unl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);max-width:42ch}
-.unl :deep(svg){flex:none;color:var(--star)}
-.qtop{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-right:48px}
+.body{
+  padding:24px 28px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.intro{
+  align-items:center;
+  text-align:center;
+}
+
+/* BADGE INTRO MITOS VS FAKTA MODERN */
+.myth-intro-badges{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:2px;
+}
+.badge-m{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 14px;
+  border-radius:8px;
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:600;
+  background:rgba(239,68,68,.12);
+  border:1px solid rgba(239,68,68,.28);
+  color:#fca5a5;
+}
+.badge-sep{
+  font-size:12px;
+  font-weight:600;
+  color:var(--faint);
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.badge-f{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 14px;
+  border-radius:8px;
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:600;
+  background:rgba(34,197,94,.12);
+  border:1px solid rgba(34,197,94,.28);
+  color:#86efac;
+}
+
+.header-info-myth{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+}
+.eyebrow-label{
+  font-size:11px;
+  font-weight:600;
+  color:#38bdf8;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  font-family:var(--display);
+}
+.quiz-title{
+  font-family:var(--display);
+  font-size:22px;
+  font-weight:600;
+  color:#fff;
+  line-height:1.2;
+  margin:0;
+}
+.lead-sub{
+  font-size:13.5px;
+  color:var(--muted);
+  margin:0;
+}
+.text-sky{color:#38bdf8}
+
+/* KARTU PENGUASAAN */
+.mast-card{
+  width:min(380px,100%);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:12px 14px;
+  border-radius:10px;
+  background:rgba(18,24,52,.7);
+  border:1px solid rgba(148,174,255,.14);
+}
+.nr{
+  display:flex;
+  justify-content:space-between;
+  font-size:12.5px;
+  color:var(--muted);
+}
+.nr b{color:#22c55e}
+.fine-note{
+  font-size:12px;
+  color:var(--faint);
+  margin:0;
+}
+.unl-modern{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12.5px;
+  color:var(--muted);
+  max-width:44ch;
+  background:rgba(148,174,255,.06);
+  padding:8px 12px;
+  border-radius:8px;
+}
+.unl-modern :deep(svg){
+  flex:none;
+  color:var(--star);
+}
+
+.intro-actions{
+  margin-top:4px;
+}
+.btn-quiz-primary{
+  height:44px;
+  min-width:180px;
+  padding:0 22px;
+  border-radius:10px;
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:500;
+  background:#3b82f6;
+  color:#ffffff;
+  border:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  cursor:pointer;
+  box-shadow:0 2px 10px rgba(59,130,246,.35);
+  transition:all .15s ease;
+}
+.btn-quiz-primary:hover{
+  background:#2563eb;
+  transform:translateY(-1px);
+}
+
+/* TOP BAR BERMAIN */
+.qtop-modern{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-right:48px;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(148,174,255,.1);
+}
+.planet-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 12px;
+  border-radius:10px;
+  background:rgba(18,24,52,.8);
+  border:1px solid rgba(148,174,255,.16);
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:600;
+  color:#fff;
+}
+.q-progress-box{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
 .dots{display:flex;gap:6px}
-.dots i{width:22px;height:8px;border-radius:999px;background:var(--surface-3)}
-.dots i.cur{background:var(--sky)} .dots i.ok{background:var(--green)} .dots i.bad{background:var(--coral)}
-.mcard{position:relative;min-height:150px;display:grid;place-items:center;padding:30px 26px;border-radius:var(--r-lg);background:var(--surface-2);border:2px solid var(--line);
-  text-align:center;touch-action:pan-y;user-select:none;cursor:grab;transition:transform .2s ease,border-color .2s,background .2s}
-.mcard:active{cursor:grabbing}
-.mcard[style]{transition:none}
-.mcard.l{border-color:var(--coral)} .mcard.r{border-color:var(--green)}
-.mcard.answered{cursor:default}
-.mcard.ok{border-color:var(--green);background:rgba(54,211,154,.08)}
-.mcard.bad{border-color:var(--coral);background:rgba(255,107,107,.08)}
-.st{font-family:var(--display);font-weight:500;font-size:clamp(19px,2.2vw,23px);line-height:1.35;max-width:30ch}
-.hl,.hr{position:absolute;top:12px;padding:4px 10px;border-radius:999px;font-family:var(--display);font-weight:500;font-size:13px;opacity:0;transition:opacity .15s}
-.hl{left:12px;background:rgba(255,107,107,.18);color:var(--coral)}
-.hr{right:12px;background:rgba(54,211,154,.18);color:var(--green)}
-.mcard.l .hl,.mcard.r .hr{opacity:1}
-.verdict{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;
-  font-family:var(--display);font-weight:500;font-size:15px;animation:stamp .35s cubic-bezier(.2,.9,.3,1.4) both}
-.verdict.f{background:var(--green);color:#042b1d}
-.verdict.m{background:var(--coral);color:#2a0606}
-@keyframes stamp{from{transform:translateX(-50%) scale(1.8) rotate(-3deg);opacity:0}}
-.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pick .btn{width:100%}
-.mb{background:rgba(255,107,107,.14);color:var(--coral);box-shadow:inset 0 -3px 0 rgba(255,107,107,.35)}
-.fb{background:rgba(54,211,154,.14);color:var(--green);box-shadow:inset 0 -3px 0 rgba(54,211,154,.35)}
-.mb:hover{background:rgba(255,107,107,.22)} .fb:hover{background:rgba(54,211,154,.22)}
-.keys{text-align:center;font-size:12.5px;color:var(--faint)}
-.res{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:16px;border-radius:var(--r);background:rgba(255,107,107,.1);animation:rise .3s ease both}
-.res.ok{background:rgba(54,211,154,.1)}
-@keyframes rise{from{transform:translateY(8px);opacity:0}}
-.rt{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:18px;color:var(--coral)}
-.res.ok .rt{color:var(--green)}
-.rw{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:rgba(255,201,71,.16);color:var(--star);font-size:14px}
-.res p{font-size:14.5px;color:var(--muted);line-height:1.55}
-.src{font-size:12px;color:var(--faint)}
-.res .btn{align-self:flex-end}
-.score{font-family:var(--display);font-weight:600;line-height:1}
-.score b{font-size:64px;color:var(--star)}
-.score span{font-size:28px;color:var(--faint)}
-.gain{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:rgba(255,201,71,.14);color:var(--star)}
-.gain b{font-size:24px;font-weight:600}
-.gain span{font-size:14px;color:var(--muted)}
-.gain.zero{background:var(--surface-2);color:var(--faint)}
-.acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-@media (max-width:760px){ .body{padding:18px 16px 18px} .mcard{min-height:130px;padding:26px 16px} .pick .btn{min-height:56px} }
-@media (prefers-reduced-motion:reduce){ .verdict,.res{animation:none} .mcard{transition:none} }
+.dots i{
+  width:24px;
+  height:6px;
+  border-radius:999px;
+  background:rgba(148,174,255,.16);
+  transition:background .2s;
+}
+.dots i.cur{background:#38bdf8}
+.dots i.ok{background:#22c55e}
+.dots i.bad{background:#ef4444}
+.q-counter-num{
+  font-family:var(--display);
+  font-size:12.5px;
+  font-weight:600;
+  color:var(--muted);
+}
+
+/* KARTU MITOS / FAKTA MODERN */
+.mcard-modern{
+  position:relative;
+  min-height:160px;
+  display:grid;
+  place-items:center;
+  padding:32px 24px;
+  border-radius:14px;
+  background:rgba(18,24,52,.8);
+  border:1px solid rgba(148,174,255,.2);
+  text-align:center;
+  touch-action:pan-y;
+  user-select:none;
+  cursor:grab;
+  transition:transform .2s ease,border-color .2s,background .2s;
+}
+.mcard-modern:active{cursor:grabbing}
+.mcard-modern[style]{transition:none}
+.mcard-modern.l{border-color:#ef4444}
+.mcard-modern.r{border-color:#22c55e}
+.mcard-modern.answered{cursor:default}
+.mcard-modern.ok{
+  border-color:#22c55e;
+  background:rgba(34,197,94,.08);
+}
+.mcard-modern.bad{
+  border-color:#ef4444;
+  background:rgba(239,68,68,.08);
+}
+.statement-text{
+  font-family:var(--display);
+  font-size:clamp(17px,2.2vw,21px);
+  font-weight:500;
+  line-height:1.45;
+  color:#fff;
+  max-width:32ch;
+  margin:0;
+}
+.hl-tag,.hr-tag{
+  position:absolute;
+  top:12px;
+  padding:4px 10px;
+  border-radius:8px;
+  font-family:var(--display);
+  font-size:12px;
+  font-weight:600;
+  opacity:0;
+  transition:opacity .15s;
+}
+.hl-tag{
+  left:14px;
+  background:rgba(239,68,68,.18);
+  border:1px solid rgba(239,68,68,.3);
+  color:#fca5a5;
+}
+.hr-tag{
+  right:14px;
+  background:rgba(34,197,94,.18);
+  border:1px solid rgba(34,197,94,.3);
+  color:#86efac;
+}
+.mcard-modern.l .hl-tag,.mcard-modern.r .hr-tag{opacity:1}
+
+.verdict-badge{
+  position:absolute;
+  top:-12px;
+  left:50%;
+  transform:translateX(-50%);
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 14px;
+  border-radius:8px;
+  font-family:var(--display);
+  font-size:13.5px;
+  font-weight:600;
+  box-shadow:0 4px 12px rgba(0,0,0,.35);
+}
+.verdict-badge.f{
+  background:#22c55e;
+  color:#042b1d;
+}
+.verdict-badge.m{
+  background:#ef4444;
+  color:#2a0606;
+}
+
+/* PILIHAN MITOS & FAKTA */
+.pick-modern{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.btn-pick-action{
+  height:46px;
+  border-radius:10px;
+  font-family:var(--display);
+  font-size:14.5px;
+  font-weight:600;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.mb-btn{
+  background:rgba(239,68,68,.12);
+  border:1px solid rgba(239,68,68,.3);
+  color:#fca5a5;
+}
+.mb-btn:hover{
+  background:rgba(239,68,68,.22);
+  border-color:rgba(239,68,68,.5);
+  color:#fff;
+  transform:translateY(-1px);
+}
+.fb-btn{
+  background:rgba(34,197,94,.12);
+  border:1px solid rgba(34,197,94,.3);
+  color:#86efac;
+}
+.fb-btn:hover{
+  background:rgba(34,197,94,.22);
+  border-color:rgba(34,197,94,.5);
+  color:#fff;
+  transform:translateY(-1px);
+}
+.keys-note{
+  text-align:center;
+  font-size:12px;
+  color:var(--faint);
+  margin:0;
+}
+
+/* FEEDBACK & EVALUASI */
+.fb-modern{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:16px 18px;
+  border-radius:12px;
+  background:rgba(239,68,68,.08);
+  border:1px solid rgba(239,68,68,.25);
+}
+.fb-modern.ok{
+  background:rgba(34,197,94,.08);
+  border-color:rgba(34,197,94,.25);
+}
+.fb-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.fb-verdict{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-family:var(--display);
+  font-size:15px;
+  font-weight:600;
+  color:#ef4444;
+}
+.fb-modern.ok .fb-verdict{color:#22c55e}
+.rw-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:3px 10px;
+  border-radius:8px;
+  background:rgba(255,201,71,.16);
+  border:1px solid rgba(255,201,71,.3);
+  color:var(--star);
+  font-size:12.5px;
+  font-weight:600;
+}
+.fb-explanation{
+  font-size:13.5px;
+  color:#cbd5e1;
+  line-height:1.55;
+  margin:0;
+}
+.src-text{
+  font-size:12px;
+  color:var(--faint);
+}
+.fb-acts{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:2px;
+}
+.btn-next-action{
+  height:40px;
+  padding:0 20px;
+  border-radius:10px;
+  font-family:var(--display);
+  font-size:13.5px;
+  font-weight:500;
+  background:#3b82f6;
+  color:#ffffff;
+  border:none;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(59,130,246,.35);
+  transition:all .15s ease;
+}
+.btn-next-action:hover{
+  background:#2563eb;
+  transform:translateY(-1px);
+}
+
+/* HASIL AKHIR MITOS / FAKTA */
+.score-display{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  margin-top:8px;
+}
+.score-val{
+  font-size:52px;
+  font-weight:600;
+  color:var(--star);
+  line-height:1;
+}
+.score-total{
+  font-size:24px;
+  color:var(--faint);
+}
+.result-title{
+  font-family:var(--display);
+  font-size:22px;
+  font-weight:600;
+  color:#fff;
+  margin:0;
+}
+.gain-card{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 18px;
+  border-radius:12px;
+  background:rgba(255,201,71,.12);
+  border:1px solid rgba(255,201,71,.28);
+  color:var(--star);
+  text-align:left;
+  max-width:380px;
+  width:100%;
+}
+.gain-card.zero{
+  background:rgba(18,24,52,.75);
+  border-color:rgba(148,174,255,.14);
+  color:var(--faint);
+}
+.gain-icon{flex:none}
+.gain-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.gain-num{
+  font-size:15px;
+  font-weight:600;
+  color:#fff;
+}
+.gain-card:not(.zero) .gain-num{color:var(--star)}
+.gain-desc{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.3;
+}
+.result-acts{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+  margin-top:4px;
+}
+.btn-result-secondary{
+  height:42px;
+  padding:0 18px;
+  border-radius:10px;
+  font-family:var(--display);
+  font-size:13.5px;
+  font-weight:500;
+  color:var(--muted);
+  background:transparent;
+  border:1px solid rgba(148,174,255,.2);
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.btn-result-secondary:hover{
+  color:#fff;
+  border-color:rgba(148,174,255,.35);
+  background:rgba(255,255,255,.04);
+}
+.btn-result-primary{
+  height:42px;
+  padding:0 22px;
+  border-radius:10px;
+  font-family:var(--display);
+  font-size:13.5px;
+  font-weight:500;
+  background:#3b82f6;
+  color:#ffffff;
+  border:none;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(59,130,246,.35);
+  transition:all .15s ease;
+}
+.btn-result-primary:hover{
+  background:#2563eb;
+  transform:translateY(-1px);
+}
+
+@media (max-width:680px){
+  .body{padding:20px 16px 20px}
+  .pick-modern{grid-template-columns:1fr}
+}
 </style>
