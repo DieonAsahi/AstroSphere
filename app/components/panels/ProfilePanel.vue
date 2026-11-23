@@ -326,14 +326,14 @@ const FAQ = [
 .prof{position:fixed;inset:0;z-index:22;padding:calc(var(--top) + var(--safe-t)) 16px calc(24px + var(--safe-b))}
 .wrap{width:min(1040px,100%);margin:0 auto;display:flex;flex-direction:column;gap:18px}
 .head{display:flex;align-items:center;gap:18px;padding:18px 20px;flex-wrap:wrap}
-.av{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight:700;font-size:28px;flex:none}
+.av{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight: 600;font-size:28px;flex:none}
 .who{display:flex;flex-direction:column;gap:6px;align-items:flex-start;flex:1;min-width:160px}
 .tags-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .uname-badge{font-size:12px;color:var(--faint);font-family:var(--font);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:999px}
 .kpis{display:flex;gap:10px;flex-wrap:wrap}
 .kpi{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:10px 16px;border-radius:var(--r);background:var(--surface-2);color:var(--sky)}
 .kpi svg{grid-row:span 2}
-.kpi b{font-size:20px;font-weight:600;color:var(--text);line-height:1.1}
+.kpi b{font-size:20px;font-weight: 500;color:var(--text);line-height:1.1}
 .kpi small{font-size:12px;color:var(--faint)}
 .kpi.star{color:var(--star)}
 .tabs{align-self:flex-start;flex-wrap:wrap}
@@ -341,20 +341,20 @@ const FAQ = [
 .rows{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .qr{display:flex;align-items:center;gap:14px;padding:12px 14px}
 .qn{flex:1;display:flex;flex-direction:column}
-.qn b{font-family:var(--display);font-weight:600;font-size:16px}
+.qn b{font-family:var(--display);font-weight: 500;font-size:16px}
 .qn small{font-size:12.5px;color:var(--faint)}
 .qs{display:flex;gap:2px;color:var(--line-2)} .qs .got{color:var(--star)}
 .ledger{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
 .lr{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px}
 .lr small{display:block;font-size:12px;color:var(--faint)}
-.lr b{font-weight:600} .lr b.plus{color:var(--star)}
+.lr b{font-weight: 500} .lr b.plus{color:var(--star)}
 .fleet{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .ship{padding:18px;display:flex;flex-direction:column;gap:14px;border:2px solid transparent}
 .ship.on{border-color:var(--sky)}
 .sh{display:flex;align-items:center;gap:12px}
 .sh .ic{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;background:rgba(59,108,240,.18);color:var(--sky);flex:none}
 .ship.lock .ic{background:rgba(255,201,71,.14);color:var(--star)}
-.sh b{display:block;font-family:var(--display);font-weight:600;font-size:17px}
+.sh b{display:block;font-family:var(--display);font-weight: 500;font-size:17px}
 .sh small{font-size:12.5px;color:var(--faint)}
 .sst{display:flex;flex-direction:column;gap:8px}
 .st{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
@@ -372,7 +372,7 @@ const FAQ = [
 @keyframes blink{50%{opacity:.55}}
 .tcs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:4px}
 .tcs .tile{display:flex;flex-direction:column;gap:6px;color:var(--sky)}
-.tcs b{color:var(--text);font-weight:600;font-size:15px}
+.tcs b{color:var(--text);font-weight: 500;font-size:15px}
 .tcs small{color:var(--muted);font-size:13px;line-height:1.45}
 .rng{display:flex;align-items:center;gap:10px;width:220px}.rng b{font-size:14px;width:40px;text-align:right}
 
@@ -403,7 +403,7 @@ const FAQ = [
 .faq{display:flex;flex-direction:column;gap:8px}
 .fi{padding:0 18px}
 .fq{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;text-align:left}
-.fq b{font-family:var(--display);font-weight:600;font-size:16px}
+.fq b{font-family:var(--display);font-weight: 500;font-size:16px}
 .chev{transition:transform .2s;flex:none;color:var(--muted)}
 .fi.open .chev{transform:rotate(180deg)}
 .fi p{padding:0 0 16px;color:var(--muted);font-size:14.5px;line-height:1.6}

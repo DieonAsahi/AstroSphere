@@ -86,9 +86,9 @@ function close() { ev.result = null; }
 .banner .ic{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,179,71,.22);flex:none}
 .banner.danger .ic{background:rgba(255,107,107,.22)} .banner.safe .ic{background:rgba(54,211,154,.22)}
 .banner .tx{display:flex;flex-direction:column;min-width:0}
-.banner b{font-family:var(--display);font-weight:600;font-size:16px;white-space:nowrap}
+.banner b{font-family:var(--display);font-weight: 500;font-size:16px;white-space:nowrap}
 .banner small{font-size:13px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.banner .n{min-width:44px;height:38px;padding:0 8px;border-radius:999px;display:grid;place-items:center;background:rgba(0,0,0,.35);font-family:var(--display);font-weight:700;font-size:20px}
+.banner .n{min-width:44px;height:38px;padding:0 8px;border-radius:999px;display:grid;place-items:center;background:rgba(0,0,0,.35);font-family:var(--display);font-weight: 600;font-size:20px}
 @keyframes blink{50%{box-shadow:0 0 0 6px rgba(255,179,71,.18),0 8px 30px rgba(0,0,0,.4)}}
 /* BANNER PERINGATAN PERISAI 0% */
 .damaged-shield-banner{position:absolute;left:50%;bottom:calc(var(--gap) + 180px + var(--safe-b));transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 18px;border-radius:999px;background:rgba(45,6,6,.94);border:1.5px solid var(--coral);box-shadow:0 0 24px rgba(255,107,107,.4);color:#ffd4d4;backdrop-filter:blur(8px);pointer-events:auto;z-index:15;animation:pulseDanger 1.4s infinite;white-space:nowrap}
@@ -114,10 +114,10 @@ function close() { ev.result = null; }
 .top>div{flex:1}
 .ric{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;background:rgba(255,107,107,.18);color:var(--coral);flex:none}
 .res.ok .ric{background:rgba(54,211,154,.18);color:var(--green)}
-.rw{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,201,71,.16);color:var(--star);font-family:var(--display);font-weight:600}
+.rw{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,201,71,.16);color:var(--star);font-family:var(--display);font-weight: 500}
 .txt{font-size:15px;color:var(--muted);line-height:1.55}
 .fact{padding:12px 14px;border-radius:var(--r);background:rgba(255,201,71,.08);border:1px solid rgba(255,201,71,.22)}
-.fact b{display:flex;align-items:center;gap:6px;font-family:var(--display);font-weight:600;font-size:14px;color:var(--star);margin-bottom:4px}
+.fact b{display:flex;align-items:center;gap:6px;font-family:var(--display);font-weight: 500;font-size:14px;color:var(--star);margin-bottom:4px}
 .fact p{font-size:14px;color:var(--muted);line-height:1.55}
 .keys{display:flex;justify-content:center;gap:6px;font-size:12.5px;color:var(--faint)}
 /* layar sentuh: banner di bawah chip tujuan, perisai di tengah bawah, kartu hasil sebagai lembar bawah */

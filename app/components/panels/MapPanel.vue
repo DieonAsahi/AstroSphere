@@ -45,7 +45,7 @@ function draw() {
     x.fillStyle = b.color; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill();
     hits.push({ id: b.id, x: px, y: py, r: r + 12 });
     // label tanpa tumpang tindih (planet terpilih selalu diberi label)
-    x.font = '600 13px Fredoka, sans-serif';
+    x.font = '600 13px Poppins, sans-serif';
     const tw = x.measureText(b.name).width, bx = px + r + 8, by = py - 9, box = [bx - 4, by - 2, tw + 8, 22];
     const clash = boxes.some((q) => !(box[0] > q[0] + q[2] || box[0] + box[2] < q[0] || box[1] > q[1] + q[3] || box[1] + box[3] < q[1]));
     if (!clash || b.id === sel.value) {
@@ -59,7 +59,7 @@ function draw() {
   const [sx, sy] = P(d.ship.x, d.ship.z);
   x.save(); x.translate(sx, sy); x.rotate(d.ship.heading); x.fillStyle = '#ffc947';
   x.beginPath(); x.moveTo(0, -11); x.lineTo(7, 8); x.lineTo(0, 4); x.lineTo(-7, 8); x.closePath(); x.fill(); x.restore();
-  x.font = '600 12px Fredoka, sans-serif'; x.fillStyle = '#ffc947'; x.textBaseline = 'middle'; x.fillText('Kamu', sx + 12, sy - 12);
+  x.font = '600 12px Poppins, sans-serif'; x.fillStyle = '#ffc947'; x.textBaseline = 'middle'; x.fillText('Kamu', sx + 12, sy - 12);
 }
 function pickAt(e) { const r = cv.value.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; return hits.find((t) => Math.hypot(t.x - mx, t.y - my) < t.r)?.id || null; }
 function onMove(e) { hover.value = pickAt(e); }
@@ -125,7 +125,7 @@ onMounted(draw); onBeforeUnmount(() => cancelAnimationFrame(raf));
 .li:hover{background:var(--surface-2)}
 .li.on{background:var(--surface-3)}
 .li .n{flex:1;display:flex;flex-direction:column;line-height:1.25}
-.li b{font-family:var(--display);font-weight:600;font-size:16px}
+.li b{font-family:var(--display);font-weight: 500;font-size:16px}
 .li small{font-size:12.5px;color:var(--faint)}
 .tg{color:var(--star)}
 .mc{position:relative;min-height:0;border-radius:var(--r-lg);overflow:hidden}
@@ -139,7 +139,7 @@ canvas{display:block;cursor:pointer}
 .dtop{display:flex;align-items:center;gap:14px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stats small{display:block;font-size:12.5px;color:var(--faint)}
-.stats b{font-size:18px;font-weight:600}
+.stats b{font-size:18px;font-weight: 500}
 .acts{display:flex;flex-direction:column;gap:10px}
 .lock{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--faint);line-height:1.5}
 .lock :deep(svg){flex:none;margin-top:2px;color:var(--star)}

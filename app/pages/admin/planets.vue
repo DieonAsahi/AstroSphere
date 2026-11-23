@@ -459,7 +459,7 @@ onMounted(() => {
 .page-title {
   margin: 0;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .page-desc {
@@ -478,7 +478,7 @@ onMounted(() => {
   padding: 8px 14px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .btn-refresh:hover:not(:disabled) {
@@ -509,7 +509,7 @@ onMounted(() => {
 .adm-table th {
   background-color: #f8fafc;
   padding: 12px 16px;
-  font-weight: 600;
+  font-weight: 500;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -523,7 +523,7 @@ onMounted(() => {
   background-color: #f8fafc;
 }
 .order-badge {
-  font-weight: 700;
+  font-weight: 600;
   color: #2563eb;
   background-color: #eff6ff;
   padding: 4px 8px;
@@ -545,7 +545,7 @@ onMounted(() => {
   background-color: #f1f5f9;
   color: #475569;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .small-meta span {
   display: block;
@@ -557,7 +557,7 @@ onMounted(() => {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   border: 1px solid transparent;
   cursor: pointer;
   background-color: #f1f5f9;
@@ -579,7 +579,7 @@ onMounted(() => {
   color: #2563eb;
   border: 1px solid #bfdbfe;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .btn-edit:hover {
@@ -618,7 +618,7 @@ onMounted(() => {
 .modal-title {
   margin: 0;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .modal-sub {
@@ -637,7 +637,7 @@ onMounted(() => {
   border: 1px solid #e2e8f0;
   background-color: #f8fafc;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: #475569;
   cursor: pointer;
 }
@@ -675,7 +675,7 @@ onMounted(() => {
 }
 .fs-title {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   color: #2563eb;
   letter-spacing: 0.03em;
@@ -720,7 +720,7 @@ onMounted(() => {
   border: 1px solid #cbd5e1;
   background-color: #ffffff;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #475569;
   cursor: pointer;
 }
@@ -730,7 +730,7 @@ onMounted(() => {
   border: none;
   background-color: #2563eb;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #ffffff;
   cursor: pointer;
 }
@@ -754,12 +754,12 @@ onMounted(() => {
   text-transform: uppercase;
   color: #5ed1ff;
   letter-spacing: 0.05em;
-  font-weight: 600;
+  font-weight: 500;
 }
 .pv-header .pv-name {
   margin: 4px 0 6px 0;
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .pv-header .pv-desc {
   margin: 0;

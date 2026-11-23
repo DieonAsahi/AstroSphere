@@ -166,7 +166,7 @@ const letters = ['A', 'B', 'C', 'D'];
 .opt{display:flex;align-items:center;gap:12px;padding:14px;min-height:64px;border-radius:var(--r);background:var(--surface-2);text-align:left;font-size:15px;border:2px solid transparent;transition:background .15s,border-color .15s,transform .1s}
 .opt:hover:not(:disabled){background:var(--surface-3)}
 .opt:active:not(:disabled){transform:scale(.98)}
-.opt .lt{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--surface-3);font-family:var(--display);font-weight:600}
+.opt .lt{flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--surface-3);font-family:var(--display);font-weight: 500}
 .opt .ot{flex:1}
 .opt.ok{border-color:var(--green);background:rgba(54,211,154,.12);color:var(--text)}
 .opt.ok .lt{background:var(--green);color:#042b1d}
@@ -181,7 +181,7 @@ const letters = ['A', 'B', 'C', 'D'];
 .fb p{font-size:14.5px;color:var(--muted);line-height:1.55}
 .fb .btn{align-self:flex-end}
 .gain{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:rgba(255,201,71,.14);color:var(--star)}
-.gain b{font-size:24px;font-weight:700}
+.gain b{font-size:24px;font-weight: 600}
 .gain span{font-size:14px;color:var(--muted)}
 .gain.zero{background:var(--surface-2);color:var(--faint)}
 .next{width:min(360px,100%);display:flex;flex-direction:column;gap:6px}

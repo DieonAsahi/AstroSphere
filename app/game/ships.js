@@ -158,7 +158,7 @@ function decalMat(w, h, draw) {
   return new THREE.MeshStandardMaterial({ map: canvasTex(w, h, draw), transparent: true, alphaTest: .35, roughness: .5, metalness: .1,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
 }
-function nameDecal(text, color = '#1c2330', font = '700 92px "Chakra Petch", sans-serif') {
+function nameDecal(text, color = '#1c2330', font = '600 92px Poppins, sans-serif') {
   return decalMat(1024, 128, (x, w, h) => { x.clearRect(0, 0, w, h); x.font = font; x.textBaseline = 'middle'; x.fillStyle = color; x.fillText(text, 20, h / 2 + 4); });
 }
 // Pita/garis warna yang dicat di atas lambung (stripe)

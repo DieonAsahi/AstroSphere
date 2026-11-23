@@ -518,7 +518,7 @@ export function createEngine(el) {
       c.strokeStyle = major ? 'rgba(241,244,255,.95)' : 'rgba(170,180,222,.5)';
       const h = major ? 11 : mid ? 7 : 4;
       c.beginPath(); c.moveTo(x + .5, Hc - 2); c.lineTo(x + .5, Hc - 2 - h); c.stroke();
-      if (major) { c.fillStyle = dn === 0 ? '#ffc947' : '#f1f4ff'; c.font = '600 13px Fredoka, sans-serif'; c.fillText(CARD[dn / 45], x, Hc - 17); }
+      if (major) { c.fillStyle = dn === 0 ? '#ffc947' : '#f1f4ff'; c.font = '600 13px Poppins, sans-serif'; c.fillText(CARD[dn / 45], x, Hc - 17); }
     }
     c.globalAlpha = 1;
     const mark = (bearing, color, shape) => {

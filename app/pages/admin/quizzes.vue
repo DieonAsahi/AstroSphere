@@ -547,31 +547,31 @@ onMounted(() => {
 <style scoped>
 .admin-quizzes-page { display: flex; flex-direction: column; gap: 20px; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.page-title { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; }
+.page-title { margin: 0; font-size: 22px; font-weight: 600; color: #0f172a; }
 .page-desc { margin: 4px 0 0 0; font-size: 13.5px; color: #64748b; }
 
 .head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.btn-head { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+.btn-head { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; }
 .btn-head.primary { background: #2563eb; color: #fff; }
 .btn-head.line { background: #fff; border-color: #cbd5e1; color: #334155; }
 .btn-head.ghost { background: #f1f5f9; color: #475569; }
 
 .filters-bar { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
 .filter-field { display: flex; flex-direction: column; gap: 6px; }
-.filter-field label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; }
+.filter-field label { font-size: 12px; font-weight: 500; color: #64748b; text-transform: uppercase; }
 .filter-field.search { flex: 1; min-width: 200px; }
 .adm-select, .adm-input { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-size: 13.5px; }
 
 .table-wrap { padding: 0; overflow-x: auto; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
-.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 500; color: #475569; border-bottom: 1px solid #e2e8f0; }
 .adm-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .adm-table tbody tr:hover { background: #f8fafc; }
 
-.planet-badge { padding: 2px 7px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 11.5px; font-weight: 600; }
+.planet-badge { padding: 2px 7px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 11.5px; font-weight: 500; }
 .q-text { color: #0f172a; font-size: 13.5px; display: block; max-width: 320px; }
-.ans-badge { font-size: 12px; font-weight: 600; color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px; }
-.points-tag { font-size: 12px; font-weight: 600; color: #d97706; background: #fffbeb; padding: 2px 6px; border-radius: 4px; }
+.ans-badge { font-size: 12px; font-weight: 500; color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px; }
+.points-tag { font-size: 12px; font-weight: 500; color: #d97706; background: #fffbeb; padding: 2px 6px; border-radius: 4px; }
 .desc-clamp { margin: 0; font-size: 12.5px; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
@@ -589,10 +589,10 @@ onMounted(() => {
 .modal-card { width: 100%; max-width: 760px; max-height: 90vh; background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
 .modal-card.small { max-width: 440px; padding: 24px; }
 .modal-header { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-.modal-title { margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; }
+.modal-title { margin: 0; font-size: 17px; font-weight: 600; color: #0f172a; }
 .modal-sub { margin: 2px 0 0 0; font-size: 12px; color: #64748b; }
 .modal-mode-tabs { display: flex; align-items: center; gap: 6px; }
-.modal-mode-tabs button { padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; font-weight: 600; cursor: pointer; color: #475569; }
+.modal-mode-tabs button { padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; font-weight: 500; cursor: pointer; color: #475569; }
 .modal-mode-tabs button.on { background: #2563eb; color: #fff; border-color: #2563eb; }
 .btn-close-modal { border: none; background: none; color: #94a3b8; cursor: pointer; }
 
@@ -602,23 +602,23 @@ onMounted(() => {
 .field input, .field textarea, .field select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; }
 
 .options-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
-.fs-title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #2563eb; }
+.fs-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #2563eb; }
 .option-row { display: flex; align-items: center; gap: 10px; }
 .radio-key { width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer; }
-.opt-label { width: 24px; font-weight: 700; font-size: 14px; color: #0f172a; }
+.opt-label { width: 24px; font-weight: 600; font-size: 14px; color: #0f172a; }
 .opt-input { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; }
 .hint { font-size: 11.5px; color: #64748b; }
 
 .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
 .btn-cancel { padding: 8px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 13px; cursor: pointer; }
-.btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
-.btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 .q-snippet { font-size: 13px; color: #64748b; font-style: italic; background: #f8fafc; padding: 10px; border-radius: 6px; }
 
 /* Pratinjau Kuis Siswa */
 .preview-body { background: #0b1021; color: #fff; border-radius: 0 0 14px 14px; }
 .preview-quiz-card { display: flex; flex-direction: column; gap: 14px; padding: 10px; }
-.pv-badge { font-size: 11.5px; color: #5ed1ff; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.pv-badge { font-size: 11.5px; color: #5ed1ff; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
 .pv-question { margin: 0; font-size: 17px; line-height: 1.4; color: #fff; }
 .pv-options-list { display: flex; flex-direction: column; gap: 8px; }
 .pv-opt-btn {
