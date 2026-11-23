@@ -592,23 +592,14 @@ onBeforeUnmount(() => {
 .ph-content{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;z-index:2}
 .ph-icon{width:80px;height:80px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.15);border:1px solid rgba(148,174,255,.2);color:var(--sky);box-shadow:0 0 24px rgba(59,130,246,.3)}
 .ph-icon.star-ph{background:rgba(234,179,8,.15);border-color:rgba(234,179,8,.3);color:var(--star);box-shadow:0 0 24px rgba(234,179,8,.3)}
-<<<<<<< HEAD
 .ph-title{font-family:var(--display);font-size:16px;color:var(--text);font-weight:500}
-=======
-.ph-title{font-family:var(--display);font-size:16px;color:var(--text);font-weight: 500}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .ph-filepath{position:absolute;bottom:10px;left:14px;right:14px;display:flex;justify-content:center;z-index:2}
 .ph-filepath code{font-size:10.5px;color:var(--faint);background:rgba(0,0,0,.45);padding:3px 8px;border-radius:6px;border:1px solid rgba(148,174,255,.1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* KOLOM KANAN: PENJELASAN BERSIH & LEGA */
 .info-col{display:flex;flex-direction:column;gap:12px}
-<<<<<<< HEAD
 .step-tag{font-size:11.5px;font-weight:600;color:var(--sky);letter-spacing:.08em;text-transform:uppercase}
 .briefing-title{font-family:var(--display);font-size:clamp(26px,3vw,34px);font-weight:600;color:var(--text);line-height:1.15;margin:0}
-=======
-.step-tag{font-size:11.5px;font-weight: 600;color:var(--sky);letter-spacing:.08em;text-transform:uppercase}
-.briefing-title{font-family:var(--display);font-size:clamp(26px,3vw,34px);font-weight: 600;color:var(--text);line-height:1.15;margin:0}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .briefing-lead{font-size:15px;color:var(--muted);line-height:1.55;margin:0 0 4px}
 
 /* DAFTAR 3 POIN FITUR VERTIKAL BERSIH */
@@ -617,11 +608,7 @@ onBeforeUnmount(() => {
 .pt-icon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.14);color:var(--sky);flex:none;margin-top:2px}
 .pt-icon.star-pt{background:rgba(234,179,8,.14);color:var(--star)}
 .pt-text{display:flex;flex-direction:column;gap:2px}
-<<<<<<< HEAD
 .pt-title{font-family:var(--display);font-size:14.5px;font-weight:500;color:var(--text)}
-=======
-.pt-title{font-family:var(--display);font-size:14.5px;font-weight: 500;color:var(--text)}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .pt-desc{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
 
 /* SLIDE 5: PANGGUNG SIMULATOR 3D & KONTROLER */
@@ -688,11 +675,7 @@ onBeforeUnmount(() => {
 /* PANEL KONTROL KANAN DI SLIDE 5 */
 .ctrl-testing-panel{display:flex;flex-direction:column;gap:12px;margin-top:2px}
 .ctrl-subgroup{display:flex;flex-direction:column;gap:6px}
-<<<<<<< HEAD
 .ctrl-sublabel{font-size:11px;font-weight:600;color:var(--sky);letter-spacing:.05em;text-transform:uppercase}
-=======
-.ctrl-sublabel{font-size:11px;font-weight: 600;color:var(--sky);letter-spacing:.05em;text-transform:uppercase}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .wasd-layout{display:flex;flex-direction:column;gap:5px;align-items:center}
 .key-center{display:flex;justify-content:center}
 .key-row{display:flex;gap:6px}
@@ -705,11 +688,7 @@ onBeforeUnmount(() => {
 .test-key.active small{color:#fff}
 
 .speed-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-<<<<<<< HEAD
 .test-key-wide{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line-2);border-bottom-width:3px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text);transition:transform .08s,background .12s}
-=======
-.test-key-wide{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line-2);border-bottom-width:3px;cursor:pointer;font-size:12.5px;font-weight: 500;color:var(--text);transition:transform .08s,background .12s}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .test-key-wide:hover{background:rgba(59,130,246,.2)}
 .test-key-wide:active,.test-key-wide.active{transform:translateY(2px);background:var(--blue);border-color:var(--blue-d);color:#fff}
 .test-key-wide.hl{border-color:rgba(59,130,246,.45)}
@@ -723,11 +702,7 @@ onBeforeUnmount(() => {
 
 /* Indikator Titik Slide */
 .dots-track{display:flex;align-items:center;gap:8px}
-<<<<<<< HEAD
 .dot-node{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--faint);font-family:var(--display);font-size:11.5px;font-weight:500;cursor:pointer;transition:all .15s}
-=======
-.dot-node{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--faint);font-family:var(--display);font-size:11.5px;font-weight: 500;cursor:pointer;transition:all .15s}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .dot-node:hover{background:var(--surface-3);color:var(--text)}
 .dot-node.active{background:var(--blue);border-color:var(--blue-d);color:#fff;transform:scale(1.1);box-shadow:0 0 10px rgba(59,130,246,.5)}
 

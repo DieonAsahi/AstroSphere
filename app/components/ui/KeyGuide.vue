@@ -97,11 +97,7 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 .key.wide .kbd{min-width:70px;height:40px;font-size:15px}
 .key.wide .kbd.sp{min-width:110px}
 .key.wide small{font-size:13.5px;color:var(--text)}
-<<<<<<< HEAD
 .cap{font-family:var(--display);font-weight:500;font-size:14px;color:var(--faint)}
-=======
-.cap{font-family:var(--display);font-weight: 500;font-size:14px;color:var(--faint)}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .tc{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center}
 .phone{position:relative;width:290px;height:154px;border-radius:26px;border:3px solid var(--line-2);background:linear-gradient(160deg,#141d45,#0b1130);flex:none;overflow:hidden}
 .stick-mock{position:absolute;left:20px;bottom:18px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,rgba(22,33,70,.85) 0%,rgba(10,16,38,.95) 100%);border:2px solid rgba(143,176,255,.25);display:grid;place-items:center}
@@ -110,25 +106,15 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 .stick-mock span{position:absolute;bottom:-20px;font-size:10.5px;color:var(--muted);white-space:nowrap}
 .throttle-mock{position:absolute;right:18px;bottom:22px;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(16,23,58,.8);border:1px solid rgba(143,176,255,.2)}
 .throttle-mock .slots{display:flex;flex-direction:column;gap:3px}
-<<<<<<< HEAD
 .throttle-mock .slot{font-size:9px;font-weight:600;color:var(--faint);letter-spacing:.04em}
-=======
-.throttle-mock .slot{font-size:9px;font-weight: 600;color:var(--faint);letter-spacing:.04em}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .throttle-mock .slot.hot{color:#ffc947}
 .throttle-mock .slot.act{color:#60a5fa}
 .throttle-mock .slot.warn{color:#ff6b6b}
 .throttle-mock .rail{position:relative;width:6px;height:68px;border-radius:999px;background:rgba(10,16,38,.9);border:1px solid rgba(143,176,255,.25);overflow:hidden}
 .throttle-mock .lever{position:absolute;left:0;right:0;top:20px;height:12px;border-radius:999px;background:#60a5fa;box-shadow:0 0 6px #60a5fa}
-<<<<<<< HEAD
 .stop-mock{position:absolute;right:84px;bottom:14px;padding:2px 7px;border-radius:6px;background:rgba(255,107,107,.18);border:1px solid rgba(255,107,107,.4);color:#ff8585;font-size:9.5px;font-weight:600}
 .tl{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:360px;font-size:14.5px;color:var(--muted)}
 .tl b{color:var(--text);font-weight:500}
-=======
-.stop-mock{position:absolute;right:84px;bottom:14px;padding:2px 7px;border-radius:6px;background:rgba(255,107,107,.18);border:1px solid rgba(255,107,107,.4);color:#ff8585;font-size:9.5px;font-weight: 600}
-.tl{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:360px;font-size:14.5px;color:var(--muted)}
-.tl b{color:var(--text);font-weight: 500}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .compact .grp{min-width:0;padding:12px 12px 10px}
 @media (max-width:760px){ .grp{min-width:0;flex:1 1 140px} .key .kbd{min-width:42px;height:42px} }
 </style>

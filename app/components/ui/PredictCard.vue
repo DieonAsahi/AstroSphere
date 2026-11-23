@@ -58,20 +58,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 .opt{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:54px;border-radius:var(--r);background:var(--surface-2);border:2px solid transparent;text-align:left;font-size:15px;transition:background .15s,border-color .15s,transform .1s}
 .opt:hover{background:var(--surface-3);border-color:var(--line-2)}
 .opt:active{transform:scale(.98)}
-<<<<<<< HEAD
 .opt .lt{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--surface-3);font-family:var(--display);font-weight:500}
-=======
-.opt .lt{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--surface-3);font-family:var(--display);font-weight: 500}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .hint{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--faint)}
 .hint :deep(svg){color:var(--star)}
 .mine{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:var(--r);background:var(--surface-2);border-left:4px solid var(--sky)}
 .mine small{font-size:12.5px;color:var(--faint)}
-<<<<<<< HEAD
 .mine b{font-family:var(--display);font-weight:500;font-size:16px}
-=======
-.mine b{font-family:var(--display);font-weight: 500;font-size:16px}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .ok .mine{border-left-color:var(--green)}
 .no .mine{border-left-color:var(--coral)}
 .watch{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
@@ -81,11 +73,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 .res{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:var(--r);background:rgba(255,107,107,.1);animation:rise .35s ease both}
 .ok .res{background:rgba(54,211,154,.1)}
 @keyframes rise{from{transform:translateY(8px);opacity:0}}
-<<<<<<< HEAD
 .rt{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:500;font-size:18px;color:var(--coral)}
-=======
-.rt{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight: 500;font-size:18px;color:var(--coral)}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .ok .rt{color:var(--green)}
 .rw{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:rgba(255,201,71,.16);color:var(--star);font-size:14px}
 .ans{font-size:14.5px;color:var(--muted)}.ans b{color:var(--text)}

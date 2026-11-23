@@ -125,11 +125,7 @@ onMounted(draw); onBeforeUnmount(() => cancelAnimationFrame(raf));
 .li:hover{background:var(--surface-2)}
 .li.on{background:var(--surface-3)}
 .li .n{flex:1;display:flex;flex-direction:column;line-height:1.25}
-<<<<<<< HEAD
 .li b{font-family:var(--display);font-weight:500;font-size:16px}
-=======
-.li b{font-family:var(--display);font-weight: 500;font-size:16px}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .li small{font-size:12.5px;color:var(--faint)}
 .tg{color:var(--star)}
 .mc{position:relative;min-height:0;border-radius:var(--r-lg);overflow:hidden}
@@ -143,11 +139,7 @@ canvas{display:block;cursor:pointer}
 .dtop{display:flex;align-items:center;gap:14px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stats small{display:block;font-size:12.5px;color:var(--faint)}
-<<<<<<< HEAD
 .stats b{font-size:18px;font-weight:500}
-=======
-.stats b{font-size:18px;font-weight: 500}
->>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .acts{display:flex;flex-direction:column;gap:10px}
 .lock{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--faint);line-height:1.5}
 .lock :deep(svg){flex:none;margin-top:2px;color:var(--star)}
