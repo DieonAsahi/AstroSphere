@@ -64,7 +64,11 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 .tile-btn:hover{background:var(--surface-3)}
 .tile-btn:active{transform:scale(.96)}
 .ic{position:relative;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:rgba(59,108,240,.18);color:var(--sky)}
+<<<<<<< HEAD
 .badge{position:absolute;top:-4px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-weight:600;font-size:12px}
+=======
+.badge{position:absolute;top:-4px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-weight: 600;font-size:12px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .nw{font-family:var(--font);font-weight:400;font-size:11.5px;color:var(--star);margin-top:-4px}
 .mlist{display:flex;flex-direction:column;gap:8px}
 .mis{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--r);text-align:left;background:var(--surface-2);border:1px solid var(--line);transition:background .15s,transform .1s}
@@ -72,8 +76,14 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 .mic{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.18);color:var(--sky);flex:none}
 .mt{flex:1;display:flex;flex-direction:column}
 .mt small{font-size:11.5px;color:var(--faint)}
+<<<<<<< HEAD
 .mt b{font-family:var(--display);font-weight:500;font-size:15px;color:var(--text)}
 .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--line)}
 .pts{display:flex;align-items:center;gap:6px;color:var(--star);font-family:var(--display);font-weight:500;padding-top:10px}
+=======
+.mt b{font-family:var(--display);font-weight: 500;font-size:15px;color:var(--text)}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--line)}
+.pts{display:flex;align-items:center;gap:6px;color:var(--star);font-family:var(--display);font-weight: 500;padding-top:10px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .foot .btn{margin-top:10px}
 </style>

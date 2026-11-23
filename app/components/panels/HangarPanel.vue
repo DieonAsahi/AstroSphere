@@ -77,13 +77,22 @@ onBeforeUnmount(() => { if (store.hangarPreview !== store.progress.selectedShip)
 .sc{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:150px;padding:14px 16px;border-radius:var(--r);background:var(--surface-a);border:2px solid var(--line);text-align:left;transition:border-color .15s,transform .12s}
 .sc:hover{border-color:var(--line-2)}
 .sc.on{border-color:var(--sky);transform:translateY(-3px)}
+<<<<<<< HEAD
 .sc b{font-family:var(--display);font-weight:500;font-size:16px}
+=======
+.sc b{font-family:var(--display);font-weight: 500;font-size:16px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .desc{font-size:14.5px;color:var(--muted);line-height:1.6}
 .speed-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .speed-box{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);border:1px solid rgba(143,176,255,.14)}
 .speed-box.hot{border-color:rgba(255,201,71,.3);background:rgba(255,201,71,.08)}
+<<<<<<< HEAD
 .sb-label{font-size:11px;color:var(--faint);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
 .sb-val{font-size:17px;font-weight:600;color:var(--text)}
+=======
+.sb-label{font-size:11px;color:var(--faint);font-weight: 500;text-transform:uppercase;letter-spacing:.04em}
+.sb-val{font-size:17px;font-weight: 600;color:var(--text)}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .speed-box.hot .sb-val{color:var(--star)}
 .sb-val small{font-size:11.5px;color:var(--muted);font-weight:400}
 .stats{display:flex;flex-direction:column;gap:10px}

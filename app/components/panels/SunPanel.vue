@@ -80,12 +80,21 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
 .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fact{display:flex;flex-direction:column;gap:2px;color:var(--star)}
 .fact small{font-size:12.5px;color:var(--faint);margin-top:6px}
+<<<<<<< HEAD
 .fact b{font-size:18px;font-weight:500;color:var(--text)}
 .lbl{font-family:var(--display);font-weight:500;font-size:15px;margin-top:4px}
 .topics{display:flex;flex-direction:column;gap:8px}
 .tp{border-radius:var(--r);background:var(--surface-2);overflow:hidden;border:1px solid transparent;transition:border-color .2s}
 .tp.on{border-color:rgba(255,201,71,.35)}
 .th{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;text-align:left;font-family:var(--display);font-weight:500;font-size:15px}
+=======
+.fact b{font-size:18px;font-weight: 500;color:var(--text)}
+.lbl{font-family:var(--display);font-weight: 500;font-size:15px;margin-top:4px}
+.topics{display:flex;flex-direction:column;gap:8px}
+.tp{border-radius:var(--r);background:var(--surface-2);overflow:hidden;border:1px solid transparent;transition:border-color .2s}
+.tp.on{border-color:rgba(255,201,71,.35)}
+.th{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;text-align:left;font-family:var(--display);font-weight: 500;font-size:15px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .chev{color:var(--muted);transition:transform .2s;flex:none}
 .tp.on .chev{transform:rotate(180deg)}
 .tb{display:flex;flex-direction:column;gap:10px;padding:0 14px 14px}

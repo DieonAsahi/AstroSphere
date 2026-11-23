@@ -164,7 +164,11 @@ onBeforeUnmount(() => clearInterval(waitT));
 .stat .h1{font-size:clamp(30px,3.6vw,46px);text-shadow:0 4px 24px rgba(0,0,0,.6)}
 .tag.red{background:rgba(255,107,107,.2);color:var(--coral)}
 .clk{display:flex;align-items:baseline;gap:10px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+<<<<<<< HEAD
 .clk b{font-family:var(--display);font-size:22px;font-weight:600;color:var(--star)}
+=======
+.clk b{font-family:var(--display);font-size:22px;font-weight: 600;color:var(--star)}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .clk span{color:var(--muted);font-size:14px}
 .ph{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);text-shadow:0 2px 10px rgba(0,0,0,.7)}
 .dotp{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
@@ -184,11 +188,16 @@ onBeforeUnmount(() => clearInterval(waitT));
 .mc .tag{align-self:flex-start}
 .mc.center{align-items:center;text-align:center}
 .mc.center .tag{align-self:center}
+<<<<<<< HEAD
 .big{font-family:var(--display);font-size:46px;font-weight:600;color:var(--star)}
+=======
+.big{font-family:var(--display);font-size:46px;font-weight: 600;color:var(--star)}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .tx{font-size:15px;color:var(--muted);line-height:1.6}
 .clues{display:flex;flex-direction:column;gap:8px}
 .clue{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:var(--r);background:var(--surface-2);text-align:left;border:2px dashed var(--line-2)}
 .clue.on{border-style:solid;border-color:rgba(255,201,71,.4)}
+<<<<<<< HEAD
 .clue b{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500}
 .clue .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-size:13px}
 .clue p{font-size:14px;color:var(--muted);line-height:1.55}
@@ -198,6 +207,17 @@ onBeforeUnmount(() => clearInterval(waitT));
 .opts.grid{display:grid;grid-template-columns:1fr 1fr}
 .opt{padding:12px 14px;border-radius:var(--r);background:var(--surface-2);text-align:left;font-size:15px;border:2px solid transparent;transition:background .15s}
 .opts.grid .opt{text-align:center;font-size:18px;font-weight:500}
+=======
+.clue b{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight: 500}
+.clue .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-size:13px}
+.clue p{font-size:14px;color:var(--muted);line-height:1.55}
+.clue small{font-size:12.5px;color:var(--faint)}
+.q{font-family:var(--display);font-weight: 500;font-size:17px;margin-top:4px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opts.grid{display:grid;grid-template-columns:1fr 1fr}
+.opt{padding:12px 14px;border-radius:var(--r);background:var(--surface-2);text-align:left;font-size:15px;border:2px solid transparent;transition:background .15s}
+.opts.grid .opt{text-align:center;font-size:18px;font-weight: 500}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .opt:hover{background:var(--surface-3)}
 .opt.ok{border-color:var(--green);background:rgba(54,211,154,.12)}
 .opt.bad{border-color:var(--coral);background:rgba(255,107,107,.12)}
@@ -226,7 +246,11 @@ onBeforeUnmount(() => clearInterval(waitT));
 .gain{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:rgba(255,201,71,.14);color:var(--star)}
 .gain span{font-size:13.5px;color:var(--muted)}
 .lessons{width:100%;text-align:left;padding:12px 14px;border-radius:var(--r);background:rgba(54,211,154,.08);border:1px solid rgba(54,211,154,.25)}
+<<<<<<< HEAD
 .lessons b{font-family:var(--display);font-weight:500;color:var(--green)}
+=======
+.lessons b{font-family:var(--display);font-weight: 500;color:var(--green)}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .lessons ul,.facts{display:flex;flex-direction:column;gap:6px;padding-left:18px;margin-top:6px;font-size:14px;color:var(--muted);line-height:1.5}
 .facts{text-align:left;width:100%}
 .fin .row2{width:100%}

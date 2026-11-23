@@ -414,20 +414,32 @@ function handleQuickStop() {
 .chev{color:var(--muted);transition:transform .2s}.chev.up{transform:rotate(180deg)}
 .pk-back{position:absolute;inset:0;z-index:1}
 .pk{position:absolute;left:50%;top:calc(var(--top) + 112px + var(--safe-t));transform:translateX(-50%);z-index:2;width:min(360px,calc(100vw - 24px));padding:14px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+<<<<<<< HEAD
 .pk-h{font-family:var(--display);font-weight:500;font-size:16px}
+=======
+.pk-h{font-family:var(--display);font-weight: 500;font-size:16px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .pk-s{font-size:12.5px;color:var(--muted);line-height:1.5}
 .pk-l{display:flex;flex-direction:column;gap:4px;max-height:min(52vh,420px);overflow-y:auto}
 .pk-r{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);text-align:left;transition:background .15s}
 .pk-r:hover{background:var(--surface-2)}
 .pk-r.on{background:rgba(59,108,240,.22);box-shadow:inset 0 0 0 1px rgba(143,176,255,.4)}
 .pk-r .n{flex:1;display:flex;flex-direction:column}
+<<<<<<< HEAD
 .pk-r .n b{font-family:var(--display);font-weight:500;font-size:15px}
+=======
+.pk-r .n b{font-family:var(--display);font-weight: 500;font-size:15px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .pk-r .n small{font-size:11.5px;color:var(--star)}
 .pk-r.nf .planet-dot{opacity:.55}
 .pk-r .d{font-size:12.5px;color:var(--muted)}
 .pk-k{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--faint)}
 .dest .dot{width:10px;height:10px;border-radius:50%}
+<<<<<<< HEAD
 .dest .nm{font-family:var(--display);font-weight:500}
+=======
+.dest .nm{font-family:var(--display);font-weight: 500}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .dest .d{font-size:13px;color:var(--muted)}
 .pill{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 12px;border-radius:999px;background:var(--surface-3);font-family:var(--display);font-weight:500;font-size:13px}
 .pill:hover{filter:brightness(1.15)}
@@ -437,7 +449,11 @@ function handleQuickStop() {
 /* PESAN KEDEKATAN PLANET — ZONA HIJAU (TENGAH ATAS, DI BAWAH KOMPAS) */
 .approach-green-card{position:absolute;left:50%;top:calc(var(--top) + 112px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:8px 16px;border-radius:999px;background:rgba(8,16,36,.92);border:1px solid rgba(74,222,128,.5);box-shadow:0 0 24px rgba(74,222,128,.22),0 4px 14px rgba(0,0,0,.6);backdrop-filter:blur(10px);white-space:nowrap;z-index:4}
 .approach-txt{display:flex;align-items:center;gap:10px}
+<<<<<<< HEAD
 .badge-green-zone{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;color:#4ade80;text-transform:uppercase;letter-spacing:.04em;background:rgba(74,222,128,.12);padding:2px 7px;border-radius:999px}
+=======
+.badge-green-zone{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight: 500;color:#4ade80;text-transform:uppercase;letter-spacing:.04em;background:rgba(74,222,128,.12);padding:2px 7px;border-radius:999px}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .green-pulsar{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;animation:pulseGreen 1.4s infinite}
 @keyframes pulseGreen{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 .approach-title{font-family:var(--display);font-size:14px;color:#fff}
@@ -454,19 +470,32 @@ function handleQuickStop() {
 .knob-core{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.65);box-shadow:0 0 6px #fff}
 .knob-core.active{background:#ffc947;box-shadow:0 0 10px #ffc947}
 .stick-label-box{display:flex;flex-direction:column;align-items:center;gap:1px}
+<<<<<<< HEAD
 .stick-label{font-family:var(--display);font-size:12px;font-weight:500;color:var(--text)}
+=======
+.stick-label{font-family:var(--display);font-size:12px;font-weight: 500;color:var(--text)}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .stick-keys{font-size:10.5px;color:var(--faint)}
 
 /* 2. TUAS DORONG PESAWAT ANTARIKSA (KANAN BAWAH) */
 .cockpit-throttle-wrap{position:absolute;right:calc(var(--gap) + var(--safe-r));bottom:calc(var(--gap) + var(--safe-b));display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:var(--r-lg);background:var(--surface-a);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.4);touch-action:none;user-select:none;z-index:3}
 .throttle-telemetry{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:96px}
 .telemetry-speed{display:flex;align-items:baseline;gap:4px}
+<<<<<<< HEAD
 .telemetry-speed b{font-size:30px;font-weight:500;line-height:1}
 .telemetry-speed .unit{font-size:12px;color:var(--muted)}
 .telemetry-badge{font-family:var(--display);font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--surface-3);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .telemetry-badge.hot{background:rgba(255,201,71,.2);color:var(--star)}
 .telemetry-badge.warn{background:rgba(255,107,107,.2);color:var(--coral)}
 .btn-stop-quick{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.35);color:#ff8585;font-size:11.5px;font-weight:500;cursor:pointer;transition:background .15s,transform .08s}
+=======
+.telemetry-speed b{font-size:30px;font-weight: 500;line-height:1}
+.telemetry-speed .unit{font-size:12px;color:var(--muted)}
+.telemetry-badge{font-family:var(--display);font-size:11.5px;font-weight: 500;padding:2px 8px;border-radius:999px;background:var(--surface-3);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.telemetry-badge.hot{background:rgba(255,201,71,.2);color:var(--star)}
+.telemetry-badge.warn{background:rgba(255,107,107,.2);color:var(--coral)}
+.btn-stop-quick{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:rgba(255,107,107,.14);border:1px solid rgba(255,107,107,.35);color:#ff8585;font-size:11.5px;font-weight: 500;cursor:pointer;transition:background .15s,transform .08s}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .btn-stop-quick:hover{background:rgba(255,107,107,.25)}
 .btn-stop-quick:active{transform:scale(.95)}
 .btn-stop-quick kbd{font-size:10px;padding:1px 4px;border-radius:4px;background:rgba(0,0,0,.4);color:#ffc9c9}
@@ -474,7 +503,11 @@ function handleQuickStop() {
 /* Rel & Notches Tuas */
 .throttle-track{position:relative;width:82px;height:140px;display:flex;align-items:center;justify-content:center;cursor:ns-resize}
 .track-slots{position:absolute;left:2px;top:4px;bottom:4px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;pointer-events:none}
+<<<<<<< HEAD
 .slot{font-size:9.5px;font-weight:500;color:var(--faint);letter-spacing:.04em;transition:color .15s}
+=======
+.slot{font-size:9.5px;font-weight: 500;color:var(--faint);letter-spacing:.04em;transition:color .15s}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .slot.active{color:var(--star)}
 .slot.turbo.active{color:#ff8080}
 .slot.brake.active{color:#ff6b6b}
@@ -493,7 +526,11 @@ function handleQuickStop() {
 
 /* Notifikasi lainnya */
 .msg{position:absolute;left:50%;top:calc(50% + 48px);transform:translateX(-50%);padding:6px 16px;border-radius:999px;background:var(--surface-a);font-family:var(--display);font-weight:500;white-space:nowrap}
+<<<<<<< HEAD
 .bound{position:absolute;left:50%;top:calc(var(--top) + 116px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:var(--coral);color:#2a0606;font-family:var(--display);font-weight:500;white-space:nowrap}
+=======
+.bound{position:absolute;left:50%;top:calc(var(--top) + 116px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:var(--coral);color:#2a0606;font-family:var(--display);font-weight: 500;white-space:nowrap}
+>>>>>>> 0bd5bb9719f62929bc67a5fc271172798cf3f731
 .saved{position:absolute;right:calc(var(--gap) + var(--safe-r));top:calc(var(--top) + 60px + var(--safe-t));display:flex;align-items:center;gap:6px;font-size:13px;color:var(--green)}
 .hint{position:absolute;left:50%;bottom:calc(var(--gap) + 8px + var(--safe-b));transform:translateX(-50%);display:flex;gap:16px;padding:8px 16px;border-radius:999px;background:var(--surface-a);border:1px solid var(--line);font-size:13px;color:var(--muted);white-space:nowrap;pointer-events:none}
 .hint span{display:flex;align-items:center;gap:5px}
