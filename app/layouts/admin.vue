@@ -226,7 +226,7 @@ onBeforeUnmount(() => {
   min-height: 100vh;
   background-color: var(--adm-bg);
   color: var(--adm-text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
 }
 
 /* Zero Leak Loader */
@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
   border: none;
   padding: 6px 14px;
   border-radius: 6px;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s;
@@ -361,7 +361,7 @@ onBeforeUnmount(() => {
 .nav-item.active {
   background-color: #eff6ff;
   color: #2563eb;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sidebar-footer {
@@ -404,7 +404,7 @@ onBeforeUnmount(() => {
   color: #ffffff;
   display: grid;
   place-items: center;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
   flex: none;
 }
@@ -416,7 +416,7 @@ onBeforeUnmount(() => {
 }
 .admin-email {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
@@ -462,7 +462,7 @@ onBeforeUnmount(() => {
 }
 .route-tag {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: #64748b;
   text-transform: capitalize;
 }

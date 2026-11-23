@@ -60,8 +60,8 @@ const teaser = computed(() => {
 .top .tag{margin-bottom:4px}
 .desc{color:var(--muted);font-size:15px}
 .ph{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r-sm);background:rgba(59,108,240,.16);color:var(--sky);font-size:14px}
-.ph b{color:var(--text);font-weight:600}
-.q{font-family:var(--display);font-weight:600;font-size:18px;margin-top:2px}
+.ph b{color:var(--text);font-weight:500}
+.q{font-family:var(--display);font-weight:500;font-size:18px;margin-top:2px}
 .acts{display:flex;gap:10px;flex-wrap:wrap}
 .acts .btn{flex:1 1 170px}
 .keys{display:flex;align-items:center;gap:6px;justify-content:center;font-size:12.5px;color:var(--faint)}

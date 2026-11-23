@@ -90,7 +90,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 .jr:disabled{cursor:default}
 .jr.nw{border-color:rgba(255,201,71,.45)}
 .jr .tx{flex:1;min-width:0;display:flex;flex-direction:column}
-.jr b{font-family:var(--display);font-weight:600;font-size:15px}
+.jr b{font-family:var(--display);font-weight:500;font-size:15px}
 .jr small{font-size:12px;color:var(--faint)}
 .jr .tag{flex:none}
 .jr.unk .planet-dot{border:2px dashed var(--line-2);box-shadow:none;background:none}
@@ -98,15 +98,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 .det{display:flex;flex-direction:column;gap:14px}
 .who{display:flex;align-items:center;gap:12px}
 .nm{flex:1;display:flex;flex-direction:column}
-.nm b{font-family:var(--display);font-weight:600;font-size:20px}
+.nm b{font-family:var(--display);font-weight:500;font-size:20px}
 .nm small{font-size:13px;color:var(--faint)}
-.rw{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,201,71,.16);color:var(--star);font-family:var(--display);font-weight:600;font-size:14px;animation:pop .4s cubic-bezier(.2,.9,.3,1.4) both}
+.rw{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,201,71,.16);color:var(--star);font-family:var(--display);font-weight:500;font-size:14px;animation:pop .4s cubic-bezier(.2,.9,.3,1.4) both}
 @keyframes pop{from{transform:scale(.3);opacity:0}}
 .deck{touch-action:pan-y}
 .fc{min-height:220px;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:26px 24px;border-radius:var(--r-lg);
   background:linear-gradient(150deg,color-mix(in srgb,var(--c) 26%,var(--surface-2)),var(--surface-2) 70%);border:1px solid color-mix(in srgb,var(--c) 40%,var(--line))}
-.lbl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--star);font-family:var(--display);font-weight:600}
-.h{font-family:var(--display);font-weight:700;font-size:clamp(28px,4.4vw,40px);line-height:1.1}
+.lbl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--star);font-family:var(--display);font-weight:500}
+.h{font-family:var(--display);font-weight:600;font-size:clamp(28px,4.4vw,40px);line-height:1.1}
 .fc p{font-size:16px;line-height:1.55;color:#dbe1f7;max-width:44ch}
 .src{font-size:12px;color:var(--faint)}
 .nav{display:flex;align-items:center;justify-content:center;gap:16px}

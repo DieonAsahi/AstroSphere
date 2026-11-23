@@ -65,7 +65,7 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 .dz{color:var(--coral)}
 .jr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:6px}
 .jr{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2)}
-.jr b{display:block;font-family:var(--display);font-weight:600;font-size:15px}
+.jr b{display:block;font-family:var(--display);font-weight:500;font-size:15px}
 .jr small{font-size:12px;color:var(--faint)}
 .jr.unk .planet-dot{border:2px dashed var(--line-2);box-shadow:none;background:none}
 .jr.unk b{color:var(--faint)}

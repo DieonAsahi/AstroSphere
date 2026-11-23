@@ -26,7 +26,7 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
 .tbar{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;border-radius:var(--r-lg)}
 .date{display:flex;flex-direction:column;line-height:1.2;min-width:96px}
 .date small{font-size:12px;color:var(--faint)}
-.date b{font-weight:600;font-size:16px}
+.date b{font-weight:500;font-size:16px}
 .tg{display:flex;gap:6px;padding-left:10px;border-left:1px solid var(--line)}
 @media (max-width:760px){ .tbar{width:100%;gap:8px;padding:8px} .date{min-width:0} .date small{display:none} .seg button{padding:0 10px} }
 </style>

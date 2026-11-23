@@ -100,16 +100,16 @@ onBeforeUnmount(closeMissionMenu);
 .tb.off{opacity:0}.tb.off>*{pointer-events:none}
 .l,.r{display:flex;align-items:center;gap:10px}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-size:20px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
-.brand b{font-weight:600}
+.brand b{font-weight:500}
 .back{background:var(--surface-a);box-shadow:inset 0 0 0 1px var(--line)}
 .menu{position:relative}
-.badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-family:var(--display);font-weight:700;font-size:12px;box-shadow:0 0 0 2px var(--bg, #060a1a)}
+.badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--star);color:#3a2a00;font-family:var(--display);font-weight:600;font-size:12px;box-shadow:0 0 0 2px var(--bg, #060a1a)}
 
 /* TOMBOL CEPAT & POPOVER MISI */
 .mission-wrapper{position:relative}
-.mission-top-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-weight:600;padding:0 12px;border-radius:999px;transition:background .15s}
+.mission-top-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--text);font-weight:500;padding:0 12px;border-radius:999px;transition:background .15s}
 .mission-top-btn:hover{background:var(--surface-3);color:#fff}
-.badge-mini{background:var(--star);color:#2b1d00;font-size:10.5px;font-weight:700;padding:1px 5px;border-radius:999px}
+.badge-mini{background:var(--star);color:#2b1d00;font-size:10.5px;font-weight:600;padding:1px 5px;border-radius:999px}
 .mission-popover{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 12px 30px rgba(0,0,0,.6);padding:12px;display:flex;flex-direction:column;gap:10px;z-index:40}
 .pop-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px}
 .pop-header b{font-family:var(--display);font-size:14px;color:var(--text)}
@@ -122,7 +122,7 @@ onBeforeUnmount(closeMissionMenu);
 .pop-item small{font-size:10.5px;color:var(--faint)}
 .pop-item b{font-family:var(--display);font-size:13.5px;color:var(--text);line-height:1.2}
 .pop-item .p-sub{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pop-item .p-star{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--star);font-weight:600}
+.pop-item .p-star{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--star);font-weight:500}
 
 @media (max-width:760px){ .brand b{display:none} .tag{display:none} .mission-top-btn span{display:none} }
 </style>

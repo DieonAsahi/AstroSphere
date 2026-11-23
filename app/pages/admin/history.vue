@@ -685,7 +685,7 @@ onMounted(() => {
 .page-title {
   margin: 0;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .page-desc {
@@ -707,7 +707,7 @@ onMounted(() => {
   padding: 8px 14px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
 }
@@ -731,7 +731,7 @@ onMounted(() => {
 }
 .filter-field label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: #64748b;
   text-transform: uppercase;
 }
@@ -762,7 +762,7 @@ onMounted(() => {
 .adm-table th {
   background-color: #f8fafc;
   padding: 12px 16px;
-  font-weight: 600;
+  font-weight: 500;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -776,7 +776,7 @@ onMounted(() => {
   background-color: #f8fafc;
 }
 .year-badge {
-  font-weight: 700;
+  font-weight: 600;
   color: #2563eb;
   font-size: 13px;
 }
@@ -786,7 +786,7 @@ onMounted(() => {
   background-color: #eff6ff;
   color: #1d4ed8;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .event-title-cell b {
   display: block;
@@ -879,7 +879,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
 }
-.modal-title { margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; }
+.modal-title { margin: 0; font-size: 17px; font-weight: 600; color: #0f172a; }
 .modal-sub { margin: 2px 0 0 0; font-size: 12px; color: #64748b; }
 .modal-mode-tabs { display: flex; align-items: center; gap: 6px; }
 .modal-mode-tabs button {
@@ -888,7 +888,7 @@ onMounted(() => {
   border: 1px solid #e2e8f0;
   background-color: #f8fafc;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: #475569;
   cursor: pointer;
 }
@@ -933,7 +933,7 @@ onMounted(() => {
   border: 1px solid #cbd5e1;
   color: #334155;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .sr-only { display: none; }
@@ -955,8 +955,8 @@ onMounted(() => {
   border-top: 1px solid #e2e8f0;
 }
 .btn-cancel { padding: 8px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 13px; cursor: pointer; }
-.btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
-.btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 
 /* Pratinjau PLY-03 / PLY-04 */
 .preview-body { background-color: #0b1021; color: #ffffff; border-radius: 0 0 14px 14px; }
@@ -970,7 +970,7 @@ onMounted(() => {
   gap: 10px;
 }
 .ply03-header { display: flex; align-items: center; justify-content: space-between; }
-.ply03-year { font-size: 16px; font-weight: 700; color: #5ed1ff; }
+.ply03-year { font-size: 16px; font-weight: 600; color: #5ed1ff; }
 .ply03-tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: rgba(94, 209, 255, 0.15); color: #5ed1ff; }
 .ply03-content { display: flex; gap: 12px; align-items: flex-start; }
 .ply03-thumb { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex: none; }
@@ -978,7 +978,7 @@ onMounted(() => {
 .ply03-title { font-size: 15px; color: #ffffff; display: block; }
 .ply03-actor { font-size: 12px; color: #5ed1ff; }
 .ply03-desc { margin: 4px 0 0; font-size: 13px; color: #a6b2de; }
-.ply03-cta { font-size: 12px; font-weight: 600; color: #5ed1ff; align-self: flex-end; }
+.ply03-cta { font-size: 12px; font-weight: 500; color: #5ed1ff; align-self: flex-end; }
 
 .preview-ply04-detail { display: flex; flex-direction: column; gap: 12px; }
 .ply04-media { width: 100%; max-height: 200px; border-radius: 10px; overflow: hidden; }

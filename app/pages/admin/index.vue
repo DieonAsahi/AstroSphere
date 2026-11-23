@@ -386,7 +386,7 @@ onMounted(() => {
 .page-title {
   margin: 0;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .page-desc {
@@ -405,7 +405,7 @@ onMounted(() => {
   padding: 8px 14px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -452,7 +452,7 @@ onMounted(() => {
 }
 .mc-label {
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -471,7 +471,7 @@ onMounted(() => {
 
 .mc-val {
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
   line-height: 1.1;
 }
@@ -483,7 +483,7 @@ onMounted(() => {
 .mc-link {
   margin-top: 6px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: #2563eb;
   text-decoration: none;
 }
@@ -501,7 +501,7 @@ onMounted(() => {
 }
 .sec-badge {
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #2563eb;
@@ -511,7 +511,7 @@ onMounted(() => {
 .sec-title {
   margin: 0;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .sec-desc {
@@ -535,7 +535,7 @@ onMounted(() => {
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   border: 1px solid transparent;
 }
 .ec-stats-row {
@@ -665,7 +665,7 @@ onMounted(() => {
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
 }
 .mod-badge.planet { background-color: #eff6ff; color: #1d4ed8; }

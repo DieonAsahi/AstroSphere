@@ -248,7 +248,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
 .stat .h1{font-size:clamp(34px,4vw,52px);text-shadow:0 4px 24px rgba(0,0,0,.6)}
 .tag.red{background:rgba(255,107,107,.2);color:var(--coral)}
 .clk{display:flex;align-items:baseline;gap:10px;text-shadow:0 2px 10px rgba(0,0,0,.7)}
-.clk b{font-family:var(--display);font-size:26px;font-weight:700;color:var(--star)}
+.clk b{font-family:var(--display);font-size:26px;font-weight:600;color:var(--star)}
 .clk span{color:var(--muted);font-size:14px}
 .ph{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);text-shadow:0 2px 10px rgba(0,0,0,.7)}
 .ph b{color:var(--text)}
@@ -264,7 +264,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
 .x{position:absolute;right:calc(var(--gap) + var(--safe-r));top:calc(var(--top) + var(--safe-t))}
 .note{position:absolute;left:50%;top:calc(var(--top) + 8px + var(--safe-t));transform:translateX(-50%);max-width:min(560px,calc(100vw - 140px));padding:10px 18px;border-radius:999px;background:var(--surface-a);border:1px solid var(--line);font-size:14px;text-align:center}
 .boom{position:absolute;inset:0;display:grid;place-content:center;gap:10px;text-align:center;padding:24px;background:radial-gradient(ellipse at center,rgba(120,0,0,.15),rgba(120,0,0,.55));animation:alarm .8s ease-in-out infinite;pointer-events:none}
-.boom q{font-family:var(--display);font-weight:700;font-size:clamp(30px,5vw,64px);color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.8);quotes:'\201C' '\201D'}
+.boom q{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,64px);color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.8);quotes:'\201C' '\201D'}
 .boom small{color:#ffd0d0;font-size:15px;text-shadow:0 2px 10px #000}
 @keyframes alarm{50%{background-color:rgba(255,0,0,.12)}}
 .static{position:absolute;inset:0;pointer-events:none;opacity:.16;background:repeating-linear-gradient(0deg,rgba(255,255,255,.5) 0 1px,transparent 1px 3px);animation:noise .25s steps(4) infinite;mix-blend-mode:screen}
@@ -275,8 +275,8 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
 .tx{font-size:15px;color:var(--muted);line-height:1.6}
 .crew{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .cr{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--r-sm);background:var(--surface-2);text-align:center}
-.cr .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight:600}
-.cr b{font-family:var(--display);font-weight:600;font-size:14px}
+.cr .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight:500}
+.cr b{font-family:var(--display);font-weight:500;font-size:14px}
 .cr small{font-size:11.5px;color:var(--faint)}
 .opts{display:flex;flex-direction:column;gap:8px}
 .opt{padding:12px 14px;border-radius:var(--r);background:var(--surface-2);text-align:left;font-size:15px;border:2px solid transparent;transition:background .15s}
@@ -298,7 +298,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
 .corr{position:relative;height:54px;border-radius:var(--r-sm);background:linear-gradient(90deg,rgba(143,176,255,.18),rgba(255,107,107,.25));margin-top:6px}
 .corr .band{position:absolute;top:0;bottom:0;background:rgba(54,211,154,.35);border-left:2px solid var(--green);border-right:2px solid var(--green)}
 .corr .needle{position:absolute;top:-6px;bottom:-6px;width:4px;margin-left:-2px;background:#fff;border-radius:2px;box-shadow:0 0 10px rgba(255,255,255,.7)}
-.corr .needle span{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:12.5px;font-weight:600;white-space:nowrap}
+.corr .needle span{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:12.5px;font-weight:500;white-space:nowrap}
 .corr.in .needle{background:var(--green)}
 .corr .lbl{position:absolute;bottom:4px;font-size:11px;color:var(--faint)}
 .corr .lbl.l{left:8px}.corr .lbl.r{right:8px}

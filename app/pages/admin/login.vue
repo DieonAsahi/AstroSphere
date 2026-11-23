@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   background: radial-gradient(circle at 50% 20%, #eff6ff 0%, #f1f5f9 100%);
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
 }
 
 .admin-login-loader {
@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
 .card-title {
   margin: 0;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   color: #0f172a;
 }
 .card-sub {
@@ -332,7 +332,7 @@ onBeforeUnmount(() => {
 .field-wrap label {
   display: block;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: #334155;
   margin-bottom: 6px;
 }
@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
   background-color: #2563eb;
   color: #ffffff;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   border: none;
   cursor: pointer;
   margin-top: 6px;

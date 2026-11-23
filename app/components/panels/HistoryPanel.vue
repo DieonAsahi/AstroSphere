@@ -483,7 +483,7 @@ function focusLoc() {
   font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--faint);
 }
 .chip-sub {
@@ -577,7 +577,7 @@ function focusLoc() {
   gap: 8px;
 }
 .ev-year {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
   color: var(--sky);
   font-family: var(--display);
@@ -588,7 +588,7 @@ function focusLoc() {
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   background: rgba(94, 209, 255, 0.12);
   color: var(--sky);
   border: 1px solid rgba(94, 209, 255, 0.25);
@@ -628,7 +628,7 @@ function focusLoc() {
 .ev-title {
   margin: 0;
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   color: var(--text);
 }
@@ -673,7 +673,7 @@ function focusLoc() {
   border: none;
   padding: 0;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--sky);
   cursor: pointer;
   transition: transform 0.15s;
@@ -759,7 +759,7 @@ function focusLoc() {
   justify-content: space-between;
 }
 .detail-year {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 17px;
   color: var(--sky);
 }
@@ -799,7 +799,7 @@ function focusLoc() {
 }
 .meta-val {
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
   text-align: right;
   word-break: break-word;
 }
@@ -865,7 +865,7 @@ function focusLoc() {
 .narrative-heading {
   margin: 0;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -897,7 +897,7 @@ function focusLoc() {
   color: var(--faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-weight: 600;
+  font-weight: 500;
 }
 .ref-val {
   margin: 2px 0 0 0;

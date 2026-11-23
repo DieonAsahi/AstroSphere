@@ -381,36 +381,36 @@ onMounted(() => {
 <style scoped>
 .admin-phenomena-page { display: flex; flex-direction: column; gap: 20px; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.page-title { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; }
+.page-title { margin: 0; font-size: 22px; font-weight: 600; color: #0f172a; }
 .page-desc { margin: 4px 0 0 0; font-size: 13.5px; color: #64748b; }
 
 .head-actions { display: flex; align-items: center; gap: 10px; }
-.btn-primary-action { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; }
+.btn-primary-action { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s; }
 .btn-primary-action:hover { background: #1d4ed8; }
-.btn-refresh { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-refresh { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
 
 .filter-strip { display: flex; align-items: center; gap: 12px; background: #fff; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; overflow-x: auto; }
-.filter-label { font-size: 12.5px; font-weight: 600; color: #475569; white-space: nowrap; }
+.filter-label { font-size: 12.5px; font-weight: 500; color: #475569; white-space: nowrap; }
 .planet-tabs { display: flex; gap: 6px; }
 .pt-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12.5px; font-weight: 500; color: #475569; cursor: pointer; white-space: nowrap; transition: all .15s; }
 .pt-btn:hover { background: #eff6ff; color: #1d4ed8; }
-.pt-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: 600; }
+.pt-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: 500; }
 
 .table-wrap { padding: 0; overflow-x: auto; background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
-.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 500; color: #475569; border-bottom: 1px solid #e2e8f0; }
 .adm-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .adm-table tbody tr:hover { background: #f8fafc; }
 
-.planet-badge { padding: 3px 8px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.planet-badge { padding: 3px 8px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 500; text-transform: capitalize; }
 .pheno-title-cell b { display: block; color: #0f172a; font-size: 14px; }
 .pheno-title-cell small { color: #64748b; font-size: 12px; margin-top: 2px; display: block; }
-.anim-tag { font-size: 11.5px; background: #f1f5f9; padding: 3px 7px; border-radius: 4px; color: #334155; font-family: monospace; font-weight: 600; }
+.anim-tag { font-size: 11.5px; background: #f1f5f9; padding: 3px 7px; border-radius: 4px; color: #334155; font-family: monospace; font-weight: 500; }
 .desc-clamp { margin: 0; font-size: 13px; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; }
 
-.status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
+.status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
 .status-toggle-btn.on { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
-.btn-edit { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.btn-edit { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 12.5px; font-weight: 500; cursor: pointer; }
 
 .empty-state { padding: 40px; text-align: center; color: #64748b; }
 .empty-state p { margin: 0 0 12px 0; }
@@ -420,7 +420,7 @@ onMounted(() => {
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal-card { width: 100%; max-width: 680px; max-height: 90vh; background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
 .modal-header { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-.modal-title { margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; }
+.modal-title { margin: 0; font-size: 17px; font-weight: 600; color: #0f172a; }
 .modal-sub { margin: 2px 0 0 0; font-size: 12px; color: #64748b; }
 .btn-close-modal { border: none; background: none; color: #94a3b8; cursor: pointer; }
 .modal-body { padding: 20px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
@@ -429,11 +429,11 @@ onMounted(() => {
 .field input, .field textarea, .field select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; }
 
 .earth-eclipse-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 8px; background: #f0f7ff; border: 1px solid #c7dfff; }
-.fs-title { font-size: 12.5px; font-weight: 700; color: #1d4ed8; display: inline-flex; align-items: center; gap: 6px; }
+.fs-title { font-size: 12.5px; font-weight: 600; color: #1d4ed8; display: inline-flex; align-items: center; gap: 6px; }
 .fs-sub { margin: 0; font-size: 12px; color: #64748b; line-height: 1.4; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer; }
 
 .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
 .btn-cancel { padding: 8px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 13px; cursor: pointer; }
-.btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 </style>

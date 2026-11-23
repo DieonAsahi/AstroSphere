@@ -256,30 +256,30 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
 .fact{display:flex;flex-direction:column;gap:3px;color:var(--sky);padding:12px 14px}
 .fh{display:flex;align-items:center;gap:6px;color:var(--muted)}
 .fh small{font-size:12px;color:var(--muted)}
-.fact b{font-size:17px;font-weight:600;color:var(--text);margin-top:2px}
+.fact b{font-size:17px;font-weight:500;color:var(--text);margin-top:2px}
 .f-sub{font-size:11.5px;color:var(--faint);line-height:1.35}
 .rot-box{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:var(--r);background:rgba(59,108,240,.12);border:1px solid rgba(143,176,255,.25)}
-.rot-box .rh{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:600;font-size:14.5px;color:var(--sky)}
+.rot-box .rh{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:500;font-size:14.5px;color:var(--sky)}
 .rot-box p{font-size:13px;color:var(--muted);line-height:1.5}
 .phc{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r);background:linear-gradient(120deg,rgba(59,108,240,.3),rgba(59,108,240,.08));border:1px solid rgba(143,176,255,.3);text-align:left;transition:filter .15s}
 .phc:hover{filter:brightness(1.15)}
 .phc .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--blue);flex:none}
 .phc .t{flex:1;display:flex;flex-direction:column}
 .phc small{font-size:12.5px;color:var(--sky)}
-.phc b{font-family:var(--display);font-weight:600;font-size:16px}
+.phc b{font-family:var(--display);font-weight:500;font-size:16px}
 .phc.ask{background:linear-gradient(120deg,rgba(255,201,71,.22),rgba(255,201,71,.05));border-color:rgba(255,201,71,.35)}
 .phc.ask .ic{background:var(--star);color:#3a2a00}
 .phc.ask small{color:var(--star)}
 .dyk{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r);background:var(--surface-2);text-align:left;color:var(--star);transition:background .15s}
 .dyk:hover{background:var(--surface-3)}
-.dyk .t{flex:1;display:flex;flex-direction:column;font-family:var(--display);font-weight:600;font-size:15px;color:var(--text)}
+.dyk .t{flex:1;display:flex;flex-direction:column;font-family:var(--display);font-weight:500;font-size:15px;color:var(--text)}
 .dyk small{font-family:var(--font);font-weight:400;font-size:12.5px;color:var(--faint)}
 .live{display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--r);background:var(--surface-2)}
 .live .ico{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(59,108,240,.2);color:var(--sky);flex:none;transition:background .3s,color .3s}
 .live.siang .ico,.live.panas .ico{background:rgba(255,201,71,.2);color:var(--star)}
 .live.malam .ico,.live.dingin .ico{background:rgba(143,176,255,.15);color:var(--sky)}
 .live.tipis .ico,.live.selesai .ico{background:rgba(54,211,154,.2);color:var(--green)}
-.live b{display:block;font-family:var(--display);font-weight:600;font-size:18px;line-height:1.25}
+.live b{display:block;font-family:var(--display);font-weight:500;font-size:18px;line-height:1.25}
 .live small{display:block;font-size:13.5px;color:var(--muted);margin-top:2px}
 .mini{padding:8px;border-radius:var(--r)}
 @media (max-width:760px){ .facts{grid-template-columns:1fr 1fr} .fact b{font-size:16px} .desc{font-size:14px} .mini{display:none} }

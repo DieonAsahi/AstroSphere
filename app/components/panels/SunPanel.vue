@@ -50,7 +50,7 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
                 <circle cx="110" cy="58" r="50.5" fill="none" stroke="rgba(170,200,255,.45)" stroke-width="3" />
                 <circle cx="110" cy="58" r="16" fill="url(#sunG)" />
                 <line x1="110" y1="58" x2="141" y2="27" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 3" />
-                <text x="128" y="50" fill="#fff" font-size="11" font-family="Lexend, sans-serif">22°</text>
+                <text x="128" y="50" fill="#fff" font-size="11" font-family="Poppins, sans-serif">22°</text>
               </svg>
               <svg v-else-if="t.art === 'cincin'" class="art" viewBox="0 0 220 120" role="img" aria-label="Ilustrasi gerhana cincin">
                 <defs><radialGradient id="glow"><stop offset=".55" stop-color="#ffb347" stop-opacity=".8" /><stop offset="1" stop-color="#ffb347" stop-opacity="0" /></radialGradient></defs>
@@ -80,12 +80,12 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
 .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fact{display:flex;flex-direction:column;gap:2px;color:var(--star)}
 .fact small{font-size:12.5px;color:var(--faint);margin-top:6px}
-.fact b{font-size:18px;font-weight:600;color:var(--text)}
-.lbl{font-family:var(--display);font-weight:600;font-size:15px;margin-top:4px}
+.fact b{font-size:18px;font-weight:500;color:var(--text)}
+.lbl{font-family:var(--display);font-weight:500;font-size:15px;margin-top:4px}
 .topics{display:flex;flex-direction:column;gap:8px}
 .tp{border-radius:var(--r);background:var(--surface-2);overflow:hidden;border:1px solid transparent;transition:border-color .2s}
 .tp.on{border-color:rgba(255,201,71,.35)}
-.th{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;text-align:left;font-family:var(--display);font-weight:600;font-size:15px}
+.th{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;text-align:left;font-family:var(--display);font-weight:500;font-size:15px}
 .chev{color:var(--muted);transition:transform .2s;flex:none}
 .tp.on .chev{transform:rotate(180deg)}
 .tb{display:flex;flex-direction:column;gap:10px;padding:0 14px 14px}

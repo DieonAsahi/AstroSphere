@@ -211,7 +211,7 @@ const f3 = (v) => (+v).toFixed(3);
 .legend{display:flex;gap:14px;font-size:12px;color:var(--faint)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend span::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--z)}
-.tm{font-weight:600;font-size:17px;min-width:52px;text-align:right}
+.tm{font-weight:500;font-size:17px;min-width:52px;text-align:right}
 
 .dia{margin:0;border-radius:var(--r);background:#070b1f;border:1px solid var(--line);overflow:hidden}
 .dia svg{display:block;width:100%;height:auto;aspect-ratio:19/11}
@@ -228,13 +228,13 @@ const f3 = (v) => (+v).toFixed(3);
 .total .corona{opacity:1}
 .smoon{fill:#0a0e22;stroke:#1d2550;stroke-width:.015}
 .dia figcaption{display:flex;flex-direction:column;gap:2px;padding:12px 14px 14px;background:var(--surface-2)}
-.dia figcaption b{font-family:var(--display);font-weight:600;font-size:18px}
+.dia figcaption b{font-family:var(--display);font-weight:500;font-size:18px}
 .dia figcaption small{font-size:13.5px;color:var(--muted)}
 .dia.total figcaption b{color:#ff9a6e}
 .why{padding:14px;border-radius:var(--r);background:rgba(255,201,71,.08);border:1px solid rgba(255,201,71,.22)}
-.why h3{font-family:var(--display);font-weight:600;font-size:15.5px;color:var(--star);margin-bottom:6px}
+.why h3{font-family:var(--display);font-weight:500;font-size:15.5px;color:var(--star);margin-bottom:6px}
 .why p{font-size:14.5px;color:var(--muted);line-height:1.6}
-.lbl{font-family:var(--display);font-weight:600;font-size:15px;margin-bottom:8px}
+.lbl{font-family:var(--display);font-weight:500;font-size:15px;margin-bottom:8px}
 .povs{display:flex;flex-wrap:wrap;gap:8px}
 .fine{font-size:12.5px;color:var(--faint)}
 @media (max-width:760px){

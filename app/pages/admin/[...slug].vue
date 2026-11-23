@@ -12,7 +12,7 @@ if (process.client) {
 </script>
 
 <template>
-  <div class="admin-fallback-redirect" style="padding: 48px; text-align: center; color: #94a3b8; font-family: var(--font-body, sans-serif);">
+  <div class="admin-fallback-redirect" style="padding: 48px; text-align: center; color: #94a3b8; font-family: 'Poppins', system-ui, -apple-system, sans-serif;">
     <p>Halaman pengelola tidak ditemukan. Mengalihkan kembali ke dasbor...</p>
   </div>
 </template>
