@@ -78,8 +78,8 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 
     <Transition name="rise" mode="out-in">
       <main v-if="store.screen === 'welcome'" key="w" class="hero">
-        <h1 class="h1">Jelajahi tata surya</h1>
-        <p class="lead">Terbangkan pesawatmu, singgahi delapan planet, dan kumpulkan bintang dari kuis.</p>
+        <h1 class="h1">Jelajahi Tata Surya</h1>
+        <p class="lead">Kemudikan pesawatmu melintasi tata surya, pelajari misteri tiap planet, dan tuntaskan misi bersejarah.</p>
         <div class="cta">
           <template v-if="store.hasSave">
             <button class="btn primary lg" @click="play(true)"><UiIcon name="putar" :size="20" />Lanjutkan<small v-if="store.saveMeta">{{ store.saveMeta }}</small></button>
@@ -93,8 +93,23 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
           <button class="btn ghost sm" @click="logoutUser">Keluar</button>
         </div>
         <div v-else class="acct">
-          <button class="btn line" @click="go('login')"><UiIcon name="pengguna" :size="18" />Masuk</button>
-          <button class="btn line" @click="go('register')"><UiIcon name="plus" :size="18" />Daftar</button>
+          <button class="btn line" @click="go('login')">
+            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+            Masuk
+          </button>
+          <button class="btn line" @click="go('register')">
+            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="22" y1="11" x2="16" y2="11" />
+            </svg>
+            Daftar
+          </button>
         </div>
         <p v-if="!store.account.loggedIn" class="note">Akun tidak wajib — kamu bisa langsung main.</p>
       </main>
@@ -135,20 +150,27 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,26,.55) 0%,rgba(5,8,26,0) 34%)}
 .top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;padding:calc(18px + var(--safe-t)) calc(28px + var(--safe-r)) 0 calc(28px + var(--safe-l));z-index:2}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:21px}
-.hero{position:absolute;left:50%;top:12vh;transform:translateX(-50%);width:min(720px,calc(100vw - 32px));text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px;z-index:2}
-.hero .h1{font-size:clamp(42px,7vw,84px);text-shadow:0 6px 40px rgba(0,0,0,.5)}
-.hero .lead{max-width:34ch;font-size:clamp(16px,1.6vw,19px);color:#d5dcf5;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.hero{position:absolute;top:50%;left:50%;transform:translate(-50%,-56%);width:min(840px,calc(100vw - 32px));text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px;z-index:2}
+.hero .h1{font-size:clamp(26px,3.4vw,44px);white-space:nowrap;text-shadow:0 4px 28px rgba(0,0,0,.75);letter-spacing:-.01em;line-height:1.15}
+.hero .lead{max-width:58ch;font-size:clamp(14px,1.4vw,16.5px);line-height:1.6;color:rgba(235,241,255,.92);text-shadow:0 2px 12px rgba(4,8,24,.85)}
 .cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px}
-.cta .btn{min-width:200px}
+.cta .btn{min-width:200px;height:48px;min-height:48px;border-radius:12px;font-weight:500;font-size:15.5px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.cta .btn.primary{background:var(--blue);box-shadow:0 4px 18px rgba(37,99,235,.45)}
+.cta .btn.primary:hover{filter:brightness(1.12)}
+.cta .btn.line{background:rgba(10,16,40,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,174,255,.35);color:#f4f7ff}
+.cta .btn.line:hover{background:rgba(16,26,60,.92);border-color:rgba(148,174,255,.55)}
 .cta .btn small{font-family:var(--font);font-weight:400;font-size:12.5px;opacity:.85;margin-left:4px}
 .acct{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.acct .btn{min-width:140px;background:rgba(8,12,34,.55)}
-.acct.me{align-items:center;gap:12px;padding:6px 8px 6px 6px;border-radius:999px;background:rgba(8,12,34,.6);border:1px solid var(--line)}
+.acct .btn{min-width:116px;height:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(10,16,40,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(148,174,255,.25);color:#f4f7ff;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:background .15s,border-color .15s,transform .12s}
+.acct .btn:hover{background:rgba(16,26,60,.9);border-color:rgba(148,174,255,.48)}
+.btn-icon{flex:none;display:block;opacity:.92}
+.acct.me{align-items:center;gap:12px;padding:6px 12px 6px 8px;border-radius:12px;background:rgba(10,16,40,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(148,174,255,.25)}
 .avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--blue);font-family:var(--display);font-weight:500}
 .hi{color:var(--muted);font-size:15px}.hi b{color:var(--text);font-family:var(--display);font-weight:500}
-.note{font-size:13.5px;color:#c4cdee;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+.note{font-size:13px;color:rgba(235,241,255,.88);text-shadow:0 2px 12px rgba(4,8,24,.98)}
 .formwrap{position:absolute;inset:0;display:grid;place-items:center;padding:80px 16px 24px;z-index:2;overflow-y:auto}
-.form{position:relative;width:min(420px,100%);padding:30px 28px 22px;display:flex;flex-direction:column;gap:14px;background:rgba(10,15,40,.9)}
+.form{position:relative;width:min(420px,100%);padding:30px 28px 22px;display:flex;flex-direction:column;gap:14px;background:rgba(10,15,40,.9);border-radius:16px}
+.form .btn{border-radius:12px;height:46px;font-weight:500}
 .form .h2{font-size:26px;padding-right:44px}
 .back{position:absolute;right:16px;top:16px}
 .pw{position:relative;display:block}.pw input{padding-right:52px}
@@ -162,12 +184,14 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 @media (max-width:760px){
   .top{padding:calc(12px + var(--safe-t)) 16px 0}
   .brand span{font-size:18px}
-  .hero{top:auto;bottom:calc(40vh + 8px);gap:14px}
+  .hero{top:50%;bottom:auto;left:50%;transform:translate(-50%,-52%);gap:14px;width:calc(100vw - 32px)}
+  .hero .h1{white-space:normal;font-size:clamp(28px,6.5vw,36px)}
+  .hero .lead{font-size:14px;line-height:1.5}
   .cta{flex-direction:column;width:100%;max-width:340px}
   .cta .btn{width:100%}
-  .acct:not(.me){width:100%;max-width:340px;flex-wrap:nowrap}
+  .acct:not(.me){width:100%;max-width:340px;flex-wrap:nowrap;gap:8px}
   .acct:not(.me) .btn{flex:1;min-width:0}
   .form{padding:24px 18px 18px}
 }
-@media (max-width:760px) and (max-height:700px){ .hero{bottom:26vh} .note{display:none} }
+@media (max-width:760px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
 </style>
