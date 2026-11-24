@@ -23,10 +23,68 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
   </div>
 </template>
 <style scoped>
-.tbar{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;border-radius:var(--r-lg)}
-.date{display:flex;flex-direction:column;line-height:1.2;min-width:96px}
-.date small{font-size:12px;color:var(--faint)}
-.date b{font-weight:500;font-size:16px}
-.tg{display:flex;gap:6px;padding-left:10px;border-left:1px solid var(--line)}
-@media (max-width:760px){ .tbar{width:100%;gap:8px;padding:8px} .date{min-width:0} .date small{display:none} .seg button{padding:0 10px} }
+.tbar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border-radius:10px !important;
+  background:rgba(10, 14, 28, 0.88);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.date{display:flex;flex-direction:column;line-height:1.2;min-width:90px}
+.date small{font-size:11px;color:#94a3b8}
+.date b{font-weight:600;font-size:15px;color:#f8fafc}
+.tbar :deep(.ib.sm),
+.tbar .ib.sm{
+  width:36px;
+  height:36px;
+  min-width:36px;
+  min-height:36px;
+  border-radius:8px !important;
+  background:rgba(148, 174, 255, 0.08);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  color:var(--text);
+  transition:all .15s ease;
+}
+.tbar .ib.sm:hover{
+  background:rgba(148, 174, 255, 0.18);
+  border-color:rgba(148, 174, 255, 0.32);
+}
+.tbar .ib.sm.on{
+  background:rgba(59, 130, 246, 0.25);
+  border-color:rgba(59, 130, 246, 0.5);
+  color:#38bdf8;
+}
+.seg{
+  border-radius:8px !important;
+  padding:2px;
+  background:rgba(11, 16, 36, 0.8);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  display:inline-flex;
+}
+.seg button{
+  border-radius:6px !important;
+  height:30px;
+  padding:0 10px;
+  font-family:var(--display);
+  font-size:12.5px;
+  font-weight:500;
+  color:var(--muted);
+  transition:all .15s ease;
+}
+.seg button.on{
+  background:#3b82f6 !important;
+  color:#fff !important;
+}
+.tg{display:flex;gap:6px;padding-left:10px;border-left:1px solid rgba(148, 174, 255, 0.16)}
+@media (max-width:760px){
+  .tbar{width:100%;gap:8px;padding:8px;border-radius:10px !important}
+  .date{min-width:0}
+  .date small{display:none}
+  .seg button{padding:0 8px}
+}
 </style>

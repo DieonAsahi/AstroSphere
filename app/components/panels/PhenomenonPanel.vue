@@ -100,7 +100,7 @@ const f3 = (v) => (+v).toFixed(3);
   <div>
     <!-- Judul Fenomena (Tersambung ke Supabase & Fallback Lokal) -->
     <div class="stage-title">
-      <span class="tag">Fenomena Bumi</span>
+      <span class="stage-eyebrow">FENOMENA BUMI</span>
       <h1 class="h1">{{ phenoData?.title || 'Gerhana Matahari & Bulan' }}</h1>
       <p v-if="phenoData?.deskripsi_edukatif || phenoData?.short" class="pheno-sub">
         {{ phenoData?.deskripsi_edukatif || phenoData?.short }}
@@ -137,10 +137,10 @@ const f3 = (v) => (+v).toFixed(3);
     </div>
 
     <aside class="sheet card" aria-label="Penjelasan gerhana">
-      <div v-if="asking" class="sbody scroll">
+      <div v-if="asking" class="sheet-body sheet-scroll sbody scroll">
         <UiPredictCard :q="pq" @pick="choose" />
       </div>
-      <div v-else class="sbody scroll">
+      <div v-else class="sheet-body sheet-scroll sbody scroll">
         <!-- Diagram langsung: apa yang terjadi sekarang -->
         <figure class="dia" :class="store.lab.status" aria-hidden="true">
           <svg v-if="!sun" viewBox="-1.9 -1.1 3.8 2.2">
@@ -185,12 +185,12 @@ const f3 = (v) => (+v).toFixed(3);
       </div>
 
       <div v-if="asking" class="sfoot">
-        <button class="btn ghost block" @click="skip">Lewati, langsung lihat</button>
+        <button class="btn-foot ghost block" @click="skip">Lewati, langsung lihat</button>
       </div>
       <div v-else class="sfoot">
         <div class="row2">
-          <button class="btn" @click="L()?.resetCam()"><UiIcon name="target" :size="18" />Atur kamera</button>
-          <button class="btn" @click="L()?.replay()"><UiIcon name="ulang" :size="18" />Ulangi</button>
+          <button class="btn-foot line" @click="L()?.resetCam()"><UiIcon name="target" :size="17" />Atur kamera</button>
+          <button class="btn-foot line" @click="L()?.replay()"><UiIcon name="ulang" :size="17" />Ulangi</button>
         </div>
       </div>
     </aside>
@@ -198,24 +198,235 @@ const f3 = (v) => (+v).toFixed(3);
 </template>
 
 <style scoped>
-.stage-title .seg button{display:inline-flex;align-items:center;gap:6px}
-.stage-title .seg{align-self:flex-start}
-.pheno-sub{margin:4px 0 8px 0;font-size:13.5px;color:var(--faint);max-width:38ch;line-height:1.4}
+/* ---------- JUDUL KIRI ATAS FENOMENA ---------- */
+.stage-title{
+  position:fixed;
+  left:calc(var(--gap) + var(--safe-l));
+  top:calc(var(--top) + 68px + var(--safe-t));
+  z-index:21;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:0;
+  max-width:min(420px, 42vw);
+  pointer-events:none;
+}
+.stage-title>*{pointer-events:auto}
+.stage-eyebrow{
+  font-family:var(--display);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:#38bdf8;
+  margin-bottom:4px;
+  line-height:1.2;
+}
+.stage-title .h1{
+  font-family:var(--display);
+  font-size:clamp(22px, 2.2vw, 28px);
+  font-weight:600;
+  line-height:1.2;
+  max-width:340px;
+  color:#fff;
+  text-shadow:0 2px 14px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.8);
+  margin:0 0 6px 0;
+}
+.pheno-sub{
+  margin:0 0 12px 0;
+  font-size:13px;
+  color:#94a3b8;
+  max-width:340px;
+  line-height:1.45;
+}
+
+/* ---------- SEGMENTED CONTROL MATAHARI | BULAN ---------- */
+.stage-title .seg{
+  align-self:flex-start;
+  border-radius:10px !important;
+  padding:3px;
+  background:rgba(11, 16, 36, 0.85);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  display:inline-flex;
+  gap:4px;
+}
+.stage-title .seg button{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:34px;
+  height:34px;
+  padding:0 14px;
+  border-radius:8px !important;
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:500;
+  color:var(--muted);
+  transition:all .15s ease;
+}
+.stage-title .seg button:hover{
+  color:var(--text);
+}
+.stage-title .seg button.on{
+  background:#3b82f6 !important;
+  color:#fff !important;
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
+/* ---------- BILAH KONTROL TIMELINE BAWAH ---------- */
 .tlw{right:calc(min(400px,36vw) + var(--gap) * 2 + var(--safe-r));max-width:none}
-.tl{width:100%;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 10px;border-radius:var(--r-lg)}
-.scrub{flex:1;display:flex;flex-direction:column;gap:6px;padding-top:6px;min-width:0}
-.zones{position:relative;height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.tl{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:8px 12px;
+  border-radius:12px !important;
+  background:rgba(10, 14, 28, 0.90) !important;
+  border:1px solid rgba(148, 174, 255, 0.16) !important;
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.tl .ib{
+  width:36px;
+  height:36px;
+  min-width:36px;
+  min-height:36px;
+  border-radius:8px !important;
+  background:rgba(148, 174, 255, 0.08);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  color:var(--text);
+  display:grid;
+  place-items:center;
+  transition:all .15s ease;
+}
+.tl .ib:hover{
+  background:rgba(148, 174, 255, 0.18);
+  border-color:rgba(148, 174, 255, 0.32);
+}
+.scrub{flex:1;display:flex;flex-direction:column;gap:6px;padding-top:2px;min-width:0}
+.zones{position:relative;height:6px;border-radius:3px;background:rgba(148, 174, 255, 0.12);overflow:hidden}
 .zones i{position:absolute;top:0;bottom:0}
 .penumbra{--z:#7d8cc4}.sebagian{--z:var(--star)}.total{--z:#ff7a4d}.cincin{--z:#ffb347}
 .zones i{background:var(--z)}
-.legend{display:flex;gap:14px;font-size:12px;color:var(--faint)}
-.legend span{display:inline-flex;align-items:center;gap:6px}
-.legend span::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--z)}
-.tm{font-weight:500;font-size:17px;min-width:52px;text-align:right}
+.legend{display:flex;gap:12px;font-size:11.5px;color:#94a3b8}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend span::before{content:'';width:7px;height:7px;border-radius:2px;background:var(--z)}
+.tm{font-family:var(--display);font-weight:600;font-size:15px;color:#f8fafc;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
 
-.dia{margin:0;border-radius:var(--r);background:#070b1f;border:1px solid var(--line);overflow:hidden}
-.dia svg{display:block;width:100%;height:auto;aspect-ratio:19/11}
-.dia svg[viewBox^="-3"]{aspect-ratio:2/1}
+.tl .seg.sp{
+  border-radius:8px !important;
+  padding:2px;
+  background:rgba(11, 16, 36, 0.8);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  display:inline-flex;
+  gap:2px;
+}
+.tl .seg.sp button{
+  border-radius:6px !important;
+  height:30px;
+  min-height:30px;
+  padding:0 8px;
+  font-family:var(--display);
+  font-size:12px;
+  font-weight:500;
+  color:var(--muted);
+  transition:all .15s ease;
+}
+.tl .seg.sp button:hover{
+  color:var(--text);
+}
+.tl .seg.sp button.on{
+  background:#3b82f6 !important;
+  color:#fff !important;
+  font-weight:600;
+  box-shadow:0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+/* ---------- CARD PANEL KANAN (OBSERVATORIUM BERSIH) ---------- */
+.sheet{
+  position:fixed;
+  right:calc(var(--gap) + var(--safe-r));
+  top:calc(76px + var(--safe-t));
+  bottom:calc(var(--gap) + var(--safe-b));
+  width:min(400px, 36vw);
+  z-index:22;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:14px !important;
+  background:rgba(10, 14, 28, 0.92) !important;
+  border:1px solid rgba(148, 174, 255, 0.16) !important;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  box-shadow:0 16px 40px rgba(0, 0, 0, 0.55);
+}
+.sheet .sheet-body,
+.sheet .sheet-scroll,
+.sheet .sbody{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:18px 16px 18px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.sheet .sheet-body > *,
+.sheet .sheet-scroll > *,
+.sheet .sbody > *{
+  flex-shrink:0;
+}
+.sheet .sheet-body.scroll,
+.sheet .sheet-scroll.scroll,
+.sheet .sbody.scroll{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(148, 174, 255, 0.25) transparent;
+}
+.sheet .sheet-body.scroll::-webkit-scrollbar,
+.sheet .sheet-scroll.scroll::-webkit-scrollbar,
+.sheet .sbody.scroll::-webkit-scrollbar{
+  width:5px;
+}
+.sheet .sheet-body.scroll::-webkit-scrollbar-track,
+.sheet .sheet-scroll.scroll::-webkit-scrollbar-track,
+.sheet .sbody.scroll::-webkit-scrollbar-track{
+  background:transparent;
+}
+.sheet .sheet-body.scroll::-webkit-scrollbar-thumb,
+.sheet .sheet-scroll.scroll::-webkit-scrollbar-thumb,
+.sheet .sbody.scroll::-webkit-scrollbar-thumb{
+  background:rgba(148, 174, 255, 0.25);
+  border-radius:3px;
+}
+.sheet .sheet-body.scroll::-webkit-scrollbar-thumb:hover,
+.sheet .sheet-scroll.scroll::-webkit-scrollbar-thumb:hover,
+.sheet .sbody.scroll::-webkit-scrollbar-thumb:hover{
+  background:rgba(148, 174, 255, 0.4);
+}
+
+.dia{
+  margin:0;
+  flex-shrink:0;
+  width:100%;
+  border-radius:10px !important;
+  background:rgba(7, 11, 31, 0.9);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.dia svg{
+  display:block;
+  width:100%;
+  height:auto;
+  flex-shrink:0;
+  overflow:visible;
+  padding:10px 8px 4px;
+  box-sizing:border-box;
+}
 .pen{fill:rgba(125,140,196,.16);stroke:rgba(125,140,196,.45);stroke-width:.012}
 .umb{fill:rgba(92,24,14,.75);stroke:rgba(255,122,77,.45);stroke-width:.012}
 .path{stroke:rgba(255,255,255,.25);stroke-width:.012;stroke-dasharray:.05 .05}
@@ -223,25 +434,133 @@ const f3 = (v) => (+v).toFixed(3);
 .penumbra .moon{fill:#b8b8b4}
 .moon.red{fill:#a8441f}
 .total .moon.red{fill:#b8482a}
-.lb{fill:rgba(207,214,240,.6);font-size:.11px;text-anchor:middle;font-family:var(--font)}
+.lb{fill:rgba(207,214,240,.75);font-size:.11px;text-anchor:middle;font-family:var(--font)}
 .corona{opacity:0;transition:opacity .4s}
 .total .corona{opacity:1}
 .smoon{fill:#0a0e22;stroke:#1d2550;stroke-width:.015}
-.dia figcaption{display:flex;flex-direction:column;gap:2px;padding:12px 14px 14px;background:var(--surface-2)}
-.dia figcaption b{font-family:var(--display);font-weight:500;font-size:18px}
-.dia figcaption small{font-size:13.5px;color:var(--muted)}
+.dia figcaption{
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  padding:12px 14px 14px;
+  background:rgba(15, 23, 42, 0.75);
+  border-top:1px solid rgba(148, 174, 255, 0.12);
+}
+.dia figcaption b{font-family:var(--display);font-weight:600;font-size:16px;color:#f8fafc}
+.dia figcaption small{font-size:12.5px;color:#94a3b8}
 .dia.total figcaption b{color:#ff9a6e}
-.why{padding:14px;border-radius:var(--r);background:rgba(255,201,71,.08);border:1px solid rgba(255,201,71,.22)}
-.why h3{font-family:var(--display);font-weight:500;font-size:15.5px;color:var(--star);margin-bottom:6px}
-.why p{font-size:14.5px;color:var(--muted);line-height:1.6}
-.lbl{font-family:var(--display);font-weight:500;font-size:15px;margin-bottom:8px}
+
+.why{
+  padding:14px;
+  border-radius:10px !important;
+  background:rgba(245, 158, 11, 0.08);
+  border:1px solid rgba(245, 158, 11, 0.22);
+}
+.why h3{font-family:var(--display);font-weight:600;font-size:14.5px;color:#fbbf24;margin-bottom:6px}
+.why p{font-size:13.5px;color:#cbd5e1;line-height:1.55;margin:0}
+
+.lbl{font-family:var(--display);font-weight:600;font-size:13.5px;color:#f8fafc;margin-bottom:8px}
 .povs{display:flex;flex-wrap:wrap;gap:8px}
-.fine{font-size:12.5px;color:var(--faint)}
+.povs .chip{
+  border-radius:8px !important;
+  min-height:32px;
+  height:32px;
+  padding:0 12px;
+  font-family:var(--display);
+  font-size:12.5px;
+  font-weight:500;
+  background:rgba(148, 174, 255, 0.08);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  color:var(--muted);
+  transition:all .15s ease;
+  cursor:pointer;
+}
+.povs .chip:hover{
+  background:rgba(148, 174, 255, 0.16);
+  border-color:rgba(148, 174, 255, 0.28);
+  color:var(--text);
+}
+.povs .chip.on{
+  background:#3b82f6 !important;
+  border-color:#3b82f6 !important;
+  color:#fff !important;
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(59, 130, 246, 0.35);
+}
+.fine{font-size:11.5px;color:#64748b;line-height:1.4}
+
+/* ---------- FOOTER KANAN (TOMBOL AKSI MODERN) ---------- */
+.sfoot{
+  flex:none;
+  padding:14px 16px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  border-top:1px solid rgba(148, 174, 255, 0.14);
+  background:rgba(10, 14, 28, 0.96);
+}
+.sfoot .row2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  width:100%;
+}
+.btn-foot{
+  height:40px;
+  min-height:40px;
+  padding:0 16px;
+  border-radius:10px;
+  font-family:var(--display);
+  font-size:13.5px;
+  font-weight:500;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  cursor:pointer;
+  transition:all .15s ease;
+  border:1px solid transparent;
+}
+.btn-foot.block{
+  width:100%;
+}
+.btn-foot.line{
+  background:rgba(148, 174, 255, 0.08);
+  border:1px solid rgba(148, 174, 255, 0.18);
+  color:#e2e8f0;
+}
+.btn-foot.line:hover{
+  background:rgba(148, 174, 255, 0.16);
+  border-color:rgba(148, 174, 255, 0.32);
+  color:#fff;
+}
+.btn-foot.ghost{
+  border-radius:10px;
+  height:40px;
+  border:1px solid rgba(148, 174, 255, 0.18);
+  background:rgba(148, 174, 255, 0.06);
+  color:var(--text);
+}
+.btn-foot.ghost:hover{
+  background:rgba(148, 174, 255, 0.14);
+  border-color:rgba(148, 174, 255, 0.32);
+  color:#fff;
+}
+
 @media (max-width:760px){
-  .tlw{right:12px}
+  .tlw{right:12px;left:12px}
   .tl{gap:8px;padding:8px}
   .sp,.legend{display:none}
-  .stage-title .h1{font-size:32px}
-  .dia svg{max-height:120px}
+  .stage-title .h1{font-size:24px}
+  .sheet{
+    left:0;
+    right:0;
+    width:auto;
+    top:auto;
+    bottom:0;
+    max-height:55vh;
+    border-radius:16px 16px 0 0 !important;
+  }
 }
 </style>

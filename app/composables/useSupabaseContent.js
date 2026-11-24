@@ -74,6 +74,7 @@ function getFallbackScientificData(planetId) {
     deskripsi_rotasi: retro
       ? `Karena kemiringan sumbunya mencapai ${nf(p.tilt, 1)}°, planet ini berputar terbalik dibandingkan mayoritas planet lain. Di sini Matahari terbit dari barat.`
       : `Planet berotasi searah jarum jam relatif terhadap kutub utara ekliptika dengan kemiringan sumbu ${nf(p.tilt, 1)}°.`,
+    sumber_referensi: p.sumber_referensi || 'NASA Planetary Fact Sheet',
   };
 }
 
@@ -82,6 +83,14 @@ const state = reactive({
   loading: false,
   loaded: false,
   fromSupabase: false,
+  loadedFromDb: {
+    planets: false,
+    history: false,
+    phenomena: false,
+    questions: false,
+    ships: false,
+    myths: false,
+  },
   error: null,
   planets: {},          // key: local_id & supabase_id
   historyEvents: {},    // key: local_id -> array event
@@ -92,8 +101,9 @@ const state = reactive({
 });
 
 export async function fetchAllPublicContent(force = false) {
-  // Jika sudah sukses dimuat dari Supabase dan bukan paksa muat ulang, lewati
-  if (state.loaded && state.fromSupabase && !force) return state;
+  // Hanya lewati jika SELURUH tabel berhasil termuat dari basis data live dan bukan paksa muat ulang
+  const allLoadedFromDb = Object.values(state.loadedFromDb).every(Boolean);
+  if (state.loaded && allLoadedFromDb && !force) return state;
   if (state.loading) return state;
 
   state.loading = true;
@@ -110,237 +120,273 @@ export async function fetchAllPublicContent(force = false) {
   }
 
   try {
-    const [planetsRes, historyRes, phenoRes, questionsRes, shipsRes, mythsRes] = await Promise.all([
-      client.from('planets').select('*').eq('is_active', true).order('urutan_planet'),
-      client.from('history_events').select('*').order('tahun_kejadian'),
-      client.from('phenomena').select('*').eq('is_active', true),
-      client.from('questions').select('*').order('created_at'),
-      client.from('ships').select('*'),
-      client.from('myths').select('*').eq('is_active', true).order('created_at'),
-    ]);
+    // Kueri defensif per tabel secara independen tanpa .order() / .eq() SQL berisiko, agar error 1 tabel tidak menggagalkan tabel lain
+    const safeFetch = async (tableName) => {
+      try {
+        const res = await client.from(tableName).select('*');
+        if (res.error) {
+          console.warn(`[AstroSphere Supabase] Kueri '${tableName}' galat:`, res.error.message || res.error);
+          return { data: null, error: res.error };
+        }
+        return { data: res.data || [], error: null };
+      } catch (err) {
+        console.warn(`[AstroSphere Supabase] Exception pada kueri '${tableName}':`, err);
+        return { data: null, error: err };
+      }
+    };
 
-    // Audit galat Supabase tanpa ditelan diam-diam
-    let tableErrorCount = 0;
-    if (planetsRes.error) {
-      console.warn('[AstroSphere Supabase Error] planets:', planetsRes.error.message);
-      tableErrorCount++;
+    // Ambil hanya tabel yang belum berhasil dimuat dari DB (atau semua jika force = true)
+    const fetchPromises = [];
+    if (!state.loadedFromDb.planets || force) {
+      fetchPromises.push(safeFetch('planets').then((res) => ({ table: 'planets', res })));
     }
-    if (historyRes.error) {
-      console.warn('[AstroSphere Supabase Error] history_events:', historyRes.error.message);
-      tableErrorCount++;
+    if (!state.loadedFromDb.history || force) {
+      fetchPromises.push(safeFetch('history_events').then((res) => ({ table: 'history', res })));
     }
-    if (phenoRes.error) {
-      console.warn('[AstroSphere Supabase Error] phenomena:', phenoRes.error.message);
-      tableErrorCount++;
+    if (!state.loadedFromDb.phenomena || force) {
+      fetchPromises.push(safeFetch('phenomena').then((res) => ({ table: 'phenomena', res })));
     }
-    if (questionsRes.error) {
-      console.warn('[AstroSphere Supabase Error] questions:', questionsRes.error.message);
-      tableErrorCount++;
+    if (!state.loadedFromDb.questions || force) {
+      fetchPromises.push(safeFetch('questions').then((res) => ({ table: 'questions', res })));
     }
-    if (shipsRes.error) {
-      console.warn('[AstroSphere Supabase Error] ships:', shipsRes.error.message);
-      tableErrorCount++;
+    if (!state.loadedFromDb.ships || force) {
+      fetchPromises.push(safeFetch('ships').then((res) => ({ table: 'ships', res })));
     }
-    if (mythsRes.error) {
-      console.warn('[AstroSphere Supabase Error] myths:', mythsRes.error.message);
-      tableErrorCount++;
+    if (!state.loadedFromDb.myths || force) {
+      fetchPromises.push(safeFetch('myths').then((res) => ({ table: 'myths', res })));
     }
+
+    const results = await Promise.all(fetchPromises);
+    const resMap = Object.fromEntries(results.map((r) => [r.table, r.res]));
 
     // 1. Petakan Planet (Simpan di dua kunci: ID lokal dan ID Supabase agar lookup selalu berhasil)
-    if (planetsRes.data && planetsRes.data.length > 0) {
-      const pMap = {};
-      for (const row of planetsRes.data) {
-        const localId = toLocalPlanetId(row.planet_id);
-        const fb = getFallbackScientificData(localId) || {};
-        const planetItem = {
-          ...fb,
-          ...row,
-          local_id: localId,
-        };
-        pMap[localId] = planetItem;
-        if (row.planet_id && row.planet_id !== localId) {
-          pMap[row.planet_id] = planetItem;
+    if (resMap.planets) {
+      if (resMap.planets.data && resMap.planets.data.length > 0) {
+        const activeRows = resMap.planets.data.filter((r) => r.is_active !== false);
+        activeRows.sort((a, b) => Number(a.urutan_planet || 0) - Number(b.urutan_planet || 0));
+        const pMap = {};
+        for (const row of activeRows) {
+          const localId = toLocalPlanetId(row.planet_id);
+          const fb = getFallbackScientificData(localId) || {};
+          const planetItem = {
+            ...fb,
+            ...row,
+            sumber_referensi: row.sumber_referensi || fb.sumber_referensi || 'NASA Planetary Fact Sheet',
+            local_id: localId,
+          };
+          pMap[localId] = planetItem;
+          if (row.planet_id && row.planet_id !== localId) {
+            pMap[row.planet_id] = planetItem;
+          }
         }
+        state.planets = pMap;
+        state.loadedFromDb.planets = true;
+      } else if (!state.loadedFromDb.planets) {
+        fillPlanetsFallback();
       }
-      state.planets = pMap;
-    } else {
-      fillPlanetsFallback();
     }
 
-    // 2. Petakan History Events
-    if (historyRes.data && historyRes.data.length > 0) {
-      const hMap = {};
-      for (const row of historyRes.data) {
-        const localId = toLocalPlanetId(row.planet_id);
-        if (!hMap[localId]) hMap[localId] = [];
-        const eventItem = {
-          id: row.event_id,
-          planet_id: row.planet_id,
-          local_planet_id: localId,
-          year: row.tahun_kejadian,
-          tahun_kejadian: row.tahun_kejadian,
-          era_label: row.era_label || 'Sejarah & Bentang Alam',
-          title: row.judul,
-          judul: row.judul,
-          kategori_poi: row.kategori_poi || 'Titik Observasi',
-          locationType: row.kategori_poi || 'surface',
-          actor: row.nama_wahana || 'Wahana Antariksa',
-          nama_wahana: row.nama_wahana || '',
-          karakteristik_fisik: row.karakteristik_fisik || '',
-          body: row.ringkasan_singkat || row.deskripsi?.slice(0, 120) || '',
-          ringkasan_singkat: row.ringkasan_singkat || '',
-          detail: row.deskripsi || '',
-          deskripsi: row.deskripsi || '',
-          gambar_url: row.gambar_url || '',
-          sumber_referensi: row.sumber_referensi || '',
-        };
-        hMap[localId].push(eventItem);
-        if (row.planet_id && row.planet_id !== localId) {
-          if (!hMap[row.planet_id]) hMap[row.planet_id] = [];
-          hMap[row.planet_id].push(eventItem);
+    // 2. Petakan History Events (Urutkan secara kronologis di JavaScript agar tidak bergantung pada .order SQL)
+    if (resMap.history) {
+      if (resMap.history.data && resMap.history.data.length > 0) {
+        const hMap = {};
+        for (const row of resMap.history.data) {
+          const cleanPlanetId = (row.planet_id || '').toLowerCase().trim();
+          const localId = toLocalPlanetId(cleanPlanetId);
+          const supId = toSupabasePlanetId(cleanPlanetId);
+
+          const yr = row.tahun_kejadian != null ? Number(row.tahun_kejadian) : (row.year != null ? Number(row.year) : 0);
+
+          const eventItem = {
+            id: row.event_id || row.id || `evt-${Math.random()}`,
+            planet_id: row.planet_id,
+            local_planet_id: localId,
+            year: yr,
+            tahun_kejadian: yr,
+            era_label: (row.era_label || '').trim() || 'Sejarah & Bentang Alam',
+            title: row.judul || row.title || 'Peristiwa Sejarah',
+            judul: row.judul || row.title || 'Peristiwa Sejarah',
+            kategori_poi: row.kategori_poi || 'Titik Observasi & Sejarah',
+            locationType: row.kategori_poi || 'surface',
+            actor: row.nama_wahana || row.actor || '',
+            nama_wahana: row.nama_wahana || row.actor || '',
+            karakteristik_fisik: row.karakteristik_fisik || '',
+            body: row.ringkasan_singkat || row.deskripsi?.slice(0, 120) || row.body || '',
+            ringkasan_singkat: row.ringkasan_singkat || row.body || '',
+            detail: row.deskripsi || row.detail || '',
+            deskripsi: row.deskripsi || row.detail || '',
+            gambar_url: row.gambar_url || '',
+            sumber_referensi: row.sumber_referensi || '',
+            lat: row.koordinat_lat ?? row.lat ?? null,
+            lon: row.koordinat_lng ?? row.lon ?? row.lng ?? null,
+            memorial: Boolean(row.memorial || (row.kategori_poi && row.kategori_poi.toLowerCase().includes('kenangan')) || (row.judul && row.judul.toLowerCase().includes('kenangan'))),
+          };
+
+          const targetKeys = new Set([cleanPlanetId, localId, supId].filter(Boolean));
+          for (const k of targetKeys) {
+            if (!hMap[k]) hMap[k] = [];
+            hMap[k].push(eventItem);
+          }
         }
+
+        // Urutkan setiap list planet secara kronologis berdasarkan tahun di JavaScript
+        for (const k of Object.keys(hMap)) {
+          hMap[k].sort((a, b) => a.year - b.year);
+        }
+
+        state.historyEvents = hMap;
+        state.loadedFromDb.history = true;
+        console.info(`[AstroSphere Supabase] history_events berhasil dimuat: ${resMap.history.data.length} baris.`);
+      } else if (!state.loadedFromDb.history) {
+        fillHistoryFallback();
       }
-      state.historyEvents = hMap;
-    } else {
-      fillHistoryFallback();
     }
 
     // 3. Petakan Fenomena
-    if (phenoRes.data && phenoRes.data.length > 0) {
-      const phMap = {};
-      for (const row of phenoRes.data) {
-        const localId = toLocalPlanetId(row.planet_id);
-        const localPh = PHENOMENA[localId] || {};
-        const phenoItem = {
-          ...localPh,
-          phenomenon_id: row.phenomenon_id,
-          planet_id: row.planet_id,
-          title: row.judul || localPh.title,
-          judul: row.judul || localPh.title,
-          short: row.deskripsi_edukatif || row.deskripsi_singkat || localPh.short,
-          deskripsi_edukatif: row.deskripsi_edukatif || row.deskripsi_singkat || localPh.short,
-          tombol_aksi_label: row.tombol_aksi_label || localPh.tombol_aksi_label || 'Putar Simulasi Fenomena',
-          tipe_animasi: row.tipe_animasi || localPh.tipe_animasi || 'CUSTOM_ALIGNMENT',
-          konfigurasi_visual: row.konfigurasi_visual || localPh.konfigurasi_visual || {},
-          penjelasan_matahari: row.penjelasan_matahari || row.konfigurasi_visual?.penjelasan_matahari || '',
-          penjelasan_bulan: row.penjelasan_bulan || row.konfigurasi_visual?.penjelasan_bulan || '',
-          judul_matahari: row.judul_matahari || row.konfigurasi_visual?.judul_matahari || '',
-          judul_bulan: row.judul_bulan || row.konfigurasi_visual?.judul_bulan || '',
-          is_active: row.is_active !== false,
-        };
-        phMap[localId] = phenoItem;
-        if (row.planet_id && row.planet_id !== localId) {
-          phMap[row.planet_id] = phenoItem;
+    if (resMap.phenomena) {
+      if (resMap.phenomena.data && resMap.phenomena.data.length > 0) {
+        const phMap = {};
+        for (const row of resMap.phenomena.data) {
+          const localId = toLocalPlanetId(row.planet_id);
+          const localPh = PHENOMENA[localId] || {};
+          const phenoItem = {
+            ...localPh,
+            phenomenon_id: row.phenomenon_id,
+            planet_id: row.planet_id,
+            title: row.judul || localPh.title,
+            judul: row.judul || localPh.title,
+            short: row.deskripsi_edukatif || row.deskripsi_singkat || localPh.short,
+            deskripsi_edukatif: row.deskripsi_edukatif || row.deskripsi_singkat || localPh.short,
+            tombol_aksi_label: row.tombol_aksi_label || localPh.tombol_aksi_label || 'Putar Simulasi Fenomena',
+            tipe_animasi: row.tipe_animasi || localPh.tipe_animasi || 'CUSTOM_ALIGNMENT',
+            konfigurasi_visual: row.konfigurasi_visual || localPh.konfigurasi_visual || {},
+            penjelasan_matahari: row.penjelasan_matahari || row.konfigurasi_visual?.penjelasan_matahari || '',
+            penjelasan_bulan: row.penjelasan_bulan || row.konfigurasi_visual?.penjelasan_bulan || '',
+            judul_matahari: row.judul_matahari || row.konfigurasi_visual?.judul_matahari || '',
+            judul_bulan: row.judul_bulan || row.konfigurasi_visual?.judul_bulan || '',
+            is_active: row.is_active !== false,
+          };
+          phMap[localId] = phenoItem;
+          if (row.planet_id && row.planet_id !== localId) {
+            phMap[row.planet_id] = phenoItem;
+          }
         }
+        state.phenomena = phMap;
+        state.loadedFromDb.phenomena = true;
+      } else if (!state.loadedFromDb.phenomena) {
+        fillPhenomenaFallback();
       }
-      state.phenomena = phMap;
-    } else {
-      fillPhenomenaFallback();
     }
 
     // 4. Petakan Soal Kuis
-    if (questionsRes.data && questionsRes.data.length > 0) {
-      const qMap = {};
-      for (const row of questionsRes.data) {
-        const localId = toLocalPlanetId(row.planet_id);
-        if (!qMap[localId]) qMap[localId] = { topic: `Kuis ${localId}`, questions: [] };
+    if (resMap.questions) {
+      if (resMap.questions.data && resMap.questions.data.length > 0) {
+        const qMap = {};
+        for (const row of resMap.questions.data) {
+          const localId = toLocalPlanetId(row.planet_id);
+          if (!qMap[localId]) qMap[localId] = { topic: `Kuis ${localId}`, questions: [] };
 
-        let options = [];
-        if (Array.isArray(row.opsi)) {
-          options = row.opsi;
-        } else if (Array.isArray(row.pilihan_jawaban)) {
-          options = row.pilihan_jawaban;
-        } else if (row.pilihan_a != null) {
-          options = [row.pilihan_a, row.pilihan_b, row.pilihan_c, row.pilihan_d].filter(Boolean);
-        }
+          let options = [];
+          if (Array.isArray(row.opsi)) {
+            options = row.opsi;
+          } else if (Array.isArray(row.pilihan_jawaban)) {
+            options = row.pilihan_jawaban;
+          } else if (row.pilihan_a != null) {
+            options = [row.pilihan_a, row.pilihan_b, row.pilihan_c, row.pilihan_d].filter(Boolean);
+          }
 
-        let answer = 0;
-        if (Number.isInteger(row.kunci_jawaban)) {
-          answer = row.kunci_jawaban;
-        } else if (typeof row.jawaban_benar === 'string') {
-          const map = { A: 0, B: 1, C: 2, D: 3 };
-          answer = map[row.jawaban_benar.toUpperCase()] ?? 0;
-        }
+          let answer = 0;
+          if (Number.isInteger(row.kunci_jawaban)) {
+            answer = row.kunci_jawaban;
+          } else if (typeof row.jawaban_benar === 'string') {
+            const map = { A: 0, B: 1, C: 2, D: 3 };
+            answer = map[row.jawaban_benar.toUpperCase()] ?? 0;
+          }
 
-        const qItem = {
-          id: row.question_id,
-          text: row.soal || row.pertanyaan || row.teks_soal || '',
-          options,
-          answer,
-          explanation: row.pembahasan_edukatif || row.penjelasan || row.penjelasan_pembahasan || '',
-          points: row.bobot_poin || row.poin_hadiah || 50,
-        };
-        qMap[localId].questions.push(qItem);
-        if (row.planet_id && row.planet_id !== localId) {
-          if (!qMap[row.planet_id]) qMap[row.planet_id] = { topic: `Kuis ${row.planet_id}`, questions: [] };
-          qMap[row.planet_id].questions.push(qItem);
+          const qItem = {
+            id: row.question_id,
+            text: row.soal || row.pertanyaan || row.teks_soal || '',
+            options,
+            answer,
+            explanation: row.pembahasan_edukatif || row.penjelasan || row.penjelasan_pembahasan || '',
+            points: row.bobot_poin || row.poin_hadiah || 50,
+          };
+          qMap[localId].questions.push(qItem);
+          if (row.planet_id && row.planet_id !== localId) {
+            if (!qMap[row.planet_id]) qMap[row.planet_id] = { topic: `Kuis ${row.planet_id}`, questions: [] };
+            qMap[row.planet_id].questions.push(qItem);
+          }
         }
+        state.questions = qMap;
+        state.loadedFromDb.questions = true;
+      } else if (!state.loadedFromDb.questions) {
+        fillQuestionsFallback();
       }
-      state.questions = qMap;
-    } else {
-      fillQuestionsFallback();
     }
 
     // 5. Petakan Pesawat
-    if (shipsRes.data && shipsRes.data.length > 0) {
-      const sMap = {};
-      for (const row of shipsRes.data) {
-        const localId = toLocalShipId(row.ship_id);
-        const localS = SHIPS[localId] || {};
-        const shipItem = {
-          ...localS,
-          name: row.nama || localS.name,
-          desc: row.deskripsi || localS.desc,
-          price: row.harga_poin ?? row.biaya_bintang ?? localS.price ?? 0,
-          length: row.panjang_meter ? `${row.panjang_meter} m` : localS.length,
-        };
-        sMap[localId] = shipItem;
-        if (row.ship_id && row.ship_id !== localId) {
-          sMap[row.ship_id] = shipItem;
+    if (resMap.ships) {
+      if (resMap.ships.data && resMap.ships.data.length > 0) {
+        const sMap = {};
+        for (const row of resMap.ships.data) {
+          const localId = toLocalShipId(row.ship_id);
+          const localS = SHIPS[localId] || {};
+          const shipItem = {
+            ...localS,
+            name: row.nama || localS.name,
+            desc: row.deskripsi || localS.desc,
+            price: row.harga_poin ?? row.biaya_bintang ?? localS.price ?? 0,
+            length: row.panjang_meter ? `${row.panjang_meter} m` : localS.length,
+          };
+          sMap[localId] = shipItem;
+          if (row.ship_id && row.ship_id !== localId) {
+            sMap[row.ship_id] = shipItem;
+          }
         }
+        state.ships = sMap;
+        state.loadedFromDb.ships = true;
+      } else if (!state.loadedFromDb.ships) {
+        fillShipsFallback();
       }
-      state.ships = sMap;
-    } else {
-      fillShipsFallback();
     }
 
     // 6. Petakan Mitos atau Fakta (public.myths)
-    if (mythsRes.data && mythsRes.data.length > 0) {
-      state.myths = mythsRes.data.map((row) => ({
-        id: row.slug || row.myth_id,
-        myth_id: row.myth_id,
-        s: row.pernyataan,
-        pernyataan: row.pernyataan,
-        fact: row.is_fact,
-        is_fact: row.is_fact,
-        why: row.penjelasan,
-        penjelasan: row.penjelasan,
-        src: row.sumber_referensi || 'NASA',
-        sumber_referensi: row.sumber_referensi || 'NASA',
-        points: row.bobot_poin || 10,
-        body: row.benda_langit || 'bumi',
-        is_active: row.is_active !== false,
-      }));
-    } else {
-      fillMythsFallback();
+    if (resMap.myths) {
+      if (resMap.myths.data && resMap.myths.data.length > 0) {
+        state.myths = resMap.myths.data.map((row) => ({
+          id: row.slug || row.myth_id,
+          myth_id: row.myth_id,
+          s: row.pernyataan,
+          pernyataan: row.pernyataan,
+          fact: row.is_fact,
+          is_fact: row.is_fact,
+          why: row.penjelasan,
+          penjelasan: row.penjelasan,
+          src: row.sumber_referensi || 'NASA',
+          sumber_referensi: row.sumber_referensi || 'NASA',
+          points: row.bobot_poin || 10,
+          body: row.benda_langit || 'bumi',
+          is_active: row.is_active !== false,
+        }));
+        state.loadedFromDb.myths = true;
+      } else if (!state.loadedFromDb.myths) {
+        fillMythsFallback();
+      }
     }
 
-    const hasAnyLiveSuccess = (planetsRes.data?.length > 0) || (historyRes.data?.length > 0) || (phenoRes.data?.length > 0) || (questionsRes.data?.length > 0) || (mythsRes.data?.length > 0);
-    state.fromSupabase = hasAnyLiveSuccess;
+    state.fromSupabase = Object.values(state.loadedFromDb).some(Boolean);
     state.loaded = true;
 
-    if (hasAnyLiveSuccess) {
+    if (state.fromSupabase) {
       const totalEvents = Object.values(state.historyEvents).flat().length;
       const totalQuizzes = Object.values(state.questions).reduce((acc, q) => acc + (q.questions?.length || 0), 0);
-      console.info(`[AstroSphere] Data LIVE Supabase berhasil dimuat: ${planetsRes.data?.length || 0} planet, ${phenoRes.data?.length || 0} fenomena, ${totalEvents} sejarah/POI, ${totalQuizzes} soal kuis, ${shipsRes.data?.length || 0} pesawat, ${state.myths.length} mitos/fakta.`);
-    } else if (tableErrorCount > 0) {
-      console.warn('[AstroSphere] Kueri Supabase mengembalikan galat pada seluruh tabel, menggunakan data cadangan lokal.');
+      console.info(`[AstroSphere] Status LIVE Supabase termuat: planets=${state.loadedFromDb.planets}, history=${state.loadedFromDb.history} (${totalEvents} peristiwa), pheno=${state.loadedFromDb.phenomena}, quizzes=${totalQuizzes}, ships=${state.loadedFromDb.ships}, myths=${state.loadedFromDb.myths}.`);
     }
   } catch (err) {
     console.warn('[AstroSphere] Gagal mengambil data Supabase, menggunakan data lokal:', err);
     state.error = err.message || String(err);
     populateWithFallback();
-    state.fromSupabase = false;
+    state.fromSupabase = Object.values(state.loadedFromDb).some(Boolean);
     state.loaded = true;
   } finally {
     state.loading = false;
@@ -423,12 +469,12 @@ function fillMythsFallback() {
 }
 
 function populateWithFallback() {
-  fillPlanetsFallback();
-  fillHistoryFallback();
-  fillPhenomenaFallback();
-  fillQuestionsFallback();
-  fillShipsFallback();
-  fillMythsFallback();
+  if (!state.loadedFromDb.planets) fillPlanetsFallback();
+  if (!state.loadedFromDb.history) fillHistoryFallback();
+  if (!state.loadedFromDb.phenomena) fillPhenomenaFallback();
+  if (!state.loadedFromDb.questions) fillQuestionsFallback();
+  if (!state.loadedFromDb.ships) fillShipsFallback();
+  if (!state.loadedFromDb.myths) fillMythsFallback();
 }
 
 // Inisialisasi awal dengan data fallback aman agar state langsung terisi secara reaktif sejak detik pertama
@@ -442,7 +488,8 @@ export function useSupabaseContent() {
     fetchAll: fetchAllPublicContent,
     isLoaded: computed(() => state.loaded),
     isLoading: computed(() => state.loading),
-    fromSupabase: computed(() => state.fromSupabase),
+    fromSupabase: computed(() => Object.values(state.loadedFromDb).some(Boolean)),
+    loadedFromDb: computed(() => state.loadedFromDb),
     getPlanet: (id) => {
       if (!id) return null;
       const localId = toLocalPlanetId(id);
@@ -450,8 +497,20 @@ export function useSupabaseContent() {
     },
     getHistory: (id) => {
       if (!id) return [];
-      const localId = toLocalPlanetId(id);
-      return state.historyEvents[localId] || state.historyEvents[id] || HISTORY[localId] || HISTORY[id] || [];
+      const cleanId = String(id).toLowerCase().trim();
+      const localId = toLocalPlanetId(cleanId);
+      const supId = toSupabasePlanetId(cleanId);
+      return (
+        state.historyEvents[localId] ||
+        state.historyEvents[supId] ||
+        state.historyEvents[cleanId] ||
+        state.historyEvents[id] ||
+        HISTORY[localId] ||
+        HISTORY[supId] ||
+        HISTORY[cleanId] ||
+        HISTORY[id] ||
+        []
+      );
     },
     getPhenomenon: (id) => {
       if (!id) return null;

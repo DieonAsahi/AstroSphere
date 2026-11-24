@@ -100,7 +100,6 @@ BEGIN
     ALTER TABLE public.planets DROP COLUMN IF EXISTS orbital_period_days CASCADE;
     ALTER TABLE public.planets DROP COLUMN IF EXISTS axial_tilt_deg CASCADE;
     ALTER TABLE public.planets DROP COLUMN IF EXISTS ringkasan_cepat CASCADE;
-    ALTER TABLE public.planets DROP COLUMN IF EXISTS sumber_referensi CASCADE;
     ALTER TABLE public.planets DROP COLUMN IF EXISTS aset_model_url CASCADE;
     ALTER TABLE public.planets DROP COLUMN IF EXISTS tekstur_url CASCADE;
     ALTER TABLE public.planets DROP COLUMN IF EXISTS warna_atmosfer_hex CASCADE;
@@ -126,6 +125,7 @@ BEGIN
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS judul_rotasi TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS deskripsi_rotasi TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS deskripsi_materi TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS sumber_referensi TEXT NOT NULL DEFAULT 'NASA Planetary Fact Sheet';
     ALTER TABLE public.planets ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 
     BEGIN
@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS public.planets (
   judul_rotasi TEXT NOT NULL DEFAULT '',
   deskripsi_rotasi TEXT NOT NULL DEFAULT '',
   deskripsi_materi TEXT NOT NULL DEFAULT '',
+  sumber_referensi TEXT NOT NULL DEFAULT 'NASA Planetary Fact Sheet',
   is_active BOOLEAN NOT NULL DEFAULT true,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -413,18 +414,11 @@ CREATE POLICY "Admins can modify planets"
   USING (public.is_admin() = true)
   WITH CHECK (public.is_admin() = true);
 
--- 5.3 Policies: public.history_events (Publik Hanya Baca dari Planet Aktif, Admin Kelola Penuh)
+-- 5.3 Policies: public.history_events (Publik Baca Bebas Seluruh Peristiwa, Admin Kelola Penuh)
 DROP POLICY IF EXISTS "Public can view history events" ON public.history_events;
 CREATE POLICY "Public can view history events"
   ON public.history_events FOR SELECT
-  USING (
-    public.is_admin() = true
-    OR EXISTS (
-      SELECT 1 FROM public.planets p
-      WHERE p.planet_id = history_events.planet_id
-        AND p.is_active = true
-    )
-  );
+  USING (true);
 
 DROP POLICY IF EXISTS "Admins can modify history events" ON public.history_events;
 CREATE POLICY "Admins can modify history events"

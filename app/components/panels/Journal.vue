@@ -18,6 +18,23 @@ const sel = computed(() => bodies.find((b) => b.id === store.journalId) || null)
 const cards = computed(() => (sel.value && FACTS[sel.value.id]) || []);
 const k = ref(0), reward = ref(0);
 
+const PLANET_ORDERS = {
+  merkurius: 1,
+  venus: 2,
+  bumi: 3,
+  mars: 4,
+  jupiter: 5,
+  saturnus: 6,
+  uranus: 7,
+  neptunus: 8,
+};
+
+const selSubtitle = computed(() => {
+  if (!sel.value) return '';
+  const order = PLANET_ORDERS[sel.value.id];
+  return order ? `Planet ke-${order}` : sel.value.kind;
+});
+
 watch(() => store.journalId, (id) => {
   k.value = 0;
   reward.value = id ? openCard(id) : 0;
@@ -90,12 +107,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         <span>Semua Entitas</span>
       </button>
 
-      <!-- Identitas Entitas di Tengah -->
+      <!-- Pemisah Vertikal Tipis -->
+      <span class="det-sep" aria-hidden="true" />
+
+      <!-- Identitas Entitas di Sisi Kiri -->
       <div class="det-identity">
         <span class="planet-dot" :style="{ '--c': COLOR_OF[sel.id], '--s': '26px' }" />
         <div class="det-nm">
           <b class="det-title">{{ sel.name }}</b>
-          <span class="det-sub">{{ sel.kind }}</span>
+          <span class="det-sub">{{ selSubtitle }}</span>
         </div>
       </div>
 
@@ -129,10 +149,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
       <Transition name="fade" mode="out-in">
         <article :key="k" class="fc" aria-live="polite">
           <div class="fc-head">
-            <span class="fc-lbl">
-              <UiIcon name="info" :size="14" />
-              <span>Tahukah kamu?</span>
-            </span>
+            <span class="fc-lbl">TAHUKAH KAMU?</span>
             <span class="fc-step">{{ k + 1 }} / {{ cards.length }}</span>
           </div>
 
@@ -140,10 +157,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
           <p class="fc-text">{{ cards[k].t }}</p>
 
           <div class="fc-foot">
-            <span class="fc-src">
-              <UiIcon name="eksternal" :size="12" />
-              <span>Sumber rujukan: {{ cards[k].src }}</span>
-            </span>
+            <span class="fc-src">Sumber rujukan: {{ cards[k].src }}</span>
           </div>
         </article>
       </Transition>
@@ -158,8 +172,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         title="Sebelumnya (←)"
         @click="step(-1)"
       >
-        <UiIcon name="kembali" :size="18" />
+        <UiIcon name="kembali" :size="16" />
       </button>
+
+      <span class="det-nav-counter">{{ k + 1 }} / {{ cards.length }}</span>
 
       <div class="det-dots" :aria-label="`Kartu ${k + 1} dari ${cards.length}`">
         <button
@@ -180,7 +196,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         title="Berikutnya (→)"
         @click="step(1)"
       >
-        <UiIcon name="lanjut" :size="18" />
+        <UiIcon name="lanjut" :size="16" />
       </button>
     </div>
   </div>
@@ -491,8 +507,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 .det-topbar{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:10px;
+  gap:12px;
 }
 .det-back-btn{
   display:inline-flex;
@@ -504,6 +519,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   background:rgba(148,174,255,.08);
   border:1px solid rgba(148,174,255,.18);
   color:var(--text);
+  font-family:var(--display);
   font-size:13px;
   font-weight:500;
   cursor:pointer;
@@ -515,6 +531,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   border-color:rgba(148,174,255,.35);
   color:#fff;
 }
+.det-sep{
+  width:1px;
+  height:22px;
+  background:rgba(148,174,255,.16);
+  flex:none;
+}
 .det-identity{
   display:flex;
   align-items:center;
@@ -525,6 +547,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   display:flex;
   flex-direction:column;
   min-width:0;
+  text-align:left;
 }
 .det-title{
   font-family:var(--display);
@@ -535,17 +558,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   overflow:hidden;
   text-overflow:ellipsis;
   line-height:1.2;
+  text-align:left;
 }
 .det-sub{
   font-size:11.5px;
   color:var(--muted);
   line-height:1;
+  text-align:left;
 }
 .det-actions{
   display:flex;
   align-items:center;
   gap:8px;
   flex:none;
+  margin-left:auto;
 }
 .rw{
   display:inline-flex;
@@ -567,33 +593,36 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   touch-action:pan-y;
 }
 .fc{
-  min-height:210px;
+  min-height:140px;
   display:flex;
   flex-direction:column;
-  justify-content:center;
+  justify-content:flex-start;
   gap:12px;
   padding:22px 24px;
   border-radius:12px;
-  background:linear-gradient(150deg,color-mix(in srgb,var(--c) 22%,rgba(14,22,48,.88)),rgba(11,16,36,.96) 75%);
-  border:1px solid color-mix(in srgb,var(--c) 35%,rgba(148,174,255,.18));
-  box-shadow:0 8px 24px rgba(0,0,0,.4);
+  background:rgba(15, 23, 42, 0.72);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+  box-sizing:border-box;
 }
 .fc-head{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:8px;
+  width:100%;
 }
 .fc-lbl{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  font-size:12px;
-  color:var(--star);
+  font-size:11px;
+  color:#38bdf8;
   font-family:var(--display);
   font-weight:600;
-  letter-spacing:.04em;
+  letter-spacing:.08em;
   text-transform:uppercase;
+  line-height:1;
+  text-align:left;
 }
 .fc-step{
   font-size:11px;
@@ -604,37 +633,43 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 .fc-title{
   font-family:var(--display);
   font-weight:600;
-  font-size:clamp(22px,3.2vw,28px);
-  line-height:1.2;
+  font-size:clamp(21px, 2.5vw, 23px);
+  line-height:1.25;
   color:#fff;
   margin:0;
+  text-align:left;
 }
 .fc-text{
   font-size:14.5px;
   line-height:1.6;
-  color:rgba(241,244,255,.85);
+  color:#cbd5e1;
   margin:0;
+  text-align:left;
 }
 .fc-foot{
   display:flex;
   align-items:center;
   justify-content:flex-start;
-  margin-top:2px;
+  border-top:1px solid rgba(148, 174, 255, 0.10);
+  padding-top:12px;
+  margin-top:16px;
+  width:100%;
 }
 .fc-src{
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  font-size:11.5px;
-  color:var(--faint);
+  font-size:12px;
+  color:#64748b;
+  margin:0;
+  padding:0;
+  text-align:left;
+  line-height:1.4;
 }
 
 .det-nav{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:14px;
-  margin-top:2px;
+  gap:12px;
+  margin-top:4px;
 }
 .det-nav-btn{
   width:36px;
@@ -649,15 +684,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   justify-content:center;
   cursor:pointer;
   transition:all .15s ease;
+  font-family:var(--display);
+  font-weight:500;
 }
 .det-nav-btn:hover{
   background:rgba(148,174,255,.18);
   border-color:rgba(148,174,255,.35);
   color:#fff;
-  transform:scale(1.05);
+  transform:scale(1.04);
 }
 .det-nav-btn:active{
-  transform:scale(.95);
+  transform:scale(.96);
+}
+.det-nav-counter{
+  font-family:var(--display);
+  font-size:12.5px;
+  font-weight:600;
+  color:rgba(148,174,255,.75);
+  letter-spacing:.02em;
+  padding:0 2px;
+  user-select:none;
 }
 .det-dots{
   display:flex;
@@ -678,7 +724,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   background:rgba(148,174,255,.45);
 }
 .det-dot-bar.active{
-  width:24px;
+  width:22px;
   background:#38bdf8;
   box-shadow:0 0 8px rgba(56,189,248,.6);
 }
@@ -693,11 +739,30 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
     padding:10px;
   }
   .fc{
-    min-height:190px;
-    padding:18px 16px;
+    min-height:auto;
+    padding:18px 18px;
   }
   .fc-title{
     font-size:20px;
+  }
+}
+@media (max-width:540px){
+  .det-topbar{
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .det-sep{
+    display:none;
+  }
+  .det-actions{
+    order:2;
+    margin-left:auto;
+  }
+  .det-identity{
+    order:3;
+    width:100%;
+    padding-top:2px;
+    justify-content:flex-start;
   }
 }
 @media (prefers-reduced-motion:reduce){

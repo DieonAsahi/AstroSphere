@@ -35,7 +35,7 @@ onBeforeUnmount(closeMissionMenu);
       <span v-if="store.mode === 'jelajah'" class="brand"><UiIcon name="logo" :size="26" /><b>AstroSphere</b></span>
       <template v-else>
         <button class="btn sm back" @click="game()?.back()"><UiIcon name="kembali" :size="18" />{{ backLabel }}</button>
-        <span v-if="store.mode !== 'hanggar'" class="tag">{{ store.mode === 'planet' && store.focus === 'matahari' ? 'Bintang' : LABEL[store.mode] }}</span>
+        <span v-if="store.mode !== 'planet' && store.mode !== 'fenomena' && store.mode !== 'sejarah' && store.mode !== 'hanggar'" class="tag">{{ LABEL[store.mode] }}</span>
       </template>
     </div>
     <div class="r">
@@ -99,11 +99,34 @@ onBeforeUnmount(closeMissionMenu);
 .tb>*{pointer-events:auto}
 .tb.off{opacity:0}.tb.off>*{pointer-events:none}
 .l,.r{display:flex;align-items:center;gap:10px}
+.l .tag{
+  height:36px;
+  min-height:36px;
+  padding:0 12px;
+  display:inline-flex;
+  align-items:center;
+  border-radius:8px !important;
+  font-family:var(--display);
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.03em;
+  background:rgba(148, 174, 255, 0.1);
+  border:1px solid rgba(148, 174, 255, 0.18);
+  color:#38bdf8;
+  backdrop-filter:blur(6px);
+}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-size:20px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
 .brand b{font-weight:500}
 .back{
-  height:40px;
-  min-height:40px;
+  height:36px;
+  min-height:36px;
+  padding:0 14px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:500;
   border-radius:10px !important;
   background:rgba(11,16,36,.78);
   border:1px solid rgba(148,174,255,.18);

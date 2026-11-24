@@ -128,7 +128,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .tgt-arrow span{position:absolute;left:-50px;top:18px;width:100px;text-align:center;font-family:var(--display);font-weight:500;font-size:12.5px;color:var(--star);text-shadow:0 1px 6px #000}
 .poi{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;pointer-events:auto;will-change:transform;text-align:left}
 .poi i{flex:none;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:2.5px solid var(--coral);position:relative;background:rgba(255,107,107,.18)}
-.poi span{transform:translateY(-10px);white-space:nowrap;padding:3px 10px;border-radius:999px;background:rgba(6,10,26,.78)}
+.poi span{transform:translateY(-10px);white-space:nowrap;padding:3px 10px;border-radius:10px;background:rgba(6,10,26,.78)}
 .poi b{display:block;font-family:var(--display);font-size:13px;font-weight:500}
 .poi em{display:none}
 .poi.sel i{width:26px;height:26px;margin:-13px 0 0 -13px;background:var(--coral);box-shadow:0 0 0 6px rgba(255,107,107,.25)}

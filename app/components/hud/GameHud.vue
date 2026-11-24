@@ -302,7 +302,7 @@ function handleQuickStop() {
     <!-- PESAN KEDEKATAN PLANET — ZONA HIJAU (TENGAH ATAS, DI BAWAH KOMPAS/TUJUAN) -->
     <Transition name="fade">
       <div
-        v-if="store.hud.near.isApproaching && store.hud.near.id && !pickOpen && !store.event.phase"
+        v-if="store.hud.near.isApproaching && store.hud.near.id && !pickOpen && !store.event.phase && !store.approach.show"
         class="approach-green-card hud-el"
       >
         <span class="pd planet-dot" :style="{ '--c': COLOR_OF[store.hud.near.id], '--s': '24px' }" />

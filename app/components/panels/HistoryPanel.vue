@@ -1,7 +1,7 @@
 <script setup>
-// Mode Sejarah: Lini masa per benda langit dengan dukungan data Supabase & Fallback Lokal.
+// Mode Sejarah: Lini masa per benda langit dengan dukungan data live Supabase & Fallback Lokal.
 // Fitur:
-// 1. Filter 2 Tingkat:
+// 1. Filter Horizontal Slide:
 //    - Khusus Bumi: Tingkat 1 (6 Zaman Baku + Semua Zaman), Tingkat 2 jika Zaman Modern (Rentang 1 Abad).
 //    - Planet Lain: Filter Era Fleksibel (Semua, Kuno, Teleskopik, Era Antariksa).
 // 2. Alur Navigasi: Daftar Kartu Lini Masa <-> Jendela Detail Terstruktur.
@@ -11,10 +11,10 @@ import { store, game, showToast } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { isSafeMediaUrl } from '~/utils/mediaSecurity.js';
 import { getEventCoords } from '~/game/system.js';
-import { ERAS, LOCATION_LABEL } from '~/data/history.js';
+import { LOCATION_LABEL } from '~/data/history.js';
 import { PLANETS, MOONS } from '~/data/solarSystem.js';
 
-const { getHistory } = useSupabaseContent();
+const { getHistory, loadAll } = useSupabaseContent();
 
 const body = computed(() => store.sejarah.body);
 const info = computed(() => PLANETS.find((p) => p.id === body.value) || MOONS.find((m) => m.id === body.value));
@@ -23,56 +23,113 @@ const isEarth = computed(() => body.value === 'bumi');
 // Mode Tampilan: 'list' (daftar kartu) atau 'detail' (detail satu peristiwa)
 const viewMode = ref('list');
 
-// Definisi Filter Tingkat 1 untuk Bumi (6 Zaman Baku + Pilihan Semua)
-const EARTH_ERAS = [
-  { id: 'semua', label: 'Semua Zaman', min: -Infinity, max: Infinity },
-  { id: 'awal_purba', label: 'Awal Bumi & Purba', sub: '≤ 250 Jt SM', min: -Infinity, max: -250000000 },
-  { id: 'dinosaurus', label: 'Dinosaurus & Kapur', sub: '250–66 Jt SM', min: -250000000, max: -66000000 },
-  { id: 'manusia_purba', label: 'Manusia Purba & Batu', sub: '66 Jt–3000 SM', min: -66000000, max: -3000 },
-  { id: 'kuno_kenabian', label: 'Peradaban Kuno & Kenabian', sub: '3000 SM–500 M', min: -3000, max: 500 },
-  { id: 'pertengahan_nusantara', label: 'Pertengahan & Nusantara', sub: '500–1499 M', min: 500, max: 1499 },
-  { id: 'modern', label: 'Zaman Modern', sub: '1500–Kini', min: 1500, max: Infinity },
-];
-
 // Definisi Filter Tingkat 2 untuk Zaman Modern (Rentang 1 Abad)
 const MODERN_CENTURIES = [
-  { id: 'semua', label: 'Semua Abad Modern', min: 1500, max: Infinity },
-  { id: '1500-1599', label: '1500 – 1599 (Abad 16)', min: 1500, max: 1599 },
-  { id: '1600-1699', label: '1600 – 1699 (Abad 17)', min: 1600, max: 1699 },
-  { id: '1700-1799', label: '1700 – 1799 (Abad 18)', min: 1700, max: 1799 },
-  { id: '1800-1899', label: '1800 – 1899 (Abad 19)', min: 1800, max: 1899 },
-  { id: '1900-1999', label: '1900 – 1999 (Abad 20)', min: 1900, max: 1999 },
-  { id: '2000-now', label: '2000 – Sekarang (Abad 21)', min: 2000, max: Infinity },
+  { id: 'semua', label: 'Semua Abad Modern', shortLabel: 'Semua Abad', min: 1500, max: Infinity },
+  { id: '1500-1599', label: '1500 – 1599 (Abad 16)', shortLabel: 'Abad 16 (1500–1599)', min: 1500, max: 1599 },
+  { id: '1600-1699', label: '1600 – 1699 (Abad 17)', shortLabel: 'Abad 17 (1600–1699)', min: 1600, max: 1699 },
+  { id: '1700-1799', label: '1700 – 1799 (Abad 18)', shortLabel: 'Abad 18 (1700–1799)', min: 1700, max: 1799 },
+  { id: '1800-1899', label: '1800 – 1899 (Abad 19)', shortLabel: 'Abad 19 (1800–1899)', min: 1800, max: 1899 },
+  { id: '1900-1999', label: '1900 – 1999 (Abad 20)', shortLabel: 'Abad 20 (1900–1999)', min: 1900, max: 1999 },
+  { id: '2000-now', label: '2000 – Sekarang (Abad 21)', shortLabel: 'Abad 21 (2000–Kini)', min: 2000, max: Infinity },
 ];
 
-const selectedEarthEra = ref('semua');
+const selectedEra = ref(store.sejarah.era || 'semua');
 const selectedCentury = ref('semua');
-const selectedNonEarthEra = ref(store.sejarah.era || 'semua');
 
-// Ambil seluruh peristiwa untuk planet aktif
+// Ambil seluruh peristiwa untuk planet aktif secara reaktif dari Supabase composable
 const allEvents = computed(() => getHistory(body.value) || []);
 const totalCount = computed(() => allEvents.value.length);
+
+// Ekstrak era unik dari data peristiwa planet secara dinamis (100% cocok dengan era_label di database)
+const availableEras = computed(() => {
+  const events = allEvents.value || [];
+  const map = new Map();
+
+  for (const e of events) {
+    const rawLabel = (e.era_label || '').trim() || (isEarth.value ? 'Zaman Sejarah' : 'Observasi & Geologi');
+    if (!map.has(rawLabel)) {
+      map.set(rawLabel, {
+        id: rawLabel,
+        label: rawLabel,
+        count: 0,
+        minYear: Infinity,
+      });
+    }
+    const item = map.get(rawLabel);
+    item.count += 1;
+    const yr = e.year != null ? Number(e.year) : (e.tahun_kejadian != null ? Number(e.tahun_kejadian) : 0);
+    if (!isNaN(yr) && yr < item.minYear) {
+      item.minYear = yr;
+    }
+  }
+
+  // Urutkan era secara kronologis berdasarkan minYear (era tertua lebih dulu)
+  const sorted = Array.from(map.values()).sort((a, b) => a.minYear - b.minYear);
+
+  // Tab pertama selalu "Semua Zaman" (Bumi) atau "Semua Periode" (Non-Bumi)
+  const defaultLabel = isEarth.value ? 'Semua Zaman' : 'Semua Periode';
+  return [
+    { id: 'semua', label: defaultLabel, count: events.length },
+    ...sorted,
+  ];
+});
+
+// Menentukan apakah sub-filter rentang abad modern aktif
+const showModernCenturies = computed(() => isEarth.value && selectedEra.value.includes('Modern'));
+
+// Helper perhitungan jumlah peristiwa per abad modern
+function getCenturyCount(centId) {
+  const modernEvents = allEvents.value.filter((e) => (e.era_label || '').includes('Modern') || (e.year != null && e.year >= 1500));
+  if (centId === 'semua') return modernEvents.length;
+  const cent = MODERN_CENTURIES.find((c) => c.id === centId);
+  if (!cent) return 0;
+  return modernEvents.filter((e) => {
+    const yr = e.year != null ? Number(e.year) : Number(e.tahun_kejadian);
+    return yr >= cent.min && yr <= cent.max;
+  }).length;
+}
+
+// Navigasi horizontal bar dengan roda mouse dan klik
+function handleHWheel(e) {
+  if (e.deltaY !== 0) {
+    e.currentTarget.scrollLeft += e.deltaY;
+  }
+}
+
+function selectEra(eraId, evt) {
+  selectedEra.value = eraId;
+  selectedCentury.value = 'semua';
+  evt?.currentTarget?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+function selectCentury(centId, evt) {
+  selectedCentury.value = centId;
+  evt?.currentTarget?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
 
 // Saring daftar berdasarkan filter aktif
 const filteredList = computed(() => {
   const events = allEvents.value;
   if (!events.length) return [];
 
-  if (isEarth.value) {
-    const eraConfig = EARTH_ERAS.find((e) => e.id === selectedEarthEra.value) || EARTH_ERAS[0];
-
-    // Jika memilih Zaman Modern, terapkan filter Tingkat 2
-    if (selectedEarthEra.value === 'modern') {
-      const centConfig = MODERN_CENTURIES.find((c) => c.id === selectedCentury.value) || MODERN_CENTURIES[0];
-      return events.filter((e) => e.year >= centConfig.min && e.year <= centConfig.max);
-    }
-
-    return events.filter((e) => e.year >= eraConfig.min && e.year <= eraConfig.max);
+  let list = events;
+  if (selectedEra.value !== 'semua') {
+    list = list.filter((e) => (e.era_label || '').trim() === selectedEra.value);
   }
 
-  // Untuk planet selain Bumi
-  const era = ERAS.find((e) => e.id === selectedNonEarthEra.value) || ERAS[0];
-  return events.filter((e) => e.year >= era.from && e.year <= era.to);
+  // Sub-filter abad modern jika Bumi & era modern sedang aktif
+  if (showModernCenturies.value && selectedCentury.value !== 'semua') {
+    const cent = MODERN_CENTURIES.find((c) => c.id === selectedCentury.value);
+    if (cent) {
+      list = list.filter((e) => {
+        const yr = e.year != null ? Number(e.year) : (e.tahun_kejadian != null ? Number(e.tahun_kejadian) : 0);
+        return yr >= cent.min && yr <= cent.max;
+      });
+    }
+  }
+
+  return list;
 });
 
 // Peristiwa yang sedang dipilih
@@ -94,9 +151,6 @@ function formatYear(yr) {
   if (num < 0) return `${Math.abs(num)} SM`;
   return `${num} M`;
 }
-
-// Label Singkat Era untuk non-Bumi
-const ERA_SHORT = { semua: 'Semua', kuno: 'Kuno', teleskopik: 'Teleskop', antariksa: 'Era antariksa' };
 
 // Pelacakan status sisi jauh planet dari game engine
 const far = ref({});
@@ -122,6 +176,9 @@ function handleKeyDown(e) {
 }
 
 onMounted(() => {
+  // Muat data live Supabase bila belum ada
+  loadAll();
+
   window.addEventListener('keydown', handleKeyDown, true);
   pollTimer = setInterval(() => {
     const s = game()?.poiStatus() || [];
@@ -156,12 +213,8 @@ function backToList() {
 }
 
 // Watch pergantian filter untuk menyinkronkan ke Game POI Three.js
-watch([selectedEarthEra, selectedCentury, selectedNonEarthEra], async () => {
-  if (isEarth.value) {
-    store.sejarah.era = selectedEarthEra.value === 'modern' ? 'antariksa' : selectedEarthEra.value;
-  } else {
-    store.sejarah.era = selectedNonEarthEra.value;
-  }
+watch([selectedEra, selectedCentury], async () => {
+  store.sejarah.era = selectedEra.value;
 
   // Pilih item pertama dari hasil filter jika item lama tidak ada di filter
   if (!filteredList.value.some((e) => e.id === store.sejarah.selected)) {
@@ -169,6 +222,13 @@ watch([selectedEarthEra, selectedCentury, selectedNonEarthEra], async () => {
   }
   await nextTick();
   game()?.buildPOIs(filteredList.value);
+});
+
+// Watch pergantian planet (body) untuk mereset filter
+watch(body, () => {
+  selectedEra.value = 'semua';
+  selectedCentury.value = 'semua';
+  viewMode.value = 'list';
 });
 
 // Watch perubahan daftar ketika data Supabase baru selesai dimuat
@@ -201,9 +261,9 @@ function focusLoc() {
 
 <template>
   <div>
-    <!-- Judul Panggung Kiri Atas -->
+    <!-- Judul Panggung Kiri Atas (Seragam PlanetPanel.vue) -->
     <div class="stage-title">
-      <span class="tag">{{ totalCount }} peristiwa</span>
+      <span class="stage-eyebrow">LINI MASA SEJARAH · {{ totalCount }} PERISTIWA</span>
       <h1 class="h1">{{ info?.name }}</h1>
     </div>
 
@@ -225,62 +285,43 @@ function focusLoc() {
             <p class="small">Pengamatan astronomi, pendaratan wahana, dan peristiwa penting di {{ info?.name }}.</p>
           </div>
 
-          <!-- FILTER TINGKAT 1: KHUSUS BUMI (6 ZAMAN BAKU) -->
-          <div v-if="isEarth" class="filter-group">
-            <span class="filter-label">Filter Tingkat 1: Periode Zaman</span>
-            <div class="hscroll" role="tablist" aria-label="Pilih Zaman">
+          <!-- FILTER PERIODE ZAMAN / OBSERVASI (HORIZONTAL SLIDE BAR SATU BARIS FIGMA) -->
+          <div v-if="availableEras.length > 1" class="filter-group">
+            <span class="filter-label">{{ isEarth ? 'Periode Zaman' : 'Periode Observasi & Bentang Alam' }}</span>
+            <div class="filter-slide-bar" role="tablist" :aria-label="isEarth ? 'Pilih Zaman' : 'Pilih Periode'" @wheel.passive="handleHWheel">
               <button
-                v-for="e in EARTH_ERAS"
+                v-for="e in availableEras"
                 :key="e.id"
-                class="chip"
+                class="filter-slide-btn"
                 role="tab"
-                :aria-selected="selectedEarthEra === e.id"
-                :class="{ on: selectedEarthEra === e.id }"
-                @click="selectedEarthEra = e.id"
+                :aria-selected="selectedEra === e.id"
+                :class="{ on: selectedEra === e.id }"
+                @click="selectEra(e.id, $event)"
               >
-                <span>{{ e.label }}</span>
-                <small v-if="e.sub" class="chip-sub">{{ e.sub }}</small>
+                <span>{{ e.label }} ({{ e.count }})</span>
               </button>
             </div>
           </div>
 
           <!-- FILTER TINGKAT 2: KHUSUS SAAT ZAMAN MODERN TERPILIH DI BUMI -->
-          <div v-if="isEarth && selectedEarthEra === 'modern'" class="filter-group sub-filter">
-            <span class="filter-label"><UiIcon name="sejarah" :size="13" /> Filter Tingkat 2: Rentang Abad Modern</span>
-            <div class="hscroll" role="tablist" aria-label="Pilih Abad">
+          <div v-if="showModernCenturies" class="filter-group sub-filter">
+            <span class="filter-label"><UiIcon name="sejarah" :size="13" /> Rentang Abad Modern</span>
+            <div class="filter-slide-bar" role="tablist" aria-label="Pilih Abad" @wheel.passive="handleHWheel">
               <button
                 v-for="c in MODERN_CENTURIES"
                 :key="c.id"
-                class="chip sm"
+                class="filter-slide-btn sm"
                 role="tab"
                 :aria-selected="selectedCentury === c.id"
                 :class="{ on: selectedCentury === c.id }"
-                @click="selectedCentury = c.id"
+                @click="selectCentury(c.id, $event)"
               >
-                {{ c.label }}
+                <span>{{ c.shortLabel || c.label }} ({{ getCenturyCount(c.id) }})</span>
               </button>
             </div>
           </div>
 
-          <!-- FILTER NON-BUMI: 4 ERA ASTRONOMI STANDAR -->
-          <div v-if="!isEarth" class="filter-group">
-            <span class="filter-label">Periode Observasi</span>
-            <div class="hscroll" role="tablist" aria-label="Pilih era">
-              <button
-                v-for="e in ERAS"
-                :key="e.id"
-                class="chip"
-                role="tab"
-                :aria-selected="selectedNonEarthEra === e.id"
-                :class="{ on: selectedNonEarthEra === e.id }"
-                @click="selectedNonEarthEra = e.id"
-              >
-                {{ ERA_SHORT[e.id] || e.label }}
-              </button>
-            </div>
-          </div>
-
-          <!-- DAFTAR KARTU VERTIKAL -->
+          <!-- DAFTAR KARTU VERTIKAL GAYA FIGMA -->
           <ol class="tl">
             <li v-if="!filteredList.length" class="empty-state card flat">
               <UiIcon name="info" :size="24" />
@@ -313,7 +354,7 @@ function focusLoc() {
                 <div class="ev-text">
                   <h3 class="ev-title">{{ e.judul || e.title }}</h3>
                   <div class="ev-meta">
-                    <span class="ev-actor">{{ e.nama_wahana || e.actor }}</span>
+                    <span class="ev-actor-chip">{{ e.nama_wahana || e.actor }}</span>
                     <span v-if="e.karakteristik_fisik" class="ev-dot">·</span>
                     <span v-if="e.karakteristik_fisik" class="ev-char">{{ e.karakteristik_fisik }}</span>
                   </div>
@@ -344,7 +385,7 @@ function focusLoc() {
         <template v-else-if="viewMode === 'detail' && currentEvent">
           <div class="detail-container">
             <!-- Tombol Navigasi Kembali -->
-            <button type="button" class="btn sm ghost back-btn" @click="backToList">
+            <button type="button" class="back-btn" @click="backToList">
               <UiIcon name="kembali" :size="16" />
               <span>Kembali ke Lini Masa</span>
             </button>
@@ -450,126 +491,233 @@ function focusLoc() {
 </template>
 
 <style scoped>
-.header-sec {
-  margin-bottom: 8px;
+/* Judul Panggung Kiri Atas (Seragam PlanetPanel.vue) */
+.stage-title {
+  position: fixed;
+  left: calc(var(--gap) + var(--safe-l));
+  top: calc(var(--top) + 48px + var(--safe-t));
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
 }
-.header-sec h2 {
-  margin: 0 0 2px 0;
+.stage-title > * {
+  pointer-events: auto;
+}
+.stage-eyebrow {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  margin-bottom: 4px;
+}
+.stage-title .h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Sheet Observatorium Kaca Gelap */
+.sheet {
+  border-radius: 14px !important;
+  background: rgba(10, 14, 28, 0.92) !important;
+  border: 1px solid rgba(148, 174, 255, 0.16) !important;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+.sheet .sbody {
+  padding: 18px 16px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sheet .sbody > * {
+  flex-shrink: 0;
+}
+.sheet .sbody.scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 174, 255, 0.25) transparent;
+}
+.sheet .sbody.scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.sheet .sbody.scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 174, 255, 0.25);
+  border-radius: 3px;
+}
+.sheet .sbody.scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 174, 255, 0.4);
+}
+
+/* Header section */
+.header-sec {
+  margin-bottom: 4px;
+}
+.header-sec .h3 {
+  margin: 0 0 4px 0;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  color: #f1f5f9;
 }
 .header-sec .small {
   margin: 0;
+  font-size: 13px;
   color: var(--faint);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
-/* Filter Styling */
+/* Filter Styling: Horizontal Slide Bar Figma Style */
 .filter-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .filter-group.sub-filter {
   margin-top: 4px;
   padding: 8px 10px;
-  border-radius: var(--r-sm);
-  background: rgba(59, 108, 240, 0.08);
-  border: 1px solid rgba(59, 108, 240, 0.2);
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.06);
+  border: 1px solid rgba(14, 165, 233, 0.18);
 }
 .filter-label {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
+  gap: 6px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 500;
-  color: var(--faint);
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: #94a3b8;
 }
-.chip-sub {
-  font-size: 10px;
-  opacity: 0.75;
-  margin-left: 4px;
+.filter-slide-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 174, 255, 0.14);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
 }
-.chip.sm {
-  padding: 4px 9px;
+.filter-slide-bar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.filter-slide-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-family: var(--font);
   font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+.filter-slide-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.06);
+}
+.filter-slide-btn.on {
+  background: #0ea5e9;
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
+}
+.filter-slide-btn.sm {
+  padding: 5px 10px;
+  font-size: 11.5px;
 }
 
-/* Garis Waktu & Daftar Kartu */
+/* Garis Waktu & Daftar Kartu Gaya Figma */
 .tl {
   list-style: none;
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 8px 0 12px 16px;
-  margin: 8px 0 0 0;
+  padding: 8px 0 12px 18px;
+  margin: 6px 0 0 0;
 }
 .tl::before {
   content: "";
   position: absolute;
-  left: 5px;
+  left: 6px;
   top: 14px;
   bottom: 14px;
   width: 2px;
   border-radius: 2px;
-  background: var(--line);
+  background: rgba(56, 189, 248, 0.22);
 }
-
 .ev-card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  border-radius: var(--r-md);
-  background: var(--surface-1);
-  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 174, 255, 0.14);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .ev-card::before {
   content: "";
   position: absolute;
-  left: -17px;
+  left: -18px;
   top: 18px;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--bg);
-  border: 2px solid var(--line-2);
-  transition: all 0.2s;
+  background: #0b1024;
+  border: 2px solid rgba(148, 174, 255, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .ev-card:hover {
-  background: var(--surface-2);
-  border-color: rgba(94, 209, 255, 0.4);
+  background: rgba(22, 33, 62, 0.85);
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.15);
   transform: translateX(2px);
 }
 .ev-card.is-active {
-  border-color: var(--sky);
-  background: var(--surface-2);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(56, 189, 248, 0.65);
+  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.22), inset 0 0 12px rgba(56, 189, 248, 0.08);
 }
 .ev-card.is-active::before {
-  background: var(--blue);
-  border-color: var(--sky);
-  box-shadow: 0 0 0 4px rgba(59, 108, 240, 0.35);
+  background: #0ea5e9;
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8, 0 0 0 3px rgba(56, 189, 248, 0.25);
 }
-
-/* Memorial Card Style */
 .ev-card.is-memorial::before {
   border-color: #cfd6ee;
 }
 .ev-card.is-memorial.is-active::before {
   background: #cfd6ee;
   border-color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(207, 214, 238, 0.2);
+  box-shadow: 0 0 10px #cfd6ee, 0 0 0 3px rgba(207, 214, 238, 0.2);
 }
 .ev-card.is-memorial .ev-year {
   color: #cfd6ee;
 }
-
 .ev-header {
   display: flex;
   align-items: center;
@@ -579,19 +727,21 @@ function focusLoc() {
 .ev-year {
   font-weight: 600;
   font-size: 15px;
-  color: var(--sky);
+  color: #38bdf8;
   font-family: var(--display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 .badge-tag {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
-  background: rgba(94, 209, 255, 0.12);
-  color: var(--sky);
-  border: 1px solid rgba(94, 209, 255, 0.25);
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
   text-transform: capitalize;
 }
 .badge-tag.tag-memorial {
@@ -599,7 +749,6 @@ function focusLoc() {
   color: #cfd6ee;
   border-color: rgba(207, 214, 238, 0.3);
 }
-
 .ev-body {
   display: flex;
   gap: 12px;
@@ -609,9 +758,9 @@ function focusLoc() {
   flex: none;
   width: 58px;
   height: 58px;
-  border-radius: var(--r-sm);
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(148, 174, 255, 0.16);
 }
 .ev-thumb img {
   width: 100%;
@@ -628,41 +777,54 @@ function focusLoc() {
 .ev-title {
   margin: 0;
   font-size: 14.5px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.35;
-  color: var(--text);
+  color: #f1f5f9;
 }
 .ev-meta {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  color: var(--faint);
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ev-actor {
+.ev-actor-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  font-size: 11.5px;
   font-weight: 500;
-  color: var(--sky);
+}
+.ev-dot {
+  color: rgba(148, 174, 255, 0.4);
+}
+.ev-char {
+  color: #94a3b8;
+  font-size: 11.5px;
 }
 .ev-desc {
   margin: 3px 0 0 0;
   font-size: 13px;
-  color: var(--muted);
+  color: #94a3b8;
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 .ev-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 6px;
-  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 174, 255, 0.16);
   font-size: 12px;
 }
 .btn-detail-link {
@@ -674,7 +836,7 @@ function focusLoc() {
   padding: 0;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--sky);
+  color: #38bdf8;
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -687,24 +849,14 @@ function focusLoc() {
   align-items: center;
   gap: 4px;
   font-size: 11.5px;
-  color: var(--faint);
+  color: #38bdf8;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13.5px;
-}
-
-/* ============================ */
-/* MODE DETAIL STYLING */
-/* ============================ */
+/* Detail View */
 .detail-container {
   display: flex;
   flex-direction: column;
@@ -712,15 +864,30 @@ function focusLoc() {
 }
 .back-btn {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-family: var(--display);
   font-size: 13px;
+  font-weight: 500;
+  background: rgba(148, 174, 255, 0.1);
+  border: 1px solid rgba(148, 174, 255, 0.2);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.18s ease;
 }
-
+.back-btn:hover {
+  background: rgba(148, 174, 255, 0.18);
+  border-color: rgba(148, 174, 255, 0.35);
+  color: #fff;
+}
 .detail-media {
   width: 100%;
-  border-radius: var(--r-md);
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(148, 174, 255, 0.16);
 }
 .media-frame {
   width: 100%;
@@ -741,13 +908,12 @@ function focusLoc() {
   justify-content: center;
   gap: 8px;
   padding: 28px 16px;
-  background: radial-gradient(circle at 50% 50%, rgba(59, 108, 240, 0.15) 0%, rgba(13, 17, 34, 0.8) 100%);
-  color: var(--sky);
+  background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, rgba(13, 17, 34, 0.8) 100%);
+  color: #38bdf8;
   font-size: 12.5px;
   font-weight: 500;
-  border-radius: var(--r-md);
+  border-radius: 10px;
 }
-
 .detail-header {
   display: flex;
   flex-direction: column;
@@ -761,22 +927,24 @@ function focusLoc() {
 .detail-year {
   font-weight: 600;
   font-size: 17px;
-  color: var(--sky);
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
 }
 .detail-title {
   margin: 0;
   font-size: 18px;
+  font-weight: 600;
   line-height: 1.3;
+  color: #f1f5f9;
 }
-
-/* 4 Baris Metadata Terstruktur */
 .meta-box {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border-radius: var(--r-md);
-  background: var(--surface-2);
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 174, 255, 0.12);
 }
 .meta-item {
   display: flex;
@@ -793,24 +961,22 @@ function focusLoc() {
   border-bottom: none;
 }
 .meta-label {
-  color: var(--faint);
+  color: #94a3b8;
   font-weight: 500;
   flex: none;
 }
 .meta-val {
-  color: var(--text);
+  color: #f1f5f9;
   font-weight: 500;
   text-align: right;
   word-break: break-word;
 }
-
-/* Memorial */
 .memo-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border-radius: var(--r-md);
+  padding: 12px 14px;
+  border-radius: 10px;
   background: rgba(207, 214, 238, 0.06);
   border: 1px solid rgba(207, 214, 238, 0.2);
 }
@@ -823,7 +989,7 @@ function focusLoc() {
 }
 .memo-sec {
   font-size: 13px;
-  color: var(--muted);
+  color: #94a3b8;
   line-height: 1.45;
 }
 .memo-sec b {
@@ -833,7 +999,7 @@ function focusLoc() {
 }
 .memo-sec.lesson {
   padding: 6px 8px;
-  border-radius: var(--r-sm);
+  border-radius: 6px;
   background: rgba(54, 211, 154, 0.08);
   border: 1px solid rgba(54, 211, 154, 0.2);
 }
@@ -850,62 +1016,63 @@ function focusLoc() {
 }
 .memo-crew li {
   padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--surface-3);
+  border-radius: 6px;
+  background: rgba(148, 174, 255, 0.1);
+  border: 1px solid rgba(148, 174, 255, 0.16);
   font-size: 11.5px;
-  color: var(--text);
+  color: #f1f5f9;
 }
-
-/* Narasi */
 .detail-narrative {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 174, 255, 0.12);
 }
 .narrative-heading {
   margin: 0;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--faint);
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 .narrative-lead {
   margin: 0;
   font-size: 14.5px;
-  font-weight: 500;
-  color: var(--text);
+  font-weight: 600;
+  color: #f1f5f9;
   line-height: 1.5;
 }
 .narrative-body {
   margin: 0;
-  font-size: 13.5px;
-  color: var(--muted);
-  line-height: 1.55;
+  font-size: 14px;
+  color: #cbd5e1;
+  line-height: 1.6;
 }
-
-/* Rujukan / Sumber */
 .ref-box {
-  padding: 8px 10px;
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  border-left: 3px solid var(--sky);
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 174, 255, 0.12);
+  border-left: 3px solid #38bdf8;
 }
 .ref-label {
   display: block;
   font-size: 11px;
-  color: var(--faint);
+  color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 500;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 .ref-val {
-  margin: 2px 0 0 0;
+  margin: 4px 0 0 0;
   font-size: 12.5px;
-  color: var(--muted);
+  color: #cbd5e1;
+  line-height: 1.5;
 }
-
-/* Aksi 3D */
 .detail-actions {
   display: flex;
   align-items: center;
@@ -918,7 +1085,6 @@ function focusLoc() {
   gap: 8px;
   font-size: 13px;
 }
-
 .fine {
   font-size: 11.5px;
   color: var(--faint);
@@ -928,6 +1094,26 @@ function focusLoc() {
 }
 
 @media (max-width: 760px) {
+  .stage-title {
+    left: 14px;
+    top: calc(var(--top) + 48px + var(--safe-t));
+  }
+  .stage-title .h1 {
+    font-size: 24px;
+  }
+  .sheet {
+    left: 0;
+    right: 0;
+    width: auto;
+    top: auto;
+    bottom: 0;
+    height: min(52vh, 480px);
+    border-radius: 20px 20px 0 0 !important;
+  }
+  .sheet .sbody {
+    padding: 14px 14px 22px !important;
+    gap: 10px;
+  }
   .tl {
     padding-left: 14px;
   }
