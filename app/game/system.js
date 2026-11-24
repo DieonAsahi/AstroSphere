@@ -7,6 +7,7 @@ import { PLANET_VS, PLANET_FS, ATMO_VS, ATMO_FS, RING_VS, RING_FS, SUN_VS, SUN_F
 import { DEG, TAU } from './util.js';
 import { roleOf, whiteTexture, texMatrix } from './models.js';
 import { SUN, PLANETS, MOONS, BELT, radiusOf } from '../data/solarSystem.js';
+import { getEarthEventCoords } from '../data/earthHistoryCoords.js';
 
 const col3 = (h) => new THREE.Color(h);
 
@@ -274,10 +275,14 @@ export function latLonToLocal(lat, lon, r = 1.004) {
   return new THREE.Vector3(Math.cos(la) * Math.cos(lo) * r, Math.sin(la) * r, -Math.cos(la) * Math.sin(lo) * r);
 }
 
-// Menghitung koordinat bola deterministik dengan rumus Fibonacci Sphere bila lat/lon null (100% data Supabase)
+// Menghitung koordinat bola deterministik dengan prioritas koordinat geografis Bumi akurat & rumus Fibonacci Sphere
 export function getEventCoords(e, index = 0, total = 30) {
   if (e && Number.isFinite(e.lat) && Number.isFinite(e.lon)) {
     return { lat: e.lat, lon: e.lon, isCalculated: false };
+  }
+  const earthCoords = getEarthEventCoords(e);
+  if (earthCoords) {
+    return { lat: earthCoords.lat, lon: earthCoords.lon, isCalculated: false };
   }
   let idx = index;
   if (e && typeof e.id === 'string') {

@@ -768,7 +768,11 @@ export function createEngine(el) {
       if (!pheno.id) store.obs.mul = 1;
       beginCamTransition();
       applyObsToggles();
-      if (m === 'sejarah') buildPOIs(); else clearPOIs();
+      if (m === 'sejarah') {
+        clearPOIs();
+        if (opts.event) selectEvent(opts.event);
+        else buildPOIs();
+      } else clearPOIs();
     } else if (m === 'fenomena') {
       ensureLab(); clearPOIs();
       lab.setType(store.lab.type); lab.setPOV(store.lab.pov, true); store.lab.marks = lab.marks;
@@ -788,7 +792,7 @@ export function createEngine(el) {
     orbitsVisible(store.toggles.orbit);
     for (const x of sys.bodies) if (x.axisLine) x.axisLine.visible = store.toggles.axis && x === b;
   }
-  function focus(id) { if (!sys.byId[id]) return; if (store.mode === 'sejarah') { store.sejarah.body = id; buildPOIs(); } else store.focus = id; frameBody(sys.byId[id]); beginCamTransition(); applyObsToggles(); }
+  function focus(id) { if (!sys.byId[id]) return; if (store.mode === 'sejarah') { store.sejarah.body = id; store.sejarah.selected = null; clearPOIs(); buildPOIs(); } else store.focus = id; frameBody(sys.byId[id]); beginCamTransition(); applyObsToggles(); }
   function back() {
     if (store.mode === 'planet' && pheno.id) { stopPheno(); return; }
     const to = store.backTo;
@@ -883,75 +887,62 @@ export function createEngine(el) {
     const rawList = customList || store.sejarah.events || (HISTORY[b.id] || []);
     const list = rawList.filter(eraFilter);
     currentHistoryList = list;
-    list.forEach((e, i) => {
-      const coords = getEventCoords(e, i, list.length);
-      const node = document.createElement('button');
-      node.className = 'poi' + (e.id === store.sejarah.selected ? ' sel' : '');
-      const actorLabel = e.nama_wahana || e.actor || 'Observasi';
-      const yearLabel = e.year || e.tahun_kejadian || '—';
-      const titleLabel = e.judul || e.title || '';
-      const icon = document.createElement('i');
-      const span = document.createElement('span');
-      const bEl = document.createElement('b');
-      bEl.textContent = actorLabel;
-      const emEl = document.createElement('em');
-      emEl.textContent = `${yearLabel} · ${titleLabel}`;
-      span.appendChild(bEl);
-      span.appendChild(emEl);
-      node.appendChild(icon);
-      node.appendChild(span);
-      node.addEventListener('click', () => { store.sejarah.selected = e.id; selectEvent(e.id); });
-      el.poi.appendChild(node);
-      pois.push({ e, el: node, local: latLonToLocal(coords.lat, coords.lon), body: b, coords });
-    });
-    selectEvent(store.sejarah.selected, true);
+    // HANYA BUMI YANG MEMILIKI TITIK PIN POI PERMUKAAN 3D
+    if (b.id !== 'bumi') return;
+    // ATURAN 1: Default bersih tanpa titik massal saat pertama kali masuk atau ganti filter
+    if (store.sejarah.selected) {
+      selectEvent(store.sejarah.selected, true);
+    }
   }
   function selectEvent(id, quiet) {
+    clearPOIs();
+    if (!id) {
+      store.sejarah.selected = null;
+      return;
+    }
+    store.sejarah.selected = id;
     const b = sys.byId[store.sejarah.body]; if (!b) return;
-    for (const p of pois) p.el.classList.toggle('sel', p.e.id === id);
-    if (pathObj) { pathObj.parent && pathObj.parent.remove(pathObj); pathObj = null; }
-    if (pathLabel) { pathLabel.el.remove(); pathLabel = null; }
-    const e = currentHistoryList.find((x) => x.id === id) || (HISTORY[b.id] || []).find((x) => x.id === id);
-    followDir = null;
-    if (!e) return;
-    const p = pois.find((x) => x.e.id === id);
-    if (p) {
-      followDir = () => b.spinMesh.localToWorld(p.local.clone()).sub(b.pos).normalize();
+
+    // ATURAN 3: Planet selain Bumi tetap tanpa titik 3D apa pun
+    if (b.id !== 'bumi') {
       if (!quiet) sfx.click();
       return;
     }
-    const R = b.radius;
-    let pts = null, anchor = null, label = '';
-    if (e.locationType === 'flyby') {
-      pts = [[-8, 1.6, 5], [-3, .6, 2.2], [-.6, .25, 1.6], [1.2, -.05, 1.5], [3.2, -.5, 2.0], [8, -1.6, -3]].map(([x, y, z]) => new THREE.Vector3(x * R, y * R, z * R));
-      anchor = pts[3]; label = `Lintasan flyby · ${e.actor || e.nama_wahana}`;
-    } else if (e.locationType === 'orbit') {
-      pts = []; for (let i = 0; i <= 128; i++) { const a = i / 128 * TAU; pts.push(new THREE.Vector3(Math.cos(a) * R * 1.9, Math.sin(a) * R * .55, Math.sin(a) * R * 1.9)); }
-      anchor = pts[20]; label = `Orbit wahana · ${e.actor || e.nama_wahana}`;
-    } else if (e.locationType === 'atmosphere') {
-      pts = [[5, 2.4, 3], [2.6, 1.3, 1.6], [1.4, .7, .9], [.86, .44, .5]].map(([x, y, z]) => new THREE.Vector3(x * R, y * R, z * R));
-      anchor = pts[1]; label = `Masuk atmosfer · ${e.actor || e.nama_wahana}`;
-    }
-    if (pts) {
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(pts).getPoints(160)),
-        new THREE.LineDashedMaterial({ color: '#a8edeb', dashSize: R * .12, gapSize: R * .08, transparent: true, opacity: .9, depthWrite: false }));
-      line.computeLineDistances(); b.holder.add(line); pathObj = line;
-      const node = document.createElement('div'); node.className = 'poi path';
-      const icon = document.createElement('i');
-      const span = document.createElement('span');
-      const bEl = document.createElement('b');
-      bEl.textContent = label;
-      const emEl = document.createElement('em');
-      emEl.textContent = 'Bukan titik pendaratan';
-      span.appendChild(bEl);
-      span.appendChild(emEl);
-      node.appendChild(icon);
-      node.appendChild(span);
-      el.poi.appendChild(node); pathLabel = { el: node, local: anchor, body: b };
-    }
+
+    // ATURAN 2: Munculkan titik khusus hanya untuk peristiwa yang diklik di Bumi
+    const e = currentHistoryList.find((x) => x.id === id) || (store.sejarah.events || []).find((x) => x.id === id) || (HISTORY['bumi'] || []).find((x) => x.id === id);
+    if (!e) return;
+
+    const coords = getEventCoords(e, 0, 1);
+    const node = document.createElement('button');
+    node.className = 'poi sel';
+    const actorLabel = e.nama_wahana || e.actor || 'Observasi';
+    const yearLabel = e.year || e.tahun_kejadian || '—';
+    const titleLabel = e.judul || e.title || '';
+    const icon = document.createElement('i');
+    const span = document.createElement('span');
+    const bEl = document.createElement('b');
+    bEl.textContent = actorLabel;
+    const emEl = document.createElement('em');
+    emEl.textContent = `${yearLabel} · ${titleLabel}`;
+    span.appendChild(bEl);
+    span.appendChild(emEl);
+    node.appendChild(icon);
+    node.appendChild(span);
+    node.addEventListener('click', () => { focusLocation(); });
+    el.poi.appendChild(node);
+
+    const pLocal = latLonToLocal(coords.lat, coords.lon);
+    pois = [{ e, el: node, local: pLocal, body: b, coords }];
+    followDir = () => b.spinMesh.localToWorld(pLocal.clone()).sub(b.pos).normalize();
+
+    // Kamera otomatis fokus ke titik lokasi peristiwa
+    focusLocation();
+
     if (!quiet) sfx.click();
   }
   function focusLocation() {
+    if (store.sejarah.body !== 'bumi') return false;
     if (!followDir) {
       const b = sys.byId[store.sejarah.body];
       const p = pois.find((x) => x.e.id === store.sejarah.selected) || pois[0];
@@ -1411,7 +1402,7 @@ export function createEngine(el) {
   // ---------- API untuk UI ----------
   const api = {
     hazard: (kind) => hazards?.trigger(kind),
-    boot, startGame, pause, resume, toSplash, setMode, back, stop, toggleCam, cycleTarget, setTarget, focus, selectEvent, focusLocation, buildPOIs, poiStatus,
+    boot, startGame, pause, resume, toSplash, setMode, back, stop, toggleCam, cycleTarget, setTarget, focus, selectEvent, focusLocation, buildPOIs, clearPOIs, poiStatus,
     applyObsToggles, flyTo,
     approachYes() { const id = store.approach.id; store.approach.show = false; if (id) setMode('planet', { body: id }); },
     approachNo() { store.approach.show = false; },

@@ -217,8 +217,18 @@ export async function fetchAllPublicContent(force = false) {
             deskripsi: row.deskripsi || row.detail || '',
             gambar_url: row.gambar_url || '',
             sumber_referensi: row.sumber_referensi || '',
-            lat: row.koordinat_lat ?? row.lat ?? null,
-            lon: row.koordinat_lng ?? row.lon ?? row.lng ?? null,
+            lat: (row.lat !== null && row.lat !== undefined && Number.isFinite(Number(row.lat)))
+              ? Number(row.lat)
+              : (row.koordinat_lat !== null && row.koordinat_lat !== undefined && Number.isFinite(Number(row.koordinat_lat)))
+                ? Number(row.koordinat_lat)
+                : null,
+            lon: (row.lon !== null && row.lon !== undefined && Number.isFinite(Number(row.lon)))
+              ? Number(row.lon)
+              : (row.koordinat_lng !== null && row.koordinat_lng !== undefined && Number.isFinite(Number(row.koordinat_lng)))
+                ? Number(row.koordinat_lng)
+                : (row.lng !== null && row.lng !== undefined && Number.isFinite(Number(row.lng)))
+                  ? Number(row.lng)
+                  : null,
             memorial: Boolean(row.memorial || (row.kategori_poi && row.kategori_poi.toLowerCase().includes('kenangan')) || (row.judul && row.judul.toLowerCase().includes('kenangan'))),
           };
 
@@ -421,6 +431,8 @@ function fillHistoryFallback() {
       gambar_url: '',
       sumber_referensi: 'NASA / Arsip Sejarah Antariksa',
       era_label: e.year < 1609 ? 'Kuno' : e.year < 1957 ? 'Teleskopik' : 'Era Antariksa',
+      lat: (e.lat !== null && e.lat !== undefined && Number.isFinite(Number(e.lat))) ? Number(e.lat) : null,
+      lon: (e.lon !== null && e.lon !== undefined && Number.isFinite(Number(e.lon))) ? Number(e.lon) : null,
     }));
     hMap[planetId] = items;
     const supId = toSupabasePlanetId(planetId);

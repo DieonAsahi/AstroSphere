@@ -23,6 +23,12 @@ const isEarth = computed(() => body.value === 'bumi');
 // Mode Tampilan: 'list' (daftar kartu) atau 'detail' (detail satu peristiwa)
 const viewMode = ref('list');
 
+// Pelacakan gambar yang gagal dimuat agar tidak menampilkan broken image icon
+const brokenImages = ref({});
+function onImageError(id) {
+  if (id) brokenImages.value[id] = true;
+}
+
 // Definisi Filter Tingkat 2 untuk Zaman Modern (Rentang 1 Abad)
 const MODERN_CENTURIES = [
   { id: 'semua', label: 'Semua Abad Modern', shortLabel: 'Semua Abad', min: 1500, max: Infinity },
@@ -138,7 +144,7 @@ const currentEvent = computed(() => {
     const found = allEvents.value.find((e) => e.id === store.sejarah.selected);
     if (found) return found;
   }
-  return filteredList.value[0] || allEvents.value[0] || null;
+  return null;
 });
 
 // Format Tahun yang human-friendly
@@ -179,31 +185,44 @@ onMounted(() => {
   // Muat data live Supabase bila belum ada
   loadAll();
 
+  // ATURAN 1: Default bersih tanpa titik massal saat pertama kali masuk mode Sejarah
+  resetSelection();
+
   window.addEventListener('keydown', handleKeyDown, true);
   pollTimer = setInterval(() => {
     const s = game()?.poiStatus() || [];
     far.value = Object.fromEntries(s.map((x) => [x.id, x.far]));
   }, 500);
-  nextTick(() => {
-    game()?.buildPOIs(filteredList.value);
-  });
-  scrollToSelected();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown, true);
   if (pollTimer) clearInterval(pollTimer);
+  // Bersihkan titik POI saat pengguna keluar dari mode Sejarah
+  resetSelection();
 });
 
 watch(() => store.sejarah.selected, scrollToSelected);
 
 // Aksi memilih kartu
 function selectCard(eventItem, openDetail = true) {
+  // Jika kartu yang sama diklik lagi saat di tampilan daftar, batalkan pilihan (toggle bersih)
+  if (store.sejarah.selected === eventItem.id && viewMode.value === 'list') {
+    resetSelection();
+    return;
+  }
   store.sejarah.selected = eventItem.id;
   game()?.selectEvent(eventItem.id);
   if (openDetail) {
     viewMode.value = 'detail';
   }
+}
+
+// Batalkan pilihan peristiwa dan bersihkan titik POI di bola Bumi
+function resetSelection() {
+  store.sejarah.selected = null;
+  game()?.selectEvent(null);
+  game()?.clearPOIs();
 }
 
 // Kembali ke tampilan daftar
@@ -212,42 +231,37 @@ function backToList() {
   scrollToSelected();
 }
 
-// Watch pergantian filter untuk menyinkronkan ke Game POI Three.js
-watch([selectedEra, selectedCentury], async () => {
+// Watch pergantian filter: bersihkan titik POI dan reset pilihan (ATURAN 1)
+watch([selectedEra, selectedCentury], () => {
   store.sejarah.era = selectedEra.value;
-
-  // Pilih item pertama dari hasil filter jika item lama tidak ada di filter
-  if (!filteredList.value.some((e) => e.id === store.sejarah.selected)) {
-    store.sejarah.selected = filteredList.value[0]?.id || null;
-  }
-  await nextTick();
-  game()?.buildPOIs(filteredList.value);
+  resetSelection();
+  viewMode.value = 'list';
 });
 
-// Watch pergantian planet (body) untuk mereset filter
+// Watch pergantian planet (body) untuk mereset filter dan bersihkan titik
 watch(body, () => {
   selectedEra.value = 'semua';
   selectedCentury.value = 'semua';
+  resetSelection();
   viewMode.value = 'list';
 });
 
 // Watch perubahan daftar ketika data Supabase baru selesai dimuat
-watch(filteredList, async (newList) => {
-  if (newList && newList.length) {
-    if (!newList.some((e) => e.id === store.sejarah.selected)) {
-      store.sejarah.selected = newList[0]?.id || null;
-    }
-    await nextTick();
-    game()?.buildPOIs(newList);
+watch(filteredList, (newList) => {
+  if (store.sejarah.selected && !newList.some((e) => e.id === store.sejarah.selected)) {
+    resetSelection();
   }
 });
 
-// Keterangan titik lokasi (mendukung 100% data Supabase & fallback via Fibonacci Sphere)
+// Keterangan titik lokasi (mendukung 100% data Supabase & koordinat geografis akurat)
 function where(e) {
   if (!e) return '—';
+  if (!isEarth.value) return e.karakteristik_fisik || 'Observasi Planet';
   const coords = getEventCoords(e);
-  const la = `${Math.abs(coords.lat).toFixed(1)}° ${coords.lat >= 0 ? 'LU' : 'LS'}`;
-  const lo = `${(coords.lon > 180 ? 360 - coords.lon : coords.lon).toFixed(1)}° ${coords.lon > 180 ? 'BB' : 'BT'}`;
+  const latVal = coords.lat ?? 0;
+  const lonVal = coords.lon ?? 0;
+  const la = `${Math.abs(latVal).toFixed(1)}° ${latVal >= 0 ? 'LU' : 'LS'}`;
+  const lo = `${Math.abs(lonVal).toFixed(1)}° ${lonVal >= 0 ? 'BT' : 'BB'}`;
   return `${la}, ${lo}${far.value[e.id] ? ' · di sisi jauh' : ''}`;
 }
 
@@ -281,7 +295,19 @@ function focusLoc() {
         <!-- ========================================== -->
         <template v-if="viewMode === 'list'">
           <div class="header-sec">
-            <h2 class="h3">Lini Masa Sejarah</h2>
+            <div class="header-title-row">
+              <h2 class="h3">Lini Masa Sejarah</h2>
+              <button
+                v-if="store.sejarah.selected && isEarth"
+                type="button"
+                class="btn-reset-sel"
+                title="Batalkan pilihan titik dan bersihkan bola Bumi"
+                @click="resetSelection"
+              >
+                <UiIcon name="silang" :size="12" />
+                <span>Bumi Bersih</span>
+              </button>
+            </div>
             <p class="small">Pengamatan astronomi, pendaratan wahana, dan peristiwa penting di {{ info?.name }}.</p>
           </div>
 
@@ -348,8 +374,16 @@ function focusLoc() {
 
               <!-- Isi Ringkas Kartu -->
               <div class="ev-body">
-                <div class="ev-thumb" v-if="e.gambar_url && isSafeMediaUrl(e.gambar_url)">
-                  <img :src="e.gambar_url" :alt="e.judul || e.title" loading="lazy" />
+                <div
+                  v-if="e.gambar_url && isSafeMediaUrl(e.gambar_url) && !brokenImages[e.id]"
+                  class="ev-thumb"
+                >
+                  <img
+                    :src="e.gambar_url"
+                    :alt="e.judul || e.title"
+                    loading="lazy"
+                    @error="onImageError(e.id)"
+                  />
                 </div>
                 <div class="ev-text">
                   <h3 class="ev-title">{{ e.judul || e.title }}</h3>
@@ -371,7 +405,7 @@ function focusLoc() {
                 >
                   Buka Detail <UiIcon name="lanjut" :size="14" />
                 </button>
-                <span v-if="e.lat != null" class="ev-coords-pill">
+                <span v-if="isEarth" class="ev-coords-pill">
                   <UiIcon name="target" :size="13" /> Titik Permukaan
                 </span>
               </div>
@@ -392,8 +426,16 @@ function focusLoc() {
 
             <!-- Media Foto / Gambar Peristiwa -->
             <div class="detail-media">
-              <div v-if="currentEvent.gambar_url && isSafeMediaUrl(currentEvent.gambar_url)" class="media-frame">
-                <img :src="currentEvent.gambar_url" :alt="currentEvent.judul || currentEvent.title" class="media-img" />
+              <div
+                v-if="currentEvent.gambar_url && isSafeMediaUrl(currentEvent.gambar_url) && !brokenImages[currentEvent.id]"
+                class="media-frame"
+              >
+                <img
+                  :src="currentEvent.gambar_url"
+                  :alt="currentEvent.judul || currentEvent.title"
+                  class="media-img"
+                  @error="onImageError(currentEvent.id)"
+                />
               </div>
               <div v-else class="media-placeholder">
                 <UiIcon :name="currentEvent.memorial ? 'bintang-o' : 'target'" :size="36" />
@@ -428,7 +470,9 @@ function focusLoc() {
               </div>
               <div class="meta-item">
                 <span class="meta-label">Karakteristik Fisik / Titik</span>
-                <span class="meta-val">{{ currentEvent.karakteristik_fisik || where(currentEvent) }}</span>
+                <span class="meta-val">
+                  {{ isEarth && currentEvent.karakteristik_fisik ? `${currentEvent.karakteristik_fisik} (${where(currentEvent)})` : (currentEvent.karakteristik_fisik || where(currentEvent)) }}
+                </span>
               </div>
             </div>
 
@@ -469,14 +513,13 @@ function focusLoc() {
               <p class="ref-val">{{ currentEvent.sumber_referensi || 'NASA / Arsip Eksplorasi Antariksa Internasional' }}</p>
             </div>
 
-            <!-- Aksi Interaktif 3D -->
-            <div class="detail-actions">
+            <!-- Aksi Interaktif 3D (Khusus Bumi yang Memiliki Permukaan Padat & Pin Geografis) -->
+            <div v-if="isEarth" class="detail-actions">
               <button class="btn primary" @click="focusLoc">
                 <UiIcon name="target" :size="16" />
                 <span>Lihat di 3D</span>
               </button>
               <UiToggle
-                v-if="currentEvent.lat != null"
                 v-model="store.toggles.follow"
                 label="Kamera ikuti rotasi planet"
               />
@@ -559,6 +602,31 @@ function focusLoc() {
 /* Header section */
 .header-sec {
   margin-bottom: 4px;
+}
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.btn-reset-sel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #fca5a5;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-reset-sel:hover {
+  background: rgba(239, 68, 68, 0.24);
+  color: #ffffff;
+  border-color: rgba(239, 68, 68, 0.5);
 }
 .header-sec .h3 {
   margin: 0 0 4px 0;

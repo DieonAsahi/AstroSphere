@@ -123,7 +123,7 @@ export const store = reactive({
   focus: 'bumi',
   obs: { mul: 1, day: 0, date: '' },
   toggles: { orbit: true, axis: true, follow: false },
-  sejarah: { body: 'mars', era: 'semua', selected: 'mar-1965' },
+  sejarah: { body: 'bumi', era: 'semua', selected: null },
   lab: { type: 'matahari', pov: 'samping', t: 30, playing: true, speed: 1, volume: true, labels: true, status: 'none', covered: 0, caller: 'planet', dia: null, marks: [] },
   quiz: { planet: 'bumi', stage: 'intro', index: 0, picked: null, answers: [], score: 0, reward: 0, prevBest: 0, kind: 'planet', mythStage: 'intro' },
   modal: null,             // null | settings | journal | confirmNew | controls
