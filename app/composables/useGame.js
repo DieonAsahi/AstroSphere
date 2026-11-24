@@ -33,12 +33,23 @@ const KEYS = {
 };
 
 const ls = {
-  read(k) { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch { return null; } },
-  write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
-  remove(k) { try { localStorage.removeItem(k); } catch {} },
+  read(k) {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+    try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch { return null; }
+  },
+  write(k, v) {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; }
+  },
+  remove(k) {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+    try { localStorage.removeItem(k); } catch {}
+  },
 };
 
-const touch = typeof window !== 'undefined' && (matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && matchMedia('(hover: none)').matches));
+const touch = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  ? (window.matchMedia('(pointer: coarse)').matches || ((navigator.maxTouchPoints || 0) > 0 && window.matchMedia('(hover: none)').matches))
+  : false;
 const DEFAULT_SETTINGS = { soundEnabled: true, hudOpacity: 1, sensitivity: 1, invertY: false, graphics: 'rendah', reduceMotion: false, tutorialSeen: false, events: true, keys: {} };
 const DEFAULT_PROGRESS = { points: 0, earned: 0, best: {}, attempts: {}, owned: ['astra'], selectedShip: 'astra', ledger: [], quizVersion: QUIZ_VERSION, predict: {}, myths: {}, cards: {}, found: { matahari: true }, events: {}, missions: {} };
 
@@ -58,6 +69,82 @@ function sanitizeSettings(s) {
   if (s.graphics === 'tinggi' || s.graphics === 'rendah') o.graphics = s.graphics;
   o.keys = sanitizeKeys(s.keys);
   return o;
+}
+
+// ---- Isolasi Keymap Per Akun (Tamu vs Akun Login) ----
+let storeInitialized = false;
+
+function getActiveUserId() {
+  if (storeInitialized && store?.account?.loggedIn && store?.account?.userId) {
+    return store.account.userId;
+  }
+  const a = ls.read(KEYS.account);
+  return (a?.loggedIn && typeof a.userId === 'string' && a.userId) ? a.userId : null;
+}
+
+export function getUserKeymapStorageKey(userId = null) {
+  const targetId = userId ?? getActiveUserId();
+  return targetId ? `astrosphere.keymap.${targetId}` : 'astrosphere.keymap.guest';
+}
+
+export function loadUserKeymap(userId = null) {
+  const targetId = userId ?? getActiveUserId();
+  const storageKey = targetId ? `astrosphere.keymap.${targetId}` : 'astrosphere.keymap.guest';
+  const raw = ls.read(storageKey);
+  if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
+    return sanitizeKeys(raw);
+  }
+  // Migrasi aman satu kali untuk mode Tamu jika belum ada astrosphere.keymap.guest tetapi ada di settings lama
+  if (!targetId) {
+    const legacy = ls.read(KEYS.settings);
+    if (legacy?.keys && typeof legacy.keys === 'object' && Object.keys(legacy.keys).length > 0) {
+      const sanitized = sanitizeKeys(legacy.keys);
+      ls.write('astrosphere.keymap.guest', sanitized);
+      return sanitized;
+    }
+  }
+  return {};
+}
+
+export function saveUserKeymap(keys = null, userId = null) {
+  const targetId = userId ?? getActiveUserId();
+  const finalKeys = sanitizeKeys(keys ?? (storeInitialized ? store?.settings?.keys : {}) ?? {});
+  const storageKey = targetId ? `astrosphere.keymap.${targetId}` : 'astrosphere.keymap.guest';
+  ls.write(storageKey, finalKeys);
+  if (storeInitialized && store?.settings) {
+    store.settings.keys = finalKeys;
+    ls.write(KEYS.settings, store.settings);
+  }
+  if (storeInitialized && store?.account?.loggedIn && store?.account?.userId) {
+    triggerCloudSync();
+  }
+}
+
+export function switchAccountKeymap(userId = null, cloudKeymap = null) {
+  let targetKeys = {};
+  if (userId) {
+    // Mode Akun Login:
+    // Cek key lokal spesifik ID pengguna (astrosphere.keymap.<userId>)
+    const localKeys = ls.read(`astrosphere.keymap.${userId}`);
+    if (localKeys && typeof localKeys === 'object' && Object.keys(localKeys).length > 0) {
+      targetKeys = sanitizeKeys(localKeys);
+    } else if (cloudKeymap && typeof cloudKeymap === 'object' && Object.keys(cloudKeymap).length > 0) {
+      targetKeys = sanitizeKeys(cloudKeymap);
+    } else {
+      targetKeys = {};
+    }
+    ls.write(`astrosphere.keymap.${userId}`, targetKeys);
+  } else {
+    // Mode Tamu: muat khusus astrosphere.keymap.guest
+    const guestKeys = ls.read('astrosphere.keymap.guest');
+    targetKeys = sanitizeKeys(guestKeys || {});
+  }
+  if (storeInitialized && store?.settings) {
+    store.settings.keys = targetKeys;
+    ls.write(KEYS.settings, store.settings);
+  }
+  game()?.applySettings();
+  return targetKeys;
 }
 
 function sanitizeProgress(p) {
@@ -141,6 +228,11 @@ export const store = reactive({
   hangarPreview: 'astra',
 });
 
+// Inisialisasi keymap terisolasi akun / tamu setelah store siap (mencegah TDZ ReferenceError)
+storeInitialized = true;
+const initialUserId = store.account.loggedIn && store.account.userId ? store.account.userId : null;
+store.settings.keys = loadUserKeymap(initialUserId);
+
 /** Sudah pernah ditemukan (dijelajahi)? Kuis, Mitos/Fakta, dan kartu planet baru terbuka setelah ini. */
 export const isFound = (id) => !!store.progress.found[id] || store.discovered.includes(id);
 
@@ -177,6 +269,7 @@ function triggerCloudSync() {
       found: store.progress.found,
       events: store.progress.events,
       missions: store.progress.missions,
+      keymap: store.settings.keys || {},
     },
     game_state: readGameState() || {},
     settings_data: store.settings,
@@ -188,8 +281,7 @@ function triggerCloudSync() {
 }
 
 export function saveSettings() {
-  ls.write(KEYS.settings, store.settings);
-  triggerCloudSync();
+  saveUserKeymap(store.settings.keys);
 }
 
 export function saveProgress() {
@@ -216,6 +308,11 @@ export async function pullCloudProgress() {
       if (res.astroId) {
         store.account.astroId = res.astroId;
         ls.write(KEYS.astroId, res.astroId);
+      }
+      const cloudKeymap = res.mergedData?.progress_data?.keymap;
+      const localKeys = ls.read(`astrosphere.keymap.${store.account.userId}`);
+      if (!localKeys && cloudKeymap && typeof cloudKeymap === 'object' && Object.keys(cloudKeymap).length > 0) {
+        switchAccountKeymap(store.account.userId, cloudKeymap);
       }
       saveAccount();
       ls.write(KEYS.progress, store.progress);
@@ -267,17 +364,21 @@ export async function registerUser(name, pass) {
       applyMergedData(cloudRes.mergedData);
     }
     const finalAstroId = cloudRes.astroId || store.account.astroId;
+    const userId = cloudRes.user?.id || null;
     Object.assign(store.account, {
       loggedIn: true,
       name: cloudRes.displayName || clean,
       username: clean,
-      userId: cloudRes.user?.id || null,
+      userId,
       cloudSynced: true,
       astroId: finalAstroId,
     });
     ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
+    // Beralih ke keymap akun ini secara terisolasi (muat milik akun atau awan, jangan warisi tamu)
+    const cloudKeymap = cloudRes.mergedData?.progress_data?.keymap || null;
+    switchAccountKeymap(userId, cloudKeymap);
     saveSettings();
     return { ok: true, cloud: true };
   }
@@ -327,17 +428,21 @@ export async function loginUser(name, pass) {
       applyMergedData(cloudRes.mergedData);
     }
     const finalAstroId = cloudRes.astroId || store.account.astroId;
+    const userId = cloudRes.user?.id || null;
     Object.assign(store.account, {
       loggedIn: true,
       name: cloudRes.displayName || clean,
       username: clean,
-      userId: cloudRes.user?.id || null,
+      userId,
       cloudSynced: true,
       astroId: finalAstroId,
     });
     ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
+    // Beralih ke keymap akun ini secara terisolasi (muat milik akun atau awan, jangan warisi tamu)
+    const cloudKeymap = cloudRes.mergedData?.progress_data?.keymap || null;
+    switchAccountKeymap(userId, cloudKeymap);
     saveSettings();
     return { ok: true, cloud: true };
   }
@@ -393,6 +498,7 @@ export async function logoutUser() {
     astroId: guestAstroId,
   });
   saveAccount();
+  switchAccountKeymap(null);
 }
 
 // Masuk dengan Google OAuth
@@ -517,6 +623,7 @@ export async function deleteUserAccount() {
   store.discovered = ['matahari'];
   store.hasSave = false;
   store.saveMeta = '';
+  switchAccountKeymap(null);
 
   // 5. Kembali ke splash screen bersih
   store.modal = null;
@@ -597,6 +704,9 @@ if (typeof window !== 'undefined') {
           ls.write(KEYS.astroId, finalAstroId);
           saveAccount();
           saveProgress();
+          // Beralih ke keymap akun Google ini secara terisolasi
+          const cloudKeymap = syncRes.mergedData?.progress_data?.keymap || null;
+          switchAccountKeymap(user.id, cloudKeymap);
           saveSettings();
 
           // Deteksi jika baru kembali dari redirect Google OAuth

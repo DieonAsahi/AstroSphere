@@ -4,7 +4,13 @@ import { computed, ref, onBeforeUnmount } from 'vue';
 import { store, game, unreadCards } from '~/composables/useGame.js';
 const LABEL = { planet: 'Planet', sejarah: 'Sejarah', fenomena: 'Fenomena', hanggar: 'Hanggar' };
 const unread = computed(() => unreadCards());
-const backLabel = computed(() => store.mode === 'planet' && store.pheno.on ? 'Selesai' : store.backTo === 'planet' ? 'Ke planet' : store.backTo === 'sejarah' ? 'Ke sejarah' : 'Terbang lagi');
+const backLabel = computed(() => {
+  if (store.mode === 'planet' && store.pheno.on) return 'Selesai';
+  if (store.backTo === 'planet') return 'Ke planet';
+  if (store.backTo === 'sejarah') return 'Ke sejarah';
+  if (store.backTo === 'profil') return 'Kembali ke Profil';
+  return 'Terbang lagi';
+});
 
 const showMissionMenu = ref(false);
 const missionsCompleted = computed(() => {

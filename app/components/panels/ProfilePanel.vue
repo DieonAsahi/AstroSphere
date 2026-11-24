@@ -25,6 +25,9 @@ import { fmtDate } from '~/game/util.js';
 const { planets, ships, getQuiz, loadAll } = useSupabaseContent();
 
 onMounted(async () => {
+  if (store.profileTab === 'armada') {
+    store.profileTab = 'kuis';
+  }
   // 1. Muat katalog publik Supabase live (planet, kuis, armada pesawat)
   await loadAll();
 
@@ -93,9 +96,23 @@ function quiz(id) {
   store.quiz.stage = 'intro';
   game()?.setMode('kuis');
 }
+function openHangarFromProfile(shipId) {
+  store.profileTab = 'kuis';
+  store.backTo = 'profil';
+  store.hangarReturnTo = 'profil';
+  game()?.setMode('hanggar', { backTo: 'profil', ship: shipId || store.progress.selectedShip });
+}
+
+function onSelectTab(id) {
+  if (id === 'armada') {
+    openHangarFromProfile();
+    return;
+  }
+  tab.value = id;
+}
+
 function openHangar(id) {
-  game()?.setMode('hanggar');
-  game()?.previewShip(id);
+  openHangarFromProfile(id);
 }
 function useShip(id) {
   if (!P.owned.includes(id)) return;
@@ -363,7 +380,7 @@ const FAQ = [
             :aria-selected="tab === id"
             class="seg-item"
             :class="{ active: tab === id }"
-            @click="tab = id"
+            @click="onSelectTab(id)"
           >
             {{ lb }}
           </button>
@@ -431,62 +448,22 @@ const FAQ = [
           </div>
         </section>
 
-        <!-- TAB 2: ARMADA PESAWAT -->
+        <!-- TAB 2: ARMADA PESAWAT (AKSES HANGGAR 3D) -->
         <section v-else-if="tab === 'armada'" class="tab-pane">
-          <div class="fleet-grid">
-            <div
-              v-for="s in ships"
-              :key="s.id"
-              class="ship-card"
-              :class="{
-                selected: s.id === P.selectedShip,
-                locked: !P.owned.includes(s.id),
-              }"
-            >
-              <div class="ship-header">
-                <div class="ship-icon-box">
-                  <UiIcon :name="P.owned.includes(s.id) ? 'hanggar' : 'kunci'" :size="22" />
-                </div>
-                <div class="ship-titles">
-                  <h3 class="ship-name">{{ s.name }}</h3>
-                  <span class="ship-class">{{ s.cls }}</span>
-                </div>
-              </div>
-
-              <div class="ship-stats">
-                <div v-for="(v, k) in s.stats" :key="k" class="stat-bar-row">
-                  <span class="stat-name">{{ k }}</span>
-                  <div class="stat-track">
-                    <span class="stat-fill" :style="{ width: v * 100 + '%' }" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="ship-action">
-                <button
-                  v-if="s.id === P.selectedShip"
-                  type="button"
-                  class="btn-ship-action in-use"
-                  disabled
-                >
-                  <UiIcon name="cek" :size="16" />
-                  <span>Sedang Dipakai</span>
-                </button>
-                <button
-                  v-else-if="P.owned.includes(s.id)"
-                  type="button"
-                  class="btn-ship-action equip"
-                  @click="useShip(s.id)"
-                >
-                  Pilih Pesawat
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  class="btn-ship-action unlock"
-                  @click="openHangar(s.id)"
-                >
-                  <span>{{ s.price }} Bintang · Buka di Hanggar</span>
+          <div class="hangar-redirect-card">
+            <div class="hrc-icon">
+              <UiIcon name="hanggar" :size="36" />
+            </div>
+            <div class="hrc-info">
+              <span class="hrc-badge">HANGGAR ARMADA 3D</span>
+              <h3 class="hrc-title">Eksplorasi Armada di Hanggar 3D</h3>
+              <p class="hrc-desc">
+                Lihat model visual pesawat secara interaktif 360°, periksa spesifikasi kecepatan jelajah dan pendorong turbo, serta gunakan atau buka pesawat baru dengan saldo Bintang Anda.
+              </p>
+              <div class="hrc-action">
+                <button type="button" class="btn-open-hangar-3d" @click="openHangarFromProfile()">
+                  <UiIcon name="hanggar" :size="18" />
+                  <span>Buka Hanggar 3D</span>
                 </button>
               </div>
             </div>
@@ -534,22 +511,6 @@ const FAQ = [
               </div>
 
               <!-- PANDUAN TOMBOL TETAP -->
-              <div class="key-row fixed">
-                <div class="key-desc">
-                  <span class="action-label">Ganti Sudut Pandang Kamera</span>
-                  <span class="action-sub">Beralih antara Kamera Belakang dan Kokpit Pengemudi</span>
-                </div>
-                <div class="key-capsules"><span class="key-badge">V</span></div>
-                <span />
-              </div>
-              <div class="key-row fixed">
-                <div class="key-desc">
-                  <span class="action-label">Ganti Target Tujuan</span>
-                  <span class="action-sub">Arahkan kompas target ke planet atau destinasi berikutnya</span>
-                </div>
-                <div class="key-capsules"><span class="key-badge">T</span></div>
-                <span />
-              </div>
               <div class="key-row fixed">
                 <div class="key-desc">
                   <span class="action-label">Menu Jeda / Kembali</span>
@@ -1330,7 +1291,90 @@ const FAQ = [
   color: var(--star, #fbbf24);
 }
 
-/* Armada Pesawat */
+/* Armada Pesawat & Hanggar 3D */
+.hangar-redirect-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 28px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  margin: 8px 0 16px;
+}
+.hrc-icon {
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+.hrc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.hrc-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+.hrc-title {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+.hrc-desc {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 640px;
+}
+.hrc-action {
+  margin-top: 10px;
+}
+.btn-open-hangar-3d {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 10px;
+  background: #38bdf8;
+  color: #030712;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-open-hangar-3d:hover {
+  background: #7dd3fc;
+  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+@media (max-width: 640px) {
+  .hangar-redirect-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    gap: 16px;
+  }
+}
+
 .fleet-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

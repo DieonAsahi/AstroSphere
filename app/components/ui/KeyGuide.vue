@@ -8,7 +8,8 @@ import { resolveKeymap, keyLabel } from '~/data/keymap.js';
 const props = defineProps({ compact: Boolean });
 const tab = ref(store.touch ? 'sentuh' : 'keyboard');
 const km = computed(() => resolveKeymap(store.settings.keys));
-const k = (id) => keyLabel(km.value[id]?.[0]);
+const k = (id, idx = 0) => keyLabel(km.value[id]?.[idx]);
+const hasSecondKey = (id) => !!km.value[id]?.[1];
 </script>
 
 <template>
@@ -51,8 +52,10 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
           <div class="kg-item">
             <div class="kg-keys">
               <b class="kbd">{{ k('up') }}</b>
-              <span class="sep">/</span>
-              <b class="kbd">↑</b>
+              <template v-if="hasSecondKey('up')">
+                <span class="sep">/</span>
+                <b class="kbd">{{ k('up', 1) }}</b>
+              </template>
             </div>
             <div class="kg-info">
               <b class="kg-act">Hidung Naik (Pitch Up)</b>
@@ -63,8 +66,10 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
           <div class="kg-item">
             <div class="kg-keys">
               <b class="kbd">{{ k('down') }}</b>
-              <span class="sep">/</span>
-              <b class="kbd">↓</b>
+              <template v-if="hasSecondKey('down')">
+                <span class="sep">/</span>
+                <b class="kbd">{{ k('down', 1) }}</b>
+              </template>
             </div>
             <div class="kg-info">
               <b class="kg-act">Hidung Turun (Pitch Down)</b>
@@ -75,8 +80,10 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
           <div class="kg-item">
             <div class="kg-keys">
               <b class="kbd">{{ k('left') }}</b>
-              <span class="sep">/</span>
-              <b class="kbd">←</b>
+              <template v-if="hasSecondKey('left')">
+                <span class="sep">/</span>
+                <b class="kbd">{{ k('left', 1) }}</b>
+              </template>
             </div>
             <div class="kg-info">
               <b class="kg-act">Belok Kiri (Yaw)</b>
@@ -87,8 +94,10 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
           <div class="kg-item">
             <div class="kg-keys">
               <b class="kbd">{{ k('right') }}</b>
-              <span class="sep">/</span>
-              <b class="kbd">→</b>
+              <template v-if="hasSecondKey('right')">
+                <span class="sep">/</span>
+                <b class="kbd">{{ k('right', 1) }}</b>
+              </template>
             </div>
             <div class="kg-info">
               <b class="kg-act">Belok Kanan (Yaw)</b>
@@ -156,7 +165,7 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
         <div class="kg-list">
           <div class="kg-item">
             <div class="kg-keys">
-              <b class="kbd">V</b>
+              <b class="kbd">{{ k('cam') }}</b>
             </div>
             <div class="kg-info">
               <b class="kg-act">Ganti Sudut Pandang Kamera</b>
@@ -205,7 +214,7 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 
           <div class="kg-item">
             <div class="kg-keys">
-              <b class="kbd">T</b>
+              <b class="kbd">{{ k('target') }}</b>
             </div>
             <div class="kg-info">
               <b class="kg-act">Ganti Target Tujuan</b>

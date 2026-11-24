@@ -13,6 +13,8 @@ export const ACTIONS = [
   { id: 'brake', label: 'Rem', sub: 'Tahan untuk melambat', keys: ['ControlLeft', 'ControlRight', 'KeyQ'] },
   { id: 'stop', label: 'Berhenti', sub: 'Langsung diam di tempat', keys: ['Space'] },
   { id: 'map', label: 'Peta', sub: 'Pilih tujuan penjelajahan', keys: ['KeyM'] },
+  { id: 'cam', label: 'Ganti Sudut Pandang Kamera', sub: 'Beralih antara Kamera Belakang dan Kokpit Pengemudi', keys: ['KeyV'] },
+  { id: 'target', label: 'Ganti Target Tujuan', sub: 'Arahkan kompas target ke planet atau destinasi berikutnya', keys: ['KeyT'] },
 ];
 export const ACTION_IDS = ACTIONS.map((a) => a.id);
 const RESERVED = ['Escape', 'Tab', 'MetaLeft', 'MetaRight', 'F5', 'F11', 'F12'];

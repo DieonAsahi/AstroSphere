@@ -82,11 +82,17 @@ export function mergeProgress(cloudRow, localProgress, localSettings, localState
   const lSavedAt = localState?.savedAt || 0;
   const mergedGameState = lSavedAt >= cSavedAt ? (localState || cloudRow?.game_state || {}) : (cloudRow?.game_state || localState || {});
 
-  // Pengaturan preferensi
+  // Pengaturan preferensi & keymap terisolasi (jangan wariskan keymap tamu ke akun awan)
+  const cloudKeymap = cloudRow?.progress_data?.keymap || cloudRow?.settings_data?.keys || null;
   const mergedSettings = {
     ...(cloudRow?.settings_data || {}),
     ...(localSettings || {}),
   };
+  if (cloudKeymap) {
+    mergedSettings.keys = cloudKeymap;
+  } else {
+    mergedSettings.keys = {};
+  }
 
   return {
     points: mergedPoints,
@@ -103,6 +109,7 @@ export function mergeProgress(cloudRow, localProgress, localSettings, localState
       found: mergedFound,
       events: mergedEvents,
       missions: mergedMissions,
+      keymap: cloudKeymap || {},
     },
     game_state: mergedGameState,
     settings_data: mergedSettings,

@@ -752,7 +752,13 @@ export function createEngine(el) {
     if (pheno.id && m !== 'planet') stopPheno(true);
     // tombol "Kembali": Sejarah → Planet; Kuis/Fenomena/dll. yang dibuka dari Planet/Sejarah → kembali ke sana
     const learn = prev === 'planet' || prev === 'sejarah';
-    store.backTo = m === 'sejarah' ? (PLANET_IDS.has(opts.body || store.sejarah.body) ? 'planet' : null) : (learn && m !== 'jelajah' && m !== 'planet' ? prev : null);
+    store.backTo = opts.backTo !== undefined
+      ? opts.backTo
+      : (m === 'sejarah'
+        ? (PLANET_IDS.has(opts.body || store.sejarah.body) ? 'planet' : null)
+        : (prev === 'profil'
+          ? 'profil'
+          : (learn && m !== 'jelajah' && m !== 'planet' ? prev : null)));
     store.approach.show = false;
     store.phase = 'playing';
     store.mode = m;
@@ -782,7 +788,12 @@ export function createEngine(el) {
       store.mission.id = id;
       mission = missionMods[id] ||= (id === 'mco' ? createMcoMission : createMission)({ background: skyTex, environment: scene.environment }, models, store, sfx);
       mission.reset();
-    } else if (m === 'hanggar') { beginCamTransition(); clearPOIs(); store.hangarPreview = store.progress.selectedShip; }
+    } else if (m === 'hanggar') {
+      beginCamTransition();
+      clearPOIs();
+      store.hangarPreview = opts.ship || store.progress.selectedShip;
+      setShip(store.hangarPreview);
+    }
     else clearPOIs();
     sfx.click();
   }
@@ -948,7 +959,7 @@ export function createEngine(el) {
   // Keyboard memakai pemetaan aksi (data/keymap.js, bisa diubah pemain). Mouse hanya untuk melihat sekeliling.
   const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable);
   const isAct = (id, code) => (keymap[id] || []).includes(code);
-  const FLY = ['forward', 'back', 'left', 'right', 'turnL', 'turnR', 'up', 'down', 'turbo', 'brake', 'stop'];
+  const FLY = ['forward', 'back', 'left', 'right', 'turnL', 'turnR', 'up', 'down', 'turbo', 'brake', 'stop', 'map', 'cam', 'target'];
   on(window, 'keydown', (e) => {
     if (store.capturing) return; // Profil → Kontrol sedang merekam tombol baru
     if (typing(e) && e.code !== 'Escape') return;
@@ -969,9 +980,9 @@ export function createEngine(el) {
       }
       if (isAct('stop', e.code)) { stop(); return; }
       if (isAct('map', e.code)) { setMode('peta'); return; }
+      if (isAct('target', e.code)) { cycleTarget(e.shiftKey ? -1 : 1); return; }
+      if (isAct('cam', e.code)) { toggleCam(); return; }
       switch (e.code) {
-        case 'KeyT': cycleTarget(e.shiftKey ? -1 : 1); break;
-        case 'KeyV': toggleCam(); break;
         case 'KeyH': store.hudOff = !store.hudOff; break;
         case 'KeyO': orbitsVisible(!sys.orbitGroup.visible); toast(sys.orbitGroup.visible ? 'Garis orbit tampil' : 'Garis orbit disembunyikan', 1400); break;
         case 'KeyJ': pause(); store.modal = 'journal'; break;

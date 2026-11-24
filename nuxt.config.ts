@@ -59,5 +59,8 @@ export default defineNuxtConfig({
   },
   vite: {
     optimizeDeps: { include: ['three', '@supabase/supabase-js'] },
+    build: {
+      chunkSizeWarningLimit: 1200,
+    },
   },
 })
