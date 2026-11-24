@@ -29,19 +29,7 @@ function onImageError(id) {
   if (id) brokenImages.value[id] = true;
 }
 
-// Definisi Filter Tingkat 2 untuk Zaman Modern (Rentang 1 Abad)
-const MODERN_CENTURIES = [
-  { id: 'semua', label: 'Semua Abad Modern', shortLabel: 'Semua Abad', min: 1500, max: Infinity },
-  { id: '1500-1599', label: '1500 – 1599 (Abad 16)', shortLabel: 'Abad 16 (1500–1599)', min: 1500, max: 1599 },
-  { id: '1600-1699', label: '1600 – 1699 (Abad 17)', shortLabel: 'Abad 17 (1600–1699)', min: 1600, max: 1699 },
-  { id: '1700-1799', label: '1700 – 1799 (Abad 18)', shortLabel: 'Abad 18 (1700–1799)', min: 1700, max: 1799 },
-  { id: '1800-1899', label: '1800 – 1899 (Abad 19)', shortLabel: 'Abad 19 (1800–1899)', min: 1800, max: 1899 },
-  { id: '1900-1999', label: '1900 – 1999 (Abad 20)', shortLabel: 'Abad 20 (1900–1999)', min: 1900, max: 1999 },
-  { id: '2000-now', label: '2000 – Sekarang (Abad 21)', shortLabel: 'Abad 21 (2000–Kini)', min: 2000, max: Infinity },
-];
-
 const selectedEra = ref(store.sejarah.era || 'semua');
-const selectedCentury = ref('semua');
 
 // Ambil seluruh peristiwa untuk planet aktif secara reaktif dari Supabase composable
 const allEvents = computed(() => getHistory(body.value) || []);
@@ -81,21 +69,6 @@ const availableEras = computed(() => {
   ];
 });
 
-// Menentukan apakah sub-filter rentang abad modern aktif
-const showModernCenturies = computed(() => isEarth.value && selectedEra.value.includes('Modern'));
-
-// Helper perhitungan jumlah peristiwa per abad modern
-function getCenturyCount(centId) {
-  const modernEvents = allEvents.value.filter((e) => (e.era_label || '').includes('Modern') || (e.year != null && e.year >= 1500));
-  if (centId === 'semua') return modernEvents.length;
-  const cent = MODERN_CENTURIES.find((c) => c.id === centId);
-  if (!cent) return 0;
-  return modernEvents.filter((e) => {
-    const yr = e.year != null ? Number(e.year) : Number(e.tahun_kejadian);
-    return yr >= cent.min && yr <= cent.max;
-  }).length;
-}
-
 // Navigasi horizontal bar dengan roda mouse dan klik
 function handleHWheel(e) {
   if (e.deltaY !== 0) {
@@ -105,12 +78,6 @@ function handleHWheel(e) {
 
 function selectEra(eraId, evt) {
   selectedEra.value = eraId;
-  selectedCentury.value = 'semua';
-  evt?.currentTarget?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-}
-
-function selectCentury(centId, evt) {
-  selectedCentury.value = centId;
   evt?.currentTarget?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 
@@ -122,17 +89,6 @@ const filteredList = computed(() => {
   let list = events;
   if (selectedEra.value !== 'semua') {
     list = list.filter((e) => (e.era_label || '').trim() === selectedEra.value);
-  }
-
-  // Sub-filter abad modern jika Bumi & era modern sedang aktif
-  if (showModernCenturies.value && selectedCentury.value !== 'semua') {
-    const cent = MODERN_CENTURIES.find((c) => c.id === selectedCentury.value);
-    if (cent) {
-      list = list.filter((e) => {
-        const yr = e.year != null ? Number(e.year) : (e.tahun_kejadian != null ? Number(e.tahun_kejadian) : 0);
-        return yr >= cent.min && yr <= cent.max;
-      });
-    }
   }
 
   return list;
@@ -232,7 +188,7 @@ function backToList() {
 }
 
 // Watch pergantian filter: bersihkan titik POI dan reset pilihan (ATURAN 1)
-watch([selectedEra, selectedCentury], () => {
+watch(selectedEra, () => {
   store.sejarah.era = selectedEra.value;
   resetSelection();
   viewMode.value = 'list';
@@ -241,7 +197,6 @@ watch([selectedEra, selectedCentury], () => {
 // Watch pergantian planet (body) untuk mereset filter dan bersihkan titik
 watch(body, () => {
   selectedEra.value = 'semua';
-  selectedCentury.value = 'semua';
   resetSelection();
   viewMode.value = 'list';
 });
@@ -324,25 +279,7 @@ function focusLoc() {
                 :class="{ on: selectedEra === e.id }"
                 @click="selectEra(e.id, $event)"
               >
-                <span>{{ e.label }} ({{ e.count }})</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- FILTER TINGKAT 2: KHUSUS SAAT ZAMAN MODERN TERPILIH DI BUMI -->
-          <div v-if="showModernCenturies" class="filter-group sub-filter">
-            <span class="filter-label"><UiIcon name="sejarah" :size="13" /> Rentang Abad Modern</span>
-            <div class="filter-slide-bar" role="tablist" aria-label="Pilih Abad" @wheel.passive="handleHWheel">
-              <button
-                v-for="c in MODERN_CENTURIES"
-                :key="c.id"
-                class="filter-slide-btn sm"
-                role="tab"
-                :aria-selected="selectedCentury === c.id"
-                :class="{ on: selectedCentury === c.id }"
-                @click="selectCentury(c.id, $event)"
-              >
-                <span>{{ c.shortLabel || c.label }} ({{ getCenturyCount(c.id) }})</span>
+                <span>{{ e.label }}</span>
               </button>
             </div>
           </div>
@@ -852,23 +789,23 @@ function focusLoc() {
 .ev-meta {
   display: flex;
   align-items: center;
-  gap: 5px;
+  flex-wrap: wrap;
+  gap: 5px 8px;
   font-size: 12px;
   color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 3px 0;
 }
 .ev-actor-chip {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
   background: rgba(56, 189, 248, 0.08);
   border: 1px solid rgba(56, 189, 248, 0.18);
   color: #38bdf8;
   font-size: 11.5px;
   font-weight: 500;
+  max-width: 100%;
 }
 .ev-dot {
   color: rgba(148, 174, 255, 0.4);
@@ -876,6 +813,7 @@ function focusLoc() {
 .ev-char {
   color: #94a3b8;
   font-size: 11.5px;
+  word-break: break-word;
 }
 .ev-desc {
   margin: 3px 0 0 0;
