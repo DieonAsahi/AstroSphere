@@ -7,7 +7,6 @@ import { PLANET_VS, PLANET_FS, ATMO_VS, ATMO_FS, RING_VS, RING_FS, SUN_VS, SUN_F
 import { DEG, TAU } from './util.js';
 import { roleOf, whiteTexture, texMatrix } from './models.js';
 import { SUN, PLANETS, MOONS, BELT, radiusOf } from '../data/solarSystem.js';
-import { getEarthEventCoords } from '../data/earthHistoryCoords.js';
 
 const col3 = (h) => new THREE.Color(h);
 
@@ -273,36 +272,4 @@ const _x = new THREE.Vector3(1, 0, 0);
 export function latLonToLocal(lat, lon, r = 1.004) {
   const la = lat * DEG, lo = lon * DEG;
   return new THREE.Vector3(Math.cos(la) * Math.cos(lo) * r, Math.sin(la) * r, -Math.cos(la) * Math.sin(lo) * r);
-}
-
-// Menghitung koordinat bola deterministik dengan prioritas koordinat geografis Bumi akurat & rumus Fibonacci Sphere
-export function getEventCoords(e, index = 0, total = 30) {
-  if (e && Number.isFinite(e.lat) && Number.isFinite(e.lon)) {
-    return { lat: e.lat, lon: e.lon, isCalculated: false };
-  }
-  const earthCoords = getEarthEventCoords(e);
-  if (earthCoords) {
-    return { lat: earthCoords.lat, lon: earthCoords.lon, isCalculated: false };
-  }
-  let idx = index;
-  if (e && typeof e.id === 'string') {
-    let hash = 0;
-    for (let i = 0; i < e.id.length; i++) {
-      hash = ((hash << 5) - hash) + e.id.charCodeAt(i);
-      hash |= 0;
-    }
-    idx = Math.abs(hash);
-  }
-  const n = Math.max(total, 24);
-  const phi = (1 + Math.sqrt(5)) / 2; // Golden ratio ~1.6180339887
-  const goldenAngle = (2 - phi) * (2 * Math.PI); // ~2.399963 rad
-  const step = (idx % n) / n;
-  const y = (step * 1.64) - 0.82; // Hindari kutub langsung
-  const radiusAtY = Math.sqrt(Math.max(0.01, 1 - y * y));
-  const theta = (idx % n) * goldenAngle;
-  const x = Math.cos(theta) * radiusAtY;
-  const z = Math.sin(theta) * radiusAtY;
-  const lat = Math.asin(y) * (180 / Math.PI);
-  const lon = Math.atan2(z, x) * (180 / Math.PI);
-  return { lat, lon, isCalculated: true };
 }

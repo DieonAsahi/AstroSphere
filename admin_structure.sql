@@ -175,15 +175,16 @@ BEGIN
     ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_koordinat_lng_check;
     ALTER TABLE public.history_events DROP COLUMN IF EXISTS koordinat_lat CASCADE;
     ALTER TABLE public.history_events DROP COLUMN IF EXISTS koordinat_lng CASCADE;
+    ALTER TABLE public.history_events DROP COLUMN IF EXISTS lat CASCADE;
+    ALTER TABLE public.history_events DROP COLUMN IF EXISTS lon CASCADE;
 
-    -- Tambahkan kolom era_label, sumber_referensi, lat, dan lon jika belum ada
+    -- Tambahkan kolom era_label, sumber_referensi jika belum ada
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS era_label TEXT NOT NULL DEFAULT 'Sejarah & Bentang Alam';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS sumber_referensi TEXT DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS gambar_url TEXT DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS ringkasan_singkat TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS karakteristik_fisik TEXT NOT NULL DEFAULT '';
-    ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
-    ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
+    
 
     -- Lepas constraint check kategori lama agar mendukung penamaan kategori deskriptif
     ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_kategori_poi_check;
@@ -204,13 +205,11 @@ CREATE TABLE IF NOT EXISTS public.history_events (
   deskripsi TEXT NOT NULL,
   gambar_url TEXT DEFAULT '',
   sumber_referensi TEXT DEFAULT '',
-  lat DOUBLE PRECISION,
-  lon DOUBLE PRECISION,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Pastikan kolom lat & lon selalu ada saat skema dijalankan ulang
-ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
+-- Pastikan kolom koordinat lat & lon selalu dibersihkan
+ALTER TABLE public.history_events DROP COLUMN IF EXISTS lat, DROP COLUMN IF EXISTS lon;
 
 CREATE INDEX IF NOT EXISTS idx_history_planet_year 
   ON public.history_events (planet_id, tahun_kejadian);

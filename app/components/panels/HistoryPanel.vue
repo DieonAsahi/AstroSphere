@@ -10,7 +10,6 @@ import { computed, watch, ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { store, game, showToast } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { isSafeMediaUrl } from '~/utils/mediaSecurity.js';
-import { getEventCoords } from '~/game/system.js';
 import { LOCATION_LABEL } from '~/data/history.js';
 import { PLANETS, MOONS } from '~/data/solarSystem.js';
 
@@ -114,9 +113,6 @@ function formatYear(yr) {
   return `${num} M`;
 }
 
-// Pelacakan status sisi jauh planet dari game engine
-const far = ref({});
-let pollTimer = 0;
 const scroller = ref(null);
 
 function scrollToSelected() {
@@ -141,20 +137,14 @@ onMounted(() => {
   // Muat data live Supabase bila belum ada
   loadAll();
 
-  // ATURAN 1: Default bersih tanpa titik massal saat pertama kali masuk mode Sejarah
+  // Bersihkan pilihan saat pertama kali masuk mode Sejarah
   resetSelection();
 
   window.addEventListener('keydown', handleKeyDown, true);
-  pollTimer = setInterval(() => {
-    const s = game()?.poiStatus() || [];
-    far.value = Object.fromEntries(s.map((x) => [x.id, x.far]));
-  }, 500);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown, true);
-  if (pollTimer) clearInterval(pollTimer);
-  // Bersihkan titik POI saat pengguna keluar dari mode Sejarah
   resetSelection();
 });
 
@@ -208,16 +198,10 @@ watch(filteredList, (newList) => {
   }
 });
 
-// Keterangan titik lokasi (mendukung 100% data Supabase & koordinat geografis akurat)
+// Keterangan titik lokasi / karakteristik fisik
 function where(e) {
   if (!e) return '—';
-  if (!isEarth.value) return e.karakteristik_fisik || 'Observasi Planet';
-  const coords = getEventCoords(e);
-  const latVal = coords.lat ?? 0;
-  const lonVal = coords.lon ?? 0;
-  const la = `${Math.abs(latVal).toFixed(1)}° ${latVal >= 0 ? 'LU' : 'LS'}`;
-  const lo = `${Math.abs(lonVal).toFixed(1)}° ${lonVal >= 0 ? 'BT' : 'BB'}`;
-  return `${la}, ${lo}${far.value[e.id] ? ' · di sisi jauh' : ''}`;
+  return e.karakteristik_fisik || 'Observasi Permukaan / Eksplorasi';
 }
 
 // Arahkan kamera 3D ke lokasi
@@ -252,16 +236,6 @@ function focusLoc() {
           <div class="header-sec">
             <div class="header-title-row">
               <h2 class="h3">Lini Masa Sejarah</h2>
-              <button
-                v-if="store.sejarah.selected && isEarth"
-                type="button"
-                class="btn-reset-sel"
-                title="Batalkan pilihan titik dan bersihkan bola Bumi"
-                @click="resetSelection"
-              >
-                <UiIcon name="silang" :size="12" />
-                <span>Bumi Bersih</span>
-              </button>
             </div>
             <p class="small">Pengamatan astronomi, pendaratan wahana, dan peristiwa penting di {{ info?.name }}.</p>
           </div>
@@ -342,9 +316,6 @@ function focusLoc() {
                 >
                   Buka Detail <UiIcon name="lanjut" :size="14" />
                 </button>
-                <span v-if="isEarth" class="ev-coords-pill">
-                  <UiIcon name="target" :size="13" /> Titik Permukaan
-                </span>
               </div>
             </li>
           </ol>
@@ -407,9 +378,7 @@ function focusLoc() {
               </div>
               <div class="meta-item">
                 <span class="meta-label">Karakteristik Fisik / Titik</span>
-                <span class="meta-val">
-                  {{ isEarth && currentEvent.karakteristik_fisik ? `${currentEvent.karakteristik_fisik} (${where(currentEvent)})` : (currentEvent.karakteristik_fisik || where(currentEvent)) }}
-                </span>
+                <span class="meta-val">{{ currentEvent.karakteristik_fisik || where(currentEvent) }}</span>
               </div>
             </div>
 
@@ -545,25 +514,6 @@ function focusLoc() {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-.btn-reset-sel {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.32);
-  color: #fca5a5;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.btn-reset-sel:hover {
-  background: rgba(239, 68, 68, 0.24);
-  color: #ffffff;
-  border-color: rgba(239, 68, 68, 0.5);
 }
 .header-sec .h3 {
   margin: 0 0 4px 0;
@@ -849,17 +799,6 @@ function focusLoc() {
 .btn-detail-link:hover {
   transform: translateX(3px);
   color: #fff;
-}
-.ev-coords-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11.5px;
-  color: #38bdf8;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 /* Detail View */

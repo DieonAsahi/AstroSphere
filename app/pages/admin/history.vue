@@ -83,8 +83,6 @@ const DEFAULT_EVENT = {
   deskripsi: '',
   gambar_url: '',
   sumber_referensi: 'NASA / Arsip Eksplorasi Antariksa',
-  lat: null,
-  lon: null,
 };
 
 const formData = ref({ ...DEFAULT_EVENT });
@@ -174,8 +172,6 @@ function openEditModal(eventItem) {
     deskripsi: eventItem.deskripsi || '',
     gambar_url: eventItem.gambar_url || '',
     sumber_referensi: eventItem.sumber_referensi || '',
-    lat: (eventItem.lat !== null && eventItem.lat !== undefined && eventItem.lat !== '') ? Number(eventItem.lat) : null,
-    lon: (eventItem.lon !== null && eventItem.lon !== undefined && eventItem.lon !== '') ? Number(eventItem.lon) : null,
   };
   modalViewMode.value = 'EDIT';
   modalOpen.value = true;
@@ -183,13 +179,6 @@ function openEditModal(eventItem) {
 
 function closeModal() {
   modalOpen.value = false;
-}
-
-function parseCoord(val, min, max) {
-  if (val === '' || val === null || val === undefined) return null;
-  const num = Number(val);
-  if (isNaN(num) || !Number.isFinite(num)) return null;
-  return Math.min(Math.max(num, min), max);
 }
 
 async function handleSave() {
@@ -203,7 +192,6 @@ async function handleSave() {
 
   saving.value = true;
   try {
-    const isEarth = formData.value.planet_id === 'earth';
     const payload = {
       planet_id: formData.value.planet_id,
       era_label: formData.value.era_label,
@@ -216,8 +204,6 @@ async function handleSave() {
       deskripsi: formData.value.deskripsi,
       gambar_url: formData.value.gambar_url,
       sumber_referensi: formData.value.sumber_referensi,
-      lat: isEarth ? parseCoord(formData.value.lat, -90, 90) : null,
-      lon: isEarth ? parseCoord(formData.value.lon, -180, 180) : null,
     };
 
     if (isEditing.value && formData.value.event_id) {
@@ -294,7 +280,7 @@ function exportJson() {
 
 function exportCsv() {
   if (!filteredEvents.value.length) return;
-  const headers = ['event_id', 'planet_id', 'era_label', 'tahun_kejadian', 'kategori_poi', 'judul', 'ringkasan_singkat', 'nama_wahana', 'karakteristik_fisik', 'deskripsi', 'gambar_url', 'sumber_referensi', 'lat', 'lon'];
+  const headers = ['event_id', 'planet_id', 'era_label', 'tahun_kejadian', 'kategori_poi', 'judul', 'ringkasan_singkat', 'nama_wahana', 'karakteristik_fisik', 'deskripsi', 'gambar_url', 'sumber_referensi'];
   const rows = filteredEvents.value.map((e) => headers.map((h) => `"${String(e[h] ?? '').replace(/"/g, '""')}"`).join(','));
   const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\n'));
   const dlAnchor = document.createElement('a');
@@ -322,7 +308,6 @@ async function handleImportSubmit() {
 
     saving.value = true;
     const cleanRows = parsed.map((row) => {
-      const isEarth = (row.planet_id || 'earth') === 'earth';
       return {
         planet_id: row.planet_id || 'earth',
         era_label: row.era_label || 'Zaman Modern',
@@ -335,8 +320,6 @@ async function handleImportSubmit() {
         deskripsi: row.deskripsi || '',
         gambar_url: row.gambar_url || '',
         sumber_referensi: row.sumber_referensi || '',
-        lat: isEarth ? parseCoord(row.lat, -90, 90) : null,
-        lon: isEarth ? parseCoord(row.lon, -180, 180) : null,
       };
     });
 
@@ -464,9 +447,6 @@ onMounted(() => {
               <div class="event-title-cell">
                 <b>{{ e.judul }}</b>
                 <small>{{ e.ringkasan_singkat || e.deskripsi?.slice(0, 70) }}…</small>
-                <span v-if="e.planet_id === 'earth' && e.lat != null && e.lon != null" class="coord-tag">
-                  📍 {{ Number(e.lat).toFixed(2) }}°, {{ Number(e.lon).toFixed(2) }}°
-                </span>
               </div>
             </td>
             <td>
@@ -507,7 +487,7 @@ onMounted(() => {
         <div class="modal-header">
           <div>
             <h3 class="modal-title">{{ isEditing ? 'Ubah Peristiwa Sejarah' : 'Tambah Peristiwa Baru' }}</h3>
-            <p class="modal-sub">Kelola data peristiwa sejarah, waktu, narasi, dan koordinat geografis Bumi.</p>
+            <p class="modal-sub">Kelola data peristiwa sejarah, waktu, dan narasi peristiwa.</p>
           </div>
           <div class="modal-mode-tabs">
             <button :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
@@ -565,32 +545,6 @@ onMounted(() => {
             <label class="field">
               <span>Karakteristik Fisik / Titik Observasi</span>
               <input v-model="formData.karakteristik_fisik" type="text" placeholder="misal: Kawah Jezero / Mare Tranquillitatis" />
-            </label>
-          </div>
-
-          <!-- KOORDINAT KHUSUS BUMI (EARTH) -->
-          <div v-if="formData.planet_id === 'earth'" class="grid-2 coords-group">
-            <label class="field">
-              <span>Latitude (° Lintang Bumi) <small class="text-muted">(Opsional, -90 s.d. 90)</small></span>
-              <input
-                v-model.number="formData.lat"
-                type="number"
-                min="-90"
-                max="90"
-                step="any"
-                placeholder="misal: -7.6079 (-90 s.d. 90)"
-              />
-            </label>
-            <label class="field">
-              <span>Longitude (° Bujur Bumi) <small class="text-muted">(Opsional, -180 s.d. 180)</small></span>
-              <input
-                v-model.number="formData.lon"
-                type="number"
-                min="-180"
-                max="180"
-                step="any"
-                placeholder="misal: 110.2038 (-180 s.d. 180)"
-              />
             </label>
           </div>
 
@@ -665,10 +619,6 @@ onMounted(() => {
               <div class="meta-row"><span>Status / Era</span><b>{{ formData.era_label }}</b></div>
               <div class="meta-row"><span>Wahana / Tokoh</span><b>{{ formData.nama_wahana || '—' }}</b></div>
               <div class="meta-row"><span>Karakteristik Fisik</span><b>{{ formData.karakteristik_fisik || '—' }}</b></div>
-              <div v-if="formData.planet_id === 'earth' && (formData.lat != null || formData.lon != null)" class="meta-row">
-                <span>Koordinat Bumi</span>
-                <b>{{ formData.lat ?? '—' }}°, {{ formData.lon ?? '—' }}°</b>
-              </div>
             </div>
 
             <h2 class="ply04-title">{{ formData.judul }}</h2>
@@ -959,27 +909,6 @@ onMounted(() => {
   gap: 14px;
 }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.coords-group {
-  padding: 10px 12px;
-  background: rgba(37, 99, 235, 0.04);
-  border: 1px dashed #93c5fd;
-  border-radius: 8px;
-}
-.text-muted {
-  font-size: 11px;
-  color: #64748b;
-  font-weight: 400;
-}
-.coord-tag {
-  display: inline-block;
-  font-size: 11px;
-  color: #0284c7;
-  background: rgba(2, 132, 199, 0.08);
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-top: 3px;
-  width: fit-content;
-}
 .era-input-group { display: flex; flex-direction: column; gap: 4px; }
 .mb-1 { margin-bottom: 2px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
