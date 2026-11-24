@@ -204,11 +204,286 @@ function where(e) {
   return e.karakteristik_fisik || 'Observasi Permukaan / Eksplorasi';
 }
 
-// Arahkan kamera 3D ke lokasi
-function focusLoc() {
-  if (!game()?.focusLocation()) {
-    showToast('Kamera memutar ke posisi peristiwa di permukaan planet.');
-  }
+// Teks narasi lengkap (menghindari duplikasi bila sama dengan ringkasan singkat)
+const narrativeBodyText = computed(() => {
+  const ev = currentEvent.value;
+  if (!ev) return '';
+  const bodyText = (ev.deskripsi || ev.detail || '').trim();
+  const leadText = (ev.ringkasan_singkat || ev.body || '').trim();
+  if (bodyText === leadText) return '';
+  return bodyText;
+});
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Fitur Unduh PDF via invisible iframe siap cetak / simpan PDF dengan layout rapi
+function downloadPdf() {
+  if (!currentEvent.value) return;
+  const ev = currentEvent.value;
+  const planetName = info.value?.name || body.value || 'Tata Surya';
+  const yearText = formatYear(ev.year || ev.tahun_kejadian);
+  const title = ev.judul || ev.title || 'Peristiwa Sejarah';
+  const category = ev.kategori_poi || ev.locationType || (ev.memorial ? 'Kenangan Pahlawan' : 'Observasi Ilmiah');
+  const era = ev.era_label || (isEarth.value ? 'Zaman Modern' : 'Era Antariksa');
+  const actor = ev.nama_wahana || ev.actor || '—';
+  const characteristic = ev.karakteristik_fisik || '';
+  const lead = ev.ringkasan_singkat || ev.body || '';
+  const narrative = ev.deskripsi || ev.detail || '';
+  const refSource = ev.sumber_referensi || 'NASA / Arsip Eksplorasi Antariksa Internasional';
+
+  showToast('Mempersiapkan dokumen PDF untuk dicetak/disimpan...');
+
+  let iframe = document.getElementById('astrosphere-pdf-iframe');
+  if (iframe) iframe.remove();
+
+  iframe = document.createElement('iframe');
+  iframe.id = 'astrosphere-pdf-iframe';
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) return;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)} - AstroSphere</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 18mm 16mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.6;
+      font-size: 13px;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .brand {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0369a1;
+      letter-spacing: -0.02em;
+    }
+    .brand span {
+      color: #0284c7;
+      font-weight: 400;
+    }
+    .doc-type {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+      font-size: 12px;
+      color: #475569;
+      font-weight: 500;
+    }
+    .meta-micro {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0284c7;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.3;
+      margin: 0 0 16px 0;
+    }
+    .meta-card {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .meta-card td {
+      padding: 8px 14px;
+      font-size: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .meta-card tr:last-child td {
+      border-bottom: none;
+    }
+    .meta-label {
+      width: 150px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .meta-val {
+      color: #0f172a;
+      font-weight: 500;
+    }
+    .meta-val.cat {
+      color: #0284c7;
+      font-weight: 600;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #0369a1;
+      margin: 20px 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #0284c7;
+    }
+    .lead-text {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #1e293b;
+      line-height: 1.65;
+      margin: 0 0 10px 0;
+    }
+    .body-text {
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.65;
+      margin: 0 0 14px 0;
+    }
+    .ref-box {
+      margin-top: 24px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .ref-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+    .ref-text {
+      margin: 3px 0 0 0;
+      font-size: 12px;
+      color: #334155;
+      line-height: 1.5;
+    }
+    .footer {
+      margin-top: 36px;
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">Astro<span>Sphere</span></div>
+      <div class="doc-type">Arsip Lini Masa Eksplorasi Antariksa</div>
+    </div>
+    <div class="header-right">
+      Planet ${escapeHtml(planetName)} · ${escapeHtml(yearText)}
+    </div>
+  </div>
+
+  <div class="meta-micro">${escapeHtml(planetName.toUpperCase())} · SEJARAH & OBSERVASI // ${escapeHtml(yearText)}</div>
+  <h1>${escapeHtml(title)}</h1>
+
+  <table class="meta-card">
+    <tr>
+      <td class="meta-label">Kategori:</td>
+      <td class="meta-val cat">${escapeHtml(category)}</td>
+    </tr>
+    <tr>
+      <td class="meta-label">Status / Era:</td>
+      <td class="meta-val">${escapeHtml(era)}</td>
+    </tr>
+    <tr>
+      <td class="meta-label">Wahana / Tokoh:</td>
+      <td class="meta-val">${escapeHtml(actor)}</td>
+    </tr>
+    ${characteristic && characteristic !== '—' ? `
+    <tr>
+      <td class="meta-label">Karakteristik:</td>
+      <td class="meta-val">${escapeHtml(characteristic)}</td>
+    </tr>` : ''}
+  </table>
+
+  <div class="section-title">Deskripsi Ilmiah & Sejarah</div>
+  ${lead ? `<p class="lead-text">${escapeHtml(lead)}</p>` : ''}
+  ${narrative && narrative !== lead ? `<p class="body-text">${escapeHtml(narrative)}</p>` : ''}
+
+  <div class="ref-box">
+    <div class="ref-title">Sumber Referensi:</div>
+    <div class="ref-text">${escapeHtml(refSource)}</div>
+  </div>
+
+  <div class="footer">
+    <div>Dokumen Resmi Arsip Sejarah AstroSphere</div>
+    <div>Dicetak: ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+  </div>
+</body>
+</html>
+  `;
+
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.error('Print error:', e);
+    }
+  }, 350);
 }
 </script>
 
@@ -326,59 +601,49 @@ function focusLoc() {
         <!-- ============================================== -->
         <template v-else-if="viewMode === 'detail' && currentEvent">
           <div class="detail-container">
-            <!-- Tombol Navigasi Kembali -->
+            <!-- 1. Header Atas: Tombol Kembali, Mikro-label, dan Judul Tegas -->
             <button type="button" class="back-btn" @click="backToList">
               <UiIcon name="kembali" :size="16" />
               <span>Kembali ke Lini Masa</span>
             </button>
 
-            <!-- Media Foto / Gambar Peristiwa -->
-            <div class="detail-media">
-              <div
-                v-if="currentEvent.gambar_url && isSafeMediaUrl(currentEvent.gambar_url) && !brokenImages[currentEvent.id]"
-                class="media-frame"
-              >
-                <img
-                  :src="currentEvent.gambar_url"
-                  :alt="currentEvent.judul || currentEvent.title"
-                  class="media-img"
-                  @error="onImageError(currentEvent.id)"
-                />
-              </div>
-              <div v-else class="media-placeholder">
-                <UiIcon :name="currentEvent.memorial ? 'bintang-o' : 'target'" :size="36" />
-                <span>Dokumentasi Observasi Antariksa</span>
-              </div>
+            <div class="detail-title-block">
+              <span class="detail-micro-label">
+                {{ (info?.name || body || 'TATA SURYA').toUpperCase() }} · SEJARAH & OBSERVASI // {{ formatYear(currentEvent.year || currentEvent.tahun_kejadian) }}
+              </span>
+              <h2 class="detail-title">{{ currentEvent.judul || currentEvent.title }}</h2>
             </div>
 
-            <!-- Header Detail -->
-            <div class="detail-header">
-              <div class="detail-badge-row">
-                <span class="badge-tag" :class="{ 'tag-memorial': currentEvent.memorial }">
-                  {{ currentEvent.kategori_poi || (currentEvent.memorial ? 'Kenangan Pahlawan' : 'Observasi Ilmiah') }}
-                </span>
-                <span class="detail-year num">{{ formatYear(currentEvent.year || currentEvent.tahun_kejadian) }}</span>
-              </div>
-              <h2 class="h2 detail-title">{{ currentEvent.judul || currentEvent.title }}</h2>
+            <!-- 2. Gambar (Hanya Tampil Jika URL Valid & Berhasil Load) -->
+            <div
+              v-if="currentEvent.gambar_url && isSafeMediaUrl(currentEvent.gambar_url) && !brokenImages[currentEvent.id]"
+              class="detail-media"
+            >
+              <img
+                :src="currentEvent.gambar_url"
+                :alt="currentEvent.judul || currentEvent.title"
+                class="media-img"
+                @error="onImageError(currentEvent.id)"
+              />
             </div>
 
-            <!-- 4 Baris Metadata Terstruktur -->
-            <div class="meta-box card flat">
+            <!-- 3. Kotak Metadata Key-Value Bersih Rapi -->
+            <div class="meta-box">
               <div class="meta-item">
-                <span class="meta-label">Kategori POI</span>
-                <span class="meta-val">{{ currentEvent.kategori_poi || currentEvent.locationType || 'Observasi Ilmiah' }}</span>
+                <span class="meta-label">Kategori:</span>
+                <span class="meta-val meta-cat">{{ currentEvent.kategori_poi || currentEvent.locationType || (currentEvent.memorial ? 'Kenangan Pahlawan' : 'Observasi Ilmiah') }}</span>
               </div>
               <div class="meta-item">
-                <span class="meta-label">Status / Era</span>
+                <span class="meta-label">Status / Era:</span>
                 <span class="meta-val">{{ currentEvent.era_label || (isEarth ? 'Zaman Modern' : 'Era Antariksa') }}</span>
               </div>
               <div class="meta-item">
-                <span class="meta-label">Wahana / Tokoh</span>
+                <span class="meta-label">Wahana / Tokoh:</span>
                 <span class="meta-val">{{ currentEvent.nama_wahana || currentEvent.actor || '—' }}</span>
               </div>
-              <div class="meta-item">
-                <span class="meta-label">Karakteristik Fisik / Titik</span>
-                <span class="meta-val">{{ currentEvent.karakteristik_fisik || where(currentEvent) }}</span>
+              <div v-if="currentEvent.karakteristik_fisik" class="meta-item">
+                <span class="meta-label">Karakteristik:</span>
+                <span class="meta-val">{{ currentEvent.karakteristik_fisik }}</span>
               </div>
             </div>
 
@@ -404,32 +669,42 @@ function focusLoc() {
               </div>
             </div>
 
-            <!-- Narasi & Deskripsi Lengkap -->
-            <div class="detail-narrative">
-              <h4 class="narrative-heading">Uraian Sejarah</h4>
-              <p class="narrative-lead">{{ currentEvent.ringkasan_singkat || currentEvent.body }}</p>
-              <p v-if="currentEvent.deskripsi || currentEvent.detail" class="narrative-body">
-                {{ currentEvent.deskripsi || currentEvent.detail }}
-              </p>
+            <!-- 4. Bagian Deskripsi Mengalir (Tanpa Kotak Berlebih) -->
+            <div class="desc-section">
+              <div class="desc-header">
+                <span class="desc-bullet"></span>
+                <span class="desc-title">DESKRIPSI ILMIAH & SEJARAH</span>
+              </div>
+              <div class="desc-content">
+                <p v-if="currentEvent.ringkasan_singkat" class="desc-lead">
+                  {{ currentEvent.ringkasan_singkat }}
+                </p>
+                <p v-if="narrativeBodyText" class="desc-body">
+                  {{ narrativeBodyText }}
+                </p>
+              </div>
             </div>
 
-            <!-- Sumber Referensi -->
+            <!-- 5. Kotak Sumber Referensi -->
             <div class="ref-box">
-              <span class="ref-label">Sumber Referensi Terverifikasi:</span>
+              <span class="ref-label">SUMBER REFERENSI:</span>
               <p class="ref-val">{{ currentEvent.sumber_referensi || 'NASA / Arsip Eksplorasi Antariksa Internasional' }}</p>
             </div>
 
-            <!-- Aksi Interaktif 3D (Khusus Bumi yang Memiliki Permukaan Padat & Pin Geografis) -->
-            <div v-if="isEarth" class="detail-actions">
-              <button class="btn primary" @click="focusLoc">
-                <UiIcon name="target" :size="16" />
-                <span>Lihat di 3D</span>
-              </button>
-              <UiToggle
-                v-model="store.toggles.follow"
-                label="Kamera ikuti rotasi planet"
-              />
-            </div>
+            <!-- 6. Tombol Unduh PDF -->
+            <button
+              type="button"
+              class="btn-download-pdf"
+              title="Unduh catatan peristiwa sejarah ini sebagai dokumen PDF"
+              @click="downloadPdf"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>Unduh PDF</span>
+            </button>
           </div>
         </template>
 
@@ -813,74 +1088,54 @@ function focusLoc() {
   align-items: center;
   gap: 6px;
   border-radius: 10px;
-  padding: 6px 12px;
-  font-family: var(--display);
+  height: 36px;
+  padding: 0 14px;
+  font-family: var(--font);
   font-size: 13px;
   font-weight: 500;
-  background: rgba(148, 174, 255, 0.1);
-  border: 1px solid rgba(148, 174, 255, 0.2);
-  color: #e2e8f0;
+  background: rgba(148, 174, 255, 0.08);
+  border: 1px solid rgba(148, 174, 255, 0.18);
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 .back-btn:hover {
-  background: rgba(148, 174, 255, 0.18);
-  border-color: rgba(148, 174, 255, 0.35);
+  background: rgba(148, 174, 255, 0.16);
+  border-color: rgba(148, 174, 255, 0.32);
   color: #fff;
 }
-.detail-media {
-  width: 100%;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(148, 174, 255, 0.16);
-}
-.media-frame {
-  width: 100%;
-  max-height: 180px;
-  overflow: hidden;
-  position: relative;
-}
-.media-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.media-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 28px 16px;
-  background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.15) 0%, rgba(13, 17, 34, 0.8) 100%);
-  color: #38bdf8;
-  font-size: 12.5px;
-  font-weight: 500;
-  border-radius: 10px;
-}
-.detail-header {
+.detail-title-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.detail-badge-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.detail-year {
+.detail-micro-label {
+  display: block;
+  font-size: 11px;
   font-weight: 600;
-  font-size: 17px;
-  color: #38bdf8;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  text-transform: uppercase;
 }
 .detail-title {
   margin: 0;
-  font-size: 18px;
+  font-size: clamp(20px, 2.2vw, 24px);
   font-weight: 600;
-  line-height: 1.3;
-  color: #f1f5f9;
+  line-height: 1.25;
+  color: #f8fafc;
+}
+.detail-media {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 174, 255, 0.16);
+  background: rgba(15, 23, 42, 0.6);
+}
+.media-img {
+  width: 100%;
+  max-height: 190px;
+  object-fit: cover;
+  display: block;
 }
 .meta-box {
   display: flex;
@@ -889,15 +1144,15 @@ function focusLoc() {
   padding: 12px 14px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 174, 255, 0.12);
+  border: 1px solid rgba(148, 174, 255, 0.14);
 }
 .meta-item {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 12.5px;
+  line-height: 1.45;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -906,15 +1161,23 @@ function focusLoc() {
   border-bottom: none;
 }
 .meta-label {
+  font-size: 12px;
   color: #94a3b8;
   font-weight: 500;
   flex: none;
+  width: 110px;
 }
 .meta-val {
+  font-size: 12.5px;
   color: #f1f5f9;
   font-weight: 500;
   text-align: right;
   word-break: break-word;
+  flex: 1;
+}
+.meta-val.meta-cat {
+  color: #38bdf8;
+  font-weight: 500;
 }
 .memo-card {
   display: flex;
@@ -931,9 +1194,10 @@ function focusLoc() {
   gap: 6px;
   color: #cfd6ee;
   font-size: 13px;
+  font-weight: 600;
 }
 .memo-sec {
-  font-size: 13px;
+  font-size: 12.5px;
   color: #94a3b8;
   line-height: 1.45;
 }
@@ -941,6 +1205,7 @@ function focusLoc() {
   color: #cfd6ee;
   display: block;
   margin-bottom: 2px;
+  font-weight: 600;
 }
 .memo-sec.lesson {
   padding: 6px 8px;
@@ -966,69 +1231,95 @@ function focusLoc() {
   border: 1px solid rgba(148, 174, 255, 0.16);
   font-size: 11.5px;
   color: #f1f5f9;
+  font-weight: 500;
 }
-.detail-narrative {
+.desc-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 174, 255, 0.12);
+  margin-top: 2px;
 }
-.narrative-heading {
-  margin: 0;
-  font-size: 12px;
+.desc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.desc-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  flex: none;
+}
+.desc-title {
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.08em;
   color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
-.narrative-lead {
-  margin: 0;
-  font-size: 14.5px;
-  font-weight: 600;
-  color: #f1f5f9;
-  line-height: 1.5;
+.desc-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.narrative-body {
+.desc-lead {
   margin: 0;
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+.desc-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
   color: #cbd5e1;
-  line-height: 1.6;
 }
 .ref-box {
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 174, 255, 0.12);
-  border-left: 3px solid #38bdf8;
+  border: 1px solid rgba(148, 174, 255, 0.14);
 }
 .ref-label {
   display: block;
-  font-size: 11px;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: #64748b;
   font-weight: 600;
+  text-transform: uppercase;
 }
 .ref-val {
   margin: 4px 0 0 0;
   font-size: 12.5px;
-  color: #cbd5e1;
+  color: #94a3b8;
   line-height: 1.5;
+  word-break: break-word;
 }
-.detail-actions {
-  display: flex;
+.btn-download-pdf {
+  width: 100%;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(14, 165, 233, 0.08);
+  color: #38bdf8;
+  font-weight: 500;
+  font-size: 13.5px;
+  font-family: var(--font);
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-top: 4px;
-}
-.detail-actions :deep(.trow) {
-  min-height: 0;
+  justify-content: center;
   gap: 8px;
-  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+.btn-download-pdf:hover {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.2);
 }
 .fine {
   font-size: 11.5px;
@@ -1068,10 +1359,6 @@ function focusLoc() {
   .ev-thumb {
     width: 48px;
     height: 48px;
-  }
-  .detail-actions {
-    flex-direction: column;
-    align-items: stretch;
   }
 }
 </style>
