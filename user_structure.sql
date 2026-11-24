@@ -12,6 +12,7 @@
 CREATE TABLE IF NOT EXISTS public.player_progress (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE NOT NULL CHECK (username ~ '^[a-z0-9_]{3,20}$'),
+  astro_id TEXT UNIQUE,
   display_name TEXT NOT NULL DEFAULT '',
   points INT NOT NULL DEFAULT 0 CHECK (points >= 0),
   earned INT NOT NULL DEFAULT 0 CHECK (earned >= 0),
@@ -23,6 +24,9 @@ CREATE TABLE IF NOT EXISTS public.player_progress (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migrasi idempotent penambahan kolom astro_id jika tabel sudah ada sebelumnya
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS astro_id TEXT UNIQUE;
 
 -- Indeks pencarian cepat username (case-insensitive)
 CREATE INDEX IF NOT EXISTS idx_player_progress_username_lower 
@@ -36,6 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_player_progress_points
 COMMENT ON TABLE public.player_progress IS 'Menyimpan progres penjelajahan, ekonomi bintang, pesawat, dan preferensi pemain terdaftar.';
 COMMENT ON COLUMN public.player_progress.user_id IS 'ID pengguna unik yang terikat ke auth.users(id).';
 COMMENT ON COLUMN public.player_progress.username IS 'Nama pengguna unik penjelajah (3-20 karakter alfanumerik dan garis bawah).';
+COMMENT ON COLUMN public.player_progress.astro_id IS 'Nomor identifikasi unik penjelajah AstroSphere (format: 8 digit unik + tahun).';
 COMMENT ON COLUMN public.player_progress.display_name IS 'Nama tampilan yang terlihat di profil penjelajah.';
 COMMENT ON COLUMN public.player_progress.points IS 'Saldo bintang/poin aktif pemain untuk membuka pesawat baru.';
 COMMENT ON COLUMN public.player_progress.earned IS 'Total kumulatif bintang yang pernah diperoleh pemain sepanjang masa.';

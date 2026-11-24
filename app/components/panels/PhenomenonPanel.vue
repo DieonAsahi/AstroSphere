@@ -202,7 +202,7 @@ const f3 = (v) => (+v).toFixed(3);
 .stage-title{
   position:fixed;
   left:calc(var(--gap) + var(--safe-l));
-  top:calc(var(--top) + 68px + var(--safe-t));
+  top:calc(var(--top) + 46px + var(--safe-t));
   z-index:21;
   display:flex;
   flex-direction:column;
@@ -213,27 +213,29 @@ const f3 = (v) => (+v).toFixed(3);
 }
 .stage-title>*{pointer-events:auto}
 .stage-eyebrow{
+  display:block;
   font-family:var(--display);
   font-size:11px;
   font-weight:600;
   letter-spacing:0.08em;
   text-transform:uppercase;
   color:#38bdf8;
-  margin-bottom:4px;
+  margin:0 0 4px 0;
   line-height:1.2;
 }
 .stage-title .h1{
   font-family:var(--display);
-  font-size:clamp(22px, 2.2vw, 28px);
+  font-size:clamp(24px, 2.4vw, 30px);
   font-weight:600;
-  line-height:1.2;
+  line-height:1.15;
+  letter-spacing:-0.02em;
   max-width:340px;
   color:#fff;
   text-shadow:0 2px 14px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.8);
-  margin:0 0 6px 0;
+  margin:0;
 }
 .pheno-sub{
-  margin:0 0 12px 0;
+  margin:6px 0 12px 0;
   font-size:13px;
   color:#94a3b8;
   max-width:340px;
@@ -552,7 +554,11 @@ const f3 = (v) => (+v).toFixed(3);
   .tlw{right:12px;left:12px}
   .tl{gap:8px;padding:8px}
   .sp,.legend{display:none}
-  .stage-title .h1{font-size:24px}
+  .stage-title{
+    left:calc(var(--gap) + var(--safe-l));
+    top:calc(var(--top) + 46px + var(--safe-t));
+  }
+  .stage-title .h1{font-size:clamp(24px, 2.4vw, 30px)}
   .sheet{
     left:0;
     right:0;

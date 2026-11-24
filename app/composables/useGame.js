@@ -14,8 +14,10 @@ import {
   logoutPlayerFromCloud,
   scheduleCloudSave,
   sanitizeUsername,
+  generateAstroId,
   signInWithGoogle,
   syncGooglePlayerSession,
+  syncPlayerCloudProgress,
   resetPlayerCloudProgress,
   deletePlayerAccountFromCloud,
 } from '../utils/playerCloudSync.js';
@@ -27,6 +29,7 @@ const KEYS = {
   progress: 'astrosphere.progress',
   account: 'astrosphere.account',
   users: 'astrosphere.users',
+  astroId: 'astrosphere.astro_id',
 };
 
 const ls = {
@@ -109,12 +112,18 @@ export const store = reactive({
   progress: sanitizeProgress(ls.read(KEYS.progress)),
   account: (() => {
     const a = ls.read(KEYS.account);
+    let guestAstroId = ls.read(KEYS.astroId);
+    if (!guestAstroId || typeof guestAstroId !== 'string') {
+      guestAstroId = generateAstroId();
+      ls.write(KEYS.astroId, guestAstroId);
+    }
     return {
       loggedIn: !!a?.loggedIn && typeof a.name === 'string' && !!a.name,
       name: typeof a?.name === 'string' ? a.name : '',
       username: typeof a?.username === 'string' ? a.username : '',
       userId: typeof a?.userId === 'string' ? a.userId : null,
       cloudSynced: !!a?.cloudSynced,
+      astroId: a?.astroId || guestAstroId,
     };
   })(),
   discovered: [],
@@ -157,6 +166,7 @@ function triggerCloudSync() {
     earned: store.progress.earned,
     selected_ship: store.progress.selectedShip,
     owned_ships: store.progress.owned,
+    astro_id: store.account.astroId,
     progress_data: {
       best: store.progress.best,
       attempts: store.progress.attempts,
@@ -191,6 +201,31 @@ export function saveAccount() {
   ls.write(KEYS.account, store.account);
 }
 
+// Sinkronkan data progres pemain secara langsung dari Supabase ke state reaktif
+export async function pullCloudProgress() {
+  if (!store.account.loggedIn || !store.account.userId) return;
+  try {
+    const res = await syncPlayerCloudProgress(store.account.userId, {
+      progress: store.progress,
+      settings: store.settings,
+      gameState: readGameState(),
+      astroId: store.account.astroId,
+    });
+    if (res.ok && res.mergedData) {
+      applyMergedData(res.mergedData);
+      if (res.astroId) {
+        store.account.astroId = res.astroId;
+        ls.write(KEYS.astroId, res.astroId);
+      }
+      saveAccount();
+      ls.write(KEYS.progress, store.progress);
+      ls.write(KEYS.settings, store.settings);
+    }
+  } catch (err) {
+    console.warn('[AstroSphere] Gagal sinkronisasi data awan:', err);
+  }
+}
+
 // ---- Akun: Mendukung Supabase Auth + Cadangan Lokal Hash Bergaram ----
 const nameKey = (n) => n.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -223,6 +258,7 @@ export async function registerUser(name, pass) {
     progress: store.progress,
     settings: store.settings,
     gameState: readGameState(),
+    astroId: store.account.astroId,
   });
 
   if (cloudRes.ok) {
@@ -230,13 +266,16 @@ export async function registerUser(name, pass) {
     if (cloudRes.mergedData) {
       applyMergedData(cloudRes.mergedData);
     }
+    const finalAstroId = cloudRes.astroId || store.account.astroId;
     Object.assign(store.account, {
       loggedIn: true,
       name: cloudRes.displayName || clean,
       username: clean,
       userId: cloudRes.user?.id || null,
       cloudSynced: true,
+      astroId: finalAstroId,
     });
+    ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
     saveSettings();
@@ -280,19 +319,23 @@ export async function loginUser(name, pass) {
     progress: store.progress,
     settings: store.settings,
     gameState: readGameState(),
+    astroId: store.account.astroId,
   });
 
   if (cloudRes.ok) {
     if (cloudRes.mergedData) {
       applyMergedData(cloudRes.mergedData);
     }
+    const finalAstroId = cloudRes.astroId || store.account.astroId;
     Object.assign(store.account, {
       loggedIn: true,
       name: cloudRes.displayName || clean,
       username: clean,
       userId: cloudRes.user?.id || null,
       cloudSynced: true,
+      astroId: finalAstroId,
     });
+    ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
     saveSettings();
@@ -336,12 +379,18 @@ export async function loginUser(name, pass) {
 // Keluar Akun
 export async function logoutUser() {
   await logoutPlayerFromCloud();
+  let guestAstroId = ls.read(KEYS.astroId);
+  if (!guestAstroId) {
+    guestAstroId = generateAstroId();
+    ls.write(KEYS.astroId, guestAstroId);
+  }
   Object.assign(store.account, {
     loggedIn: false,
     name: '',
     username: '',
     userId: null,
     cloudSynced: false,
+    astroId: guestAstroId,
   });
   saveAccount();
 }
@@ -449,11 +498,16 @@ export async function deleteUserAccount() {
   for (const k of Object.values(KEYS)) ls.remove(k);
 
   // 3. Reset state akun
+  let guestAstroId = generateAstroId();
+  ls.write(KEYS.astroId, guestAstroId);
   store.account.loggedIn = false;
-  store.account.name = 'Penjelajah Tamu';
+  store.account.name = '';
   store.account.id = null;
+  store.account.userId = null;
   store.account.email = null;
   store.account.username = '';
+  store.account.cloudSynced = false;
+  store.account.astroId = guestAstroId;
 
   // 4. Reset progress & settings
   const cleanProgress = JSON.parse(JSON.stringify(DEFAULT_PROGRESS));
@@ -524,19 +578,23 @@ if (typeof window !== 'undefined') {
           progress: store.progress,
           settings: store.settings,
           gameState: readGameState(),
+          astroId: store.account.astroId,
         });
 
         if (syncRes.ok) {
           if (syncRes.mergedData) {
             applyMergedData(syncRes.mergedData);
           }
+          const finalAstroId = syncRes.astroId || store.account.astroId;
           Object.assign(store.account, {
             loggedIn: true,
             name: syncRes.displayName || syncRes.username,
             username: syncRes.username,
             userId: user.id,
             cloudSynced: true,
+            astroId: finalAstroId,
           });
+          ls.write(KEYS.astroId, finalAstroId);
           saveAccount();
           saveProgress();
           saveSettings();

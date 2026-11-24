@@ -5,7 +5,7 @@ import { PLANETS, SUN, MOONS } from '~/data/solarSystem.js';
 import { HISTORY } from '~/data/history.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { QUIZ } from '~/data/quiz.js';
-import { SHIPS } from '~/data/ships.js';
+import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 import { MYTHS } from '~/data/learning.js';
 
 // Pemetaan dua arah ID Planet: Nuxt (lokal) <-> Supabase (bahasa Inggris)
@@ -521,6 +521,40 @@ export function useSupabaseContent() {
       return state.questions[localId] || state.questions[id] || QUIZ[localId] || QUIZ[id] || null;
     },
     getShips: () => (Object.keys(state.ships).length ? state.ships : SHIPS),
+    planets: computed(() => {
+      return PLANETS.map((fallbackP) => {
+        const supId = toSupabasePlanetId(fallbackP.id);
+        const live = state.planets[fallbackP.id] || state.planets[supId] || {};
+        return {
+          ...fallbackP,
+          ...live,
+          id: fallbackP.id,
+          name: live.nama || live.name || fallbackP.name,
+          order: live.urutan_planet ?? fallbackP.order,
+          desc: live.deskripsi_materi || live.desc || fallbackP.desc,
+          color: fallbackP.color,
+          sumber_referensi: live.sumber_referensi || fallbackP.sumber_referensi,
+        };
+      }).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }),
+    ships: computed(() => {
+      const liveMap = state.ships || {};
+      return SHIP_IDS.map((id) => {
+        const fallbackS = SHIPS[id] || {};
+        const supId = toSupabaseShipId(id);
+        const liveS = liveMap[id] || liveMap[supId] || {};
+        return {
+          ...fallbackS,
+          ...liveS,
+          id,
+          name: liveS.nama || liveS.name || fallbackS.name,
+          desc: liveS.deskripsi || liveS.desc || fallbackS.desc,
+          price: liveS.harga_poin ?? liveS.biaya_bintang ?? liveS.price ?? fallbackS.price ?? 0,
+          cls: liveS.kategori || liveS.kelas || fallbackS.cls || 'Pesawat Eksplorasi',
+          stats: liveS.stats || fallbackS.stats || {},
+        };
+      });
+    }),
     getMyths: () => (state.myths.length ? state.myths : MYTHS),
     myths: computed(() => (state.myths.length ? state.myths : MYTHS)),
   };

@@ -18,6 +18,20 @@ export const sanitizeUsername = (username) => {
   return String(username || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
 };
 
+// Pembuat ASTRO-ID unik otomatis (8 digit acak + tahun berjalan)
+export function generateAstroId() {
+  let num = 10000000;
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.getRandomValues) {
+    const buf = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(buf);
+    num = 10000000 + (buf[0] % 90000000);
+  } else {
+    num = Math.floor(10000000 + Math.random() * 90000000);
+  }
+  const year = new Date().getFullYear();
+  return `${num} (${year})`;
+}
+
 // Gabungkan progres lokal tamu dengan data yang ada di awan
 export function mergeProgress(cloudRow, localProgress, localSettings, localState) {
   const pData = cloudRow?.progress_data || {};
@@ -168,11 +182,13 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
 
     // 3. Susun data awal progres yang menggabungkan capaian lokal tamu
     const merged = mergeProgress(null, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+    let assignedAstroId = localStoreData?.astroId || generateAstroId();
 
     // 4. Buat baris data progres di tabel public.player_progress
-    const { error: insertErr } = await client.from('player_progress').upsert({
+    let insertRes = await client.from('player_progress').upsert({
       user_id: user.id,
       username: cleanUsername,
+      astro_id: assignedAstroId,
       display_name: cleanUsername,
       points: merged.points,
       earned: merged.earned,
@@ -183,8 +199,26 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
       settings_data: merged.settings_data,
     });
 
-    if (insertErr) {
-      console.warn('[AstroSphere] Gagal menyimpan data awal player_progress:', insertErr);
+    // Tangani kemungkinan collision unik astro_id secara anggun
+    if (insertRes.error && insertRes.error.message?.includes('astro_id')) {
+      assignedAstroId = generateAstroId();
+      insertRes = await client.from('player_progress').upsert({
+        user_id: user.id,
+        username: cleanUsername,
+        astro_id: assignedAstroId,
+        display_name: cleanUsername,
+        points: merged.points,
+        earned: merged.earned,
+        selected_ship: merged.selected_ship,
+        owned_ships: merged.owned_ships,
+        progress_data: merged.progress_data,
+        game_state: merged.game_state,
+        settings_data: merged.settings_data,
+      });
+    }
+
+    if (insertRes.error) {
+      console.warn('[AstroSphere] Gagal menyimpan data awal player_progress:', insertRes.error);
     }
 
     return {
@@ -192,6 +226,7 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
       user,
       username: cleanUsername,
       displayName: cleanUsername,
+      astroId: assignedAstroId,
       mergedData: merged,
     };
   } catch (err) {
@@ -248,11 +283,13 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
 
     // Gabungkan dengan capaian lokal tamu saat ini agar bintang/planet baru tidak hilang
     const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+    let assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
 
     // Perbarui baris progres di awan dengan data gabungan
-    await client.from('player_progress').upsert({
+    let updateRes = await client.from('player_progress').upsert({
       user_id: user.id,
       username: progressRow?.username || cleanUsername,
+      astro_id: assignedAstroId,
       display_name: progressRow?.display_name || cleanUsername,
       points: merged.points,
       earned: merged.earned,
@@ -263,11 +300,29 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
       settings_data: merged.settings_data,
     });
 
+    if (updateRes.error && updateRes.error.message?.includes('astro_id')) {
+      assignedAstroId = generateAstroId();
+      await client.from('player_progress').upsert({
+        user_id: user.id,
+        username: progressRow?.username || cleanUsername,
+        astro_id: assignedAstroId,
+        display_name: progressRow?.display_name || cleanUsername,
+        points: merged.points,
+        earned: merged.earned,
+        selected_ship: merged.selected_ship,
+        owned_ships: merged.owned_ships,
+        progress_data: merged.progress_data,
+        game_state: merged.game_state,
+        settings_data: merged.settings_data,
+      });
+    }
+
     return {
       ok: true,
       user,
       username: progressRow?.username || cleanUsername,
       displayName: progressRow?.display_name || cleanUsername,
+      astroId: assignedAstroId,
       mergedData: merged,
     };
   } catch (err) {
@@ -338,11 +393,13 @@ export async function syncGooglePlayerSession(user, localStoreData) {
 
     // 2. Gabungkan capaian tamu lokal (mergeProgress) ke akun Google tersebut
     const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+    let assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
 
     // 3. Upsert baris progres di public.player_progress
-    const { error: upsertErr } = await client.from('player_progress').upsert({
+    let upsertRes = await client.from('player_progress').upsert({
       user_id: user.id,
       username,
+      astro_id: assignedAstroId,
       display_name: displayName,
       points: merged.points,
       earned: merged.earned,
@@ -353,8 +410,25 @@ export async function syncGooglePlayerSession(user, localStoreData) {
       settings_data: merged.settings_data,
     });
 
-    if (upsertErr) {
-      console.warn('[AstroSphere] Gagal menyimpan data player_progress Google user:', upsertErr);
+    if (upsertRes.error && upsertRes.error.message?.includes('astro_id')) {
+      assignedAstroId = generateAstroId();
+      await client.from('player_progress').upsert({
+        user_id: user.id,
+        username,
+        astro_id: assignedAstroId,
+        display_name: displayName,
+        points: merged.points,
+        earned: merged.earned,
+        selected_ship: merged.selected_ship,
+        owned_ships: merged.owned_ships,
+        progress_data: merged.progress_data,
+        game_state: merged.game_state,
+        settings_data: merged.settings_data,
+      });
+    }
+
+    if (upsertRes.error) {
+      console.warn('[AstroSphere] Gagal menyimpan data player_progress Google user:', upsertRes.error);
     }
 
     return {
@@ -362,6 +436,7 @@ export async function syncGooglePlayerSession(user, localStoreData) {
       user,
       username,
       displayName,
+      astroId: assignedAstroId,
       mergedData: merged,
     };
   } catch (err) {
@@ -401,7 +476,7 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
       const payload = payloadGetter();
       if (!payload) return;
 
-      const { error } = await client.from('player_progress').update({
+      const updateData = {
         points: payload.points,
         earned: payload.earned,
         selected_ship: payload.selected_ship,
@@ -410,7 +485,12 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
         game_state: payload.game_state,
         settings_data: payload.settings_data,
         updated_at: new Date().toISOString(),
-      }).eq('user_id', userId);
+      };
+      if (payload.astro_id) {
+        updateData.astro_id = payload.astro_id;
+      }
+
+      const { error } = await client.from('player_progress').update(updateData).eq('user_id', userId);
 
       if (!error && typeof onSavedCallback === 'function') {
         onSavedCallback();
@@ -421,6 +501,58 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
       isSaving = false;
     }
   }, 2000);
+}
+
+// Sinkronkan data pemain live dari Supabase (tarik data awan & gabungkan dengan data lokal)
+export async function syncPlayerCloudProgress(userId, localStoreData) {
+  if (!userId) return { ok: false, err: 'User ID tidak ada.' };
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, offline: true };
+
+  try {
+    const { data: progressRow, error: pErr } = await client
+      .from('player_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (pErr) {
+      console.warn('[AstroSphere] Peringatan saat mengambil player_progress live:', pErr);
+      return { ok: false, err: pErr.message };
+    }
+
+    if (!progressRow) {
+      return { ok: false, notFound: true };
+    }
+
+    // Gabungkan dengan data lokal saat ini agar capaian baru tidak tertimpa
+    const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+    let assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
+
+    // Perbarui baris di awan dengan gabungan terbaru
+    await client.from('player_progress').update({
+      points: merged.points,
+      earned: merged.earned,
+      selected_ship: merged.selected_ship,
+      owned_ships: merged.owned_ships,
+      progress_data: merged.progress_data,
+      game_state: merged.game_state,
+      settings_data: merged.settings_data,
+      astro_id: assignedAstroId,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+
+    return {
+      ok: true,
+      username: progressRow?.username,
+      displayName: progressRow?.display_name,
+      astroId: assignedAstroId,
+      mergedData: merged,
+    };
+  } catch (err) {
+    console.error('[AstroSphere] Kesalahan sinkronisasi live pemain:', err);
+    return { ok: false, err: err.message };
+  }
 }
 
 // Reset bersih data progres pemain di Supabase (tetap mempertahankan akun)

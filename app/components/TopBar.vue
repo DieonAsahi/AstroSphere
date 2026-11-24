@@ -94,11 +94,12 @@ onBeforeUnmount(closeMissionMenu);
   </header>
 </template>
 <style scoped>
-.tb{position:fixed;left:0;right:0;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;pointer-events:none;
+.tb{position:fixed;left:0;right:0;top:0;z-index:30;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;pointer-events:none;
   padding:calc(var(--top) + var(--safe-t)) calc(var(--gap) + var(--safe-r)) 0 calc(var(--gap) + var(--safe-l));transition:opacity .3s}
 .tb>*{pointer-events:auto}
 .tb.off{opacity:0}.tb.off>*{pointer-events:none}
 .l,.r{display:flex;align-items:center;gap:10px}
+.l{height:36px}
 .l .tag{
   height:36px;
   min-height:36px;
@@ -120,6 +121,7 @@ onBeforeUnmount(closeMissionMenu);
 .back{
   height:36px;
   min-height:36px;
+  max-height:36px;
   padding:0 14px;
   display:inline-flex;
   align-items:center;

@@ -282,7 +282,7 @@ const stageEyebrow = computed(() => {
 .stage-title{
   position:fixed;
   left:calc(var(--gap) + var(--safe-l));
-  top:calc(var(--top) + 68px + var(--safe-t));
+  top:calc(var(--top) + 46px + var(--safe-t));
   z-index:21;
   display:flex;
   flex-direction:column;
@@ -292,18 +292,19 @@ const stageEyebrow = computed(() => {
 }
 .stage-title>*{pointer-events:auto}
 .stage-eyebrow{
+  display:block;
   font-family:var(--display);
-  font-size:11.5px;
+  font-size:11px;
   font-weight:600;
   letter-spacing:0.08em;
   text-transform:uppercase;
   color:#38bdf8;
-  margin-bottom:6px;
+  margin:0 0 4px 0;
   line-height:1.2;
 }
 .stage-title .h1{
   font-family:var(--display);
-  font-size:clamp(30px, 3vw, 38px);
+  font-size:clamp(24px, 2.4vw, 30px);
   font-weight:600;
   line-height:1.15;
   letter-spacing:-0.02em;
@@ -823,12 +824,12 @@ const stageEyebrow = computed(() => {
   .sheet .sbody{padding:12px 14px 22px;gap:10px}
   .sheet .sfoot{padding:12px 14px 14px;gap:8px}
   .stage-title{
-    left:14px;
-    top:calc(var(--top) + 56px + var(--safe-t));
+    left:calc(var(--gap) + var(--safe-l));
+    top:calc(var(--top) + 46px + var(--safe-t));
     max-width:calc(100vw - 28px);
     gap:0;
   }
-  .stage-title .h1{font-size:26px}
+  .stage-title .h1{font-size:clamp(24px, 2.4vw, 30px)}
   .stage-bottom{left:12px;right:12px;max-width:none;bottom:calc(min(52vh, 480px) + 10px)}
   .facts.grid-sci{grid-template-columns:1fr 1fr;gap:8px}
   .fact{padding:10px 12px}

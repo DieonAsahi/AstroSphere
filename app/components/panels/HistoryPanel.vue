@@ -719,7 +719,7 @@ function downloadPdf() {
 .stage-title {
   position: fixed;
   left: calc(var(--gap) + var(--safe-l));
-  top: calc(var(--top) + 48px + var(--safe-t));
+  top: calc(var(--top) + 46px + var(--safe-t));
   z-index: 21;
   display: flex;
   flex-direction: column;
@@ -729,13 +729,15 @@ function downloadPdf() {
   pointer-events: auto;
 }
 .stage-eyebrow {
+  display: block;
   font-family: var(--display);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #38bdf8;
-  margin-bottom: 4px;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
 }
 .stage-title .h1 {
   margin: 0;
@@ -1331,11 +1333,11 @@ function downloadPdf() {
 
 @media (max-width: 760px) {
   .stage-title {
-    left: 14px;
-    top: calc(var(--top) + 48px + var(--safe-t));
+    left: calc(var(--gap) + var(--safe-l));
+    top: calc(var(--top) + 46px + var(--safe-t));
   }
   .stage-title .h1 {
-    font-size: 24px;
+    font-size: clamp(24px, 2.4vw, 30px);
   }
   .sheet {
     left: 0;
