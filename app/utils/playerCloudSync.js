@@ -43,8 +43,8 @@ export const sanitizeUsername = (username) => {
 export function formatBannedMessage(reason = '') {
   const clean = String(reason || '').trim();
   return clean
-    ? `Akun Anda sedang dinonaktifkan oleh administrator. Alasan: ${clean}`
-    : 'Akun Anda sedang dinonaktifkan oleh administrator.';
+    ? `Akun Anda telah dinonaktifkan oleh pengelola. Alasan: ${clean}`
+    : 'Akun Anda telah dinonaktifkan oleh pengelola.';
 }
 
 function isBannedAuthError(err) {
@@ -75,7 +75,8 @@ function mapSafePlayerError(err, fallback = GENERIC_PUBLIC_ERROR) {
   const status = Number(err?.status || 0);
 
   if (msg.includes('ACCOUNT_DISABLED:') || lower.includes('user_banned') || lower.includes('user is banned')) {
-    return { banned: true, revoked: true, err: formatBannedMessage(extractDisabledReason(err)) };
+    const bannedReason = extractDisabledReason(err);
+    return { banned: true, revoked: true, bannedReason, err: formatBannedMessage(bannedReason) };
   }
   if (msg.includes('USERNAME_TAKEN') || (code === '23505' && lower.includes('username'))) {
     return { err: 'Nama penjelajah sudah digunakan.' };
@@ -346,6 +347,7 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
         ok: false,
         offline: !!mapped.offline,
         banned: !!mapped.banned,
+        bannedReason: mapped.bannedReason || '',
         err: mapped.err,
         unknown: false,
       };
@@ -354,6 +356,17 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
     if (!row || !row.user_id || !row.session_token) {
       console.error('[AstroSphere] player_login_username mengembalikan data tidak lengkap:', row);
       return { ok: false, err: 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.' };
+    }
+
+    if (row.is_active === false) {
+      const reason = String(row.banned_reason || '').trim();
+      return {
+        ok: false,
+        banned: true,
+        bannedReason: reason,
+        err: formatBannedMessage(reason),
+        unknown: false,
+      };
     }
 
     const merged = mergeProgress(row, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
@@ -452,12 +465,7 @@ export async function syncGooglePlayerSession(user, localStoreData) {
   }
 
   try {
-    if (user.banned_until && new Date(user.banned_until) > new Date()) {
-      await client.auth.signOut().catch(() => {});
-      return { ok: false, banned: true, err: formatBannedMessage() };
-    }
-
-    // 1. Cek tabel public.player_progress untuk user Google tersebut
+    // 1. Baca status baris public.player_progress TERLEBIH DAHULU sebelum memutus sesi agar banned_reason terbaca jelas
     const { data: progressRow, error: pErr } = await client
       .from('player_progress')
       .select(SAFE_PLAYER_COLUMNS)
@@ -466,20 +474,31 @@ export async function syncGooglePlayerSession(user, localStoreData) {
 
     if (pErr) {
       console.error('[AstroSphere] Gagal membaca player_progress untuk Google user:', pErr);
-      if (isOfflineOrNetworkError(pErr)) {
+      if (isOfflineOrNetworkError(pErr) || isBrowserOffline()) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      if (isBannedAuthError(pErr) || (user.banned_until && new Date(user.banned_until) > new Date())) {
+        await client.auth.signOut({ scope: 'local' }).catch(() => {});
+        return { ok: false, banned: true, bannedReason: '', err: formatBannedMessage() };
       }
       return { ok: false, err: GENERIC_PUBLIC_ERROR };
     }
 
     if (progressRow?.is_active === false) {
-      await client.auth.signOut().catch(() => {});
+      const reason = String(progressRow.banned_reason || '').trim();
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
       return {
         ok: false,
         banned: true,
-        bannedReason: progressRow.banned_reason || '',
-        err: formatBannedMessage(progressRow.banned_reason),
+        bannedReason: reason,
+        err: formatBannedMessage(reason),
       };
+    }
+
+    if (user.banned_until && new Date(user.banned_until) > new Date()) {
+      const reason = String(progressRow?.banned_reason || '').trim();
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
+      return { ok: false, banned: true, bannedReason: reason, err: formatBannedMessage(reason) };
     }
 
     let username = progressRow?.username;
@@ -567,38 +586,52 @@ export async function syncGooglePlayerSession(user, localStoreData) {
   }
 }
 
-// Keluar Akun (bersihkan sesi Auth jika Google)
-export async function logoutPlayerFromCloud(sessionOrUserId = null) {
+// Debounce Timer & Kontrol Antrean Sinkronisasi Otomatis
+let saveTimer = null;
+let isSaving = false;
+let saveGeneration = 0;
+
+export function cancelScheduledCloudSave() {
+  saveGeneration += 1;
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+}
+
+// Keluar Akun (bersihkan antrean simpan & sesi Auth jika Google)
+export async function logoutPlayerFromCloud(sessionOrUserId = null, { localOnly = false } = {}) {
+  cancelScheduledCloudSave();
   const { authProvider } = resolveSessionArg(sessionOrUserId);
   const client = getSupabaseClient();
   if (client && authProvider !== 'username') {
     try {
-      await client.auth.signOut();
+      await client.auth.signOut(localOnly ? { scope: 'local' } : undefined);
     } catch (err) {
       console.error('[AstroSphere] Kesalahan saat logout:', err);
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
     }
   }
   return { ok: true };
 }
-
-// Debounce Timer untuk Sinkronisasi Otomatis
-let saveTimer = null;
-let isSaving = false;
 
 // Simpan Progres Otomatis dengan Jeda (Debounce 2 Detik)
 export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallback, onRevokedCallback) {
   const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
   if (!userId) return;
   if (saveTimer) clearTimeout(saveTimer);
+  const gen = ++saveGeneration;
 
   saveTimer = setTimeout(async () => {
+    saveTimer = null;
+    if (gen !== saveGeneration) return;
     const client = getSupabaseClient();
     if (!client || isSaving || isBrowserOffline()) return;
 
     isSaving = true;
     try {
       const payload = payloadGetter();
-      if (!payload) return;
+      if (!payload || gen !== saveGeneration) return;
 
       if (authProvider === 'username' && sessionToken) {
         const { error: rpcErr } = await client.rpc('player_sync_username', {
@@ -616,12 +649,14 @@ export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallbac
           p_game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
         });
 
+        if (gen !== saveGeneration) return;
         if (rpcErr) {
           if (isOfflineOrNetworkError(rpcErr) || isBrowserOffline()) return;
           const mapped = mapSafePlayerError(rpcErr);
           if (mapped.banned || mapped.revoked) {
             onRevokedCallback?.({
               banned: !!mapped.banned,
+              bannedReason: mapped.bannedReason || '',
               reason: mapped.err,
             });
             return;
@@ -634,13 +669,39 @@ export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallbac
         return;
       }
 
-      // Jalur Google OAuth: verifikasi ke Auth lalu perbarui public.player_progress
+      // Jalur Google OAuth: periksa status is_active di player_progress dahulu sebelum cek/putus Auth agar alasan terbaca
+      const { data: statusPrecheck, error: statusPreErr } = await client
+        .from('player_progress')
+        .select('is_active, banned_reason')
+        .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+        .maybeSingle();
+
+      if (gen !== saveGeneration) return;
+      if (!statusPreErr) {
+        if (!statusPrecheck || statusPrecheck.is_active === false) {
+          const reason = String(statusPrecheck?.banned_reason || '').trim();
+          onRevokedCallback?.({
+            banned: statusPrecheck?.is_active === false,
+            bannedReason: reason,
+            reason: statusPrecheck?.is_active === false
+              ? formatBannedMessage(reason)
+              : 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
+          });
+          return;
+        }
+      } else if (isOfflineOrNetworkError(statusPreErr) || isBrowserOffline()) {
+        return;
+      }
+
       const { data: authCheck, error: authCheckErr } = await client.auth.getUser();
+      if (gen !== saveGeneration) return;
       if (authCheckErr || !authCheck?.user) {
         if (isOfflineOrNetworkError(authCheckErr) || isBrowserOffline()) return;
+        const banned = isBannedAuthError(authCheckErr);
         onRevokedCallback?.({
-          banned: isBannedAuthError(authCheckErr),
-          reason: isBannedAuthError(authCheckErr) ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
+          banned,
+          bannedReason: '',
+          reason: banned ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
         });
         return;
       }
@@ -660,20 +721,24 @@ export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallbac
       }
 
       const { error } = await client.from('player_progress').update(updateData).eq('user_id', userId);
+      if (gen !== saveGeneration) return;
 
       if (error) {
         const { data: rowStatus } = await client
           .from('player_progress')
           .select('is_active, banned_reason')
-          .eq('user_id', userId)
+          .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
           .maybeSingle();
 
+        if (gen !== saveGeneration) return;
         if (!rowStatus || rowStatus.is_active === false) {
+          const reason = String(rowStatus?.banned_reason || '').trim();
           onRevokedCallback?.({
             banned: rowStatus?.is_active === false,
+            bannedReason: reason,
             reason: rowStatus?.is_active === false
-              ? formatBannedMessage(rowStatus.banned_reason)
-              : 'Akun Anda tidak ditemukan atau telah dihapus oleh administrator.',
+              ? formatBannedMessage(reason)
+              : 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
           });
           return;
         }
@@ -686,6 +751,176 @@ export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallbac
       isSaving = false;
     }
   }, 2000);
+}
+
+// Pemeriksaan ringan status aktif akun (username & Google) untuk deteksi real-time penonaktifan
+let inFlightStatusCheck = null;
+let inFlightStatusKey = '';
+
+export async function checkPlayerAccountStatus(sessionOrUserId) {
+  const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
+  if (!userId) return { ok: true, active: true };
+  if (authProvider === 'username' && !sessionToken) return { ok: true, active: true };
+
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, offline: true, noClient: true };
+  if (isBrowserOffline()) return { ok: false, offline: true };
+
+  const key = `${userId}:${authProvider}`;
+  if (inFlightStatusCheck && inFlightStatusKey === key) {
+    return inFlightStatusCheck;
+  }
+
+  inFlightStatusKey = key;
+  inFlightStatusCheck = (async () => {
+    try {
+      if (authProvider === 'username') {
+        const { data, error } = await client.rpc('player_sync_username', {
+          p_user_id: userId,
+          p_session_token: sessionToken,
+          p_progress: null,
+          p_game_state: null,
+        });
+
+        if (error) {
+          if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+            return { ok: false, offline: true };
+          }
+          const mapped = mapSafePlayerError(error);
+          if (mapped.banned || mapped.revoked) {
+            return {
+              ok: false,
+              active: false,
+              banned: !!mapped.banned,
+              revoked: true,
+              bannedReason: mapped.bannedReason || '',
+              err: mapped.err,
+            };
+          }
+          return { ok: true, active: true };
+        }
+
+        if (!data || !data.user_id) {
+          return {
+            ok: false,
+            active: false,
+            banned: false,
+            revoked: true,
+            err: 'Sesi akun telah berakhir. Silakan masuk kembali.',
+          };
+        }
+
+        if (data.is_active === false) {
+          const reason = String(data.banned_reason || '').trim();
+          return {
+            ok: false,
+            active: false,
+            banned: true,
+            revoked: true,
+            bannedReason: reason,
+            err: formatBannedMessage(reason),
+          };
+        }
+
+        return { ok: true, active: true };
+      }
+
+      // Jalur Google: baca SELECT is_active, banned_reason lebih dahulu sebelum memanggil Auth/signOut
+      const { data: row, error: qErr } = await client
+        .from('player_progress')
+        .select('is_active, banned_reason')
+        .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+        .maybeSingle();
+
+      if (!qErr) {
+        if (!row) {
+          return {
+            ok: false,
+            active: false,
+            banned: false,
+            revoked: true,
+            notFound: true,
+            err: 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
+          };
+        }
+        if (row.is_active === false) {
+          const reason = String(row.banned_reason || '').trim();
+          return {
+            ok: false,
+            active: false,
+            banned: true,
+            revoked: true,
+            bannedReason: reason,
+            err: formatBannedMessage(reason),
+          };
+        }
+        return { ok: true, active: true };
+      }
+
+      if (isOfflineOrNetworkError(qErr) || isBrowserOffline()) {
+        return { ok: false, offline: true };
+      }
+      if (isBannedAuthError(qErr)) {
+        return {
+          ok: false,
+          active: false,
+          banned: true,
+          revoked: true,
+          bannedReason: '',
+          err: formatBannedMessage(),
+        };
+      }
+
+      const { data: uData, error: uErr } = await client.auth.getUser();
+      if (uErr) {
+        if (isOfflineOrNetworkError(uErr) || isBrowserOffline()) {
+          return { ok: false, offline: true };
+        }
+        if (isBannedAuthError(uErr)) {
+          return {
+            ok: false,
+            active: false,
+            banned: true,
+            revoked: true,
+            bannedReason: '',
+            err: formatBannedMessage(),
+          };
+        }
+        const status = Number(uErr?.status || 0);
+        const code = String(uErr?.code || '').toLowerCase();
+        if (status === 401 || status === 403 || code.includes('session')) {
+          return {
+            ok: false,
+            active: false,
+            banned: false,
+            revoked: true,
+            err: 'Sesi akun telah berakhir. Silakan masuk kembali.',
+          };
+        }
+      } else if (!uData?.user) {
+        return {
+          ok: false,
+          active: false,
+          banned: false,
+          revoked: true,
+          err: 'Sesi akun telah berakhir. Silakan masuk kembali.',
+        };
+      }
+
+      return { ok: true, active: true };
+    } catch (err) {
+      if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+        return { ok: false, offline: true };
+      }
+      console.warn('[AstroSphere] Pemeriksaan status akun tertunda:', err);
+      return { ok: true, active: true };
+    } finally {
+      inFlightStatusCheck = null;
+      inFlightStatusKey = '';
+    }
+  })();
+
+  return inFlightStatusCheck;
 }
 
 // Sinkronkan data pemain live (tarik data terbaru & gabungkan dengan data lokal)
@@ -715,12 +950,24 @@ export async function syncPlayerCloudProgress(sessionOrUserId, localStoreData) {
           offline: !!mapped.offline,
           banned: !!mapped.banned,
           revoked: !!mapped.revoked,
+          bannedReason: mapped.bannedReason || '',
           err: mapped.err,
         };
       }
 
       if (!serverRow || !serverRow.user_id) {
         return { ok: false, revoked: true, err: 'Akun penjelajah tidak ditemukan atau telah dihapus.' };
+      }
+
+      if (serverRow.is_active === false) {
+        const reason = String(serverRow.banned_reason || '').trim();
+        return {
+          ok: false,
+          banned: true,
+          revoked: true,
+          bannedReason: reason,
+          err: formatBannedMessage(reason),
+        };
       }
 
       const merged = mergeProgress(serverRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
@@ -741,6 +988,7 @@ export async function syncPlayerCloudProgress(sessionOrUserId, localStoreData) {
           offline: !!mapped.offline,
           banned: !!mapped.banned,
           revoked: !!mapped.revoked,
+          bannedReason: mapped.bannedReason || '',
           err: mapped.err,
         };
       }
@@ -754,56 +1002,81 @@ export async function syncPlayerCloudProgress(sessionOrUserId, localStoreData) {
       };
     }
 
-    // Jalur Google OAuth
-    const { data: userCheck, error: userErr } = await client.auth.getUser();
-    if (userErr) {
-      if (isOfflineOrNetworkError(userErr) || isBrowserOffline()) {
-        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-      }
-      await client.auth.signOut().catch(() => {});
-      return {
-        ok: false,
-        revoked: true,
-        banned: isBannedAuthError(userErr),
-        err: isBannedAuthError(userErr) ? formatBannedMessage() : 'Sesi akun telah berakhir atau akun dihapus.',
-      };
-    }
-    if (!userCheck?.user) {
-      await client.auth.signOut().catch(() => {});
-      return {
-        ok: false,
-        revoked: true,
-        banned: false,
-        err: 'Sesi akun telah berakhir atau akun dihapus.',
-      };
-    }
-
+    // Jalur Google OAuth: baca baris player_progress dahulu sebelum getUser()/signOut() agar alasan nonaktif tetap terbaca
     const { data: progressRow, error: pErr } = await client
       .from('player_progress')
       .select(SAFE_PLAYER_COLUMNS)
-      .eq('user_id', userId)
+      .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
       .maybeSingle();
+
+    if (!pErr && progressRow?.is_active === false) {
+      const reason = String(progressRow.banned_reason || '').trim();
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
+      return {
+        ok: false,
+        banned: true,
+        revoked: true,
+        bannedReason: reason,
+        err: formatBannedMessage(reason),
+      };
+    }
 
     if (pErr) {
       console.error('[AstroSphere] Gagal mengambil player_progress live:', pErr);
       if (isOfflineOrNetworkError(pErr) || isBrowserOffline()) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
       }
+      if (isBannedAuthError(pErr)) {
+        await client.auth.signOut({ scope: 'local' }).catch(() => {});
+        return { ok: false, banned: true, revoked: true, bannedReason: '', err: formatBannedMessage() };
+      }
+    }
+
+    const { data: userCheck, error: userErr } = await client.auth.getUser();
+    if (userErr) {
+      if (isOfflineOrNetworkError(userErr) || isBrowserOffline()) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
+      const banned = isBannedAuthError(userErr);
+      const reason = String(progressRow?.banned_reason || '').trim();
+      return {
+        ok: false,
+        revoked: true,
+        banned,
+        bannedReason: reason,
+        err: banned ? formatBannedMessage(reason) : 'Sesi akun telah berakhir atau akun dihapus.',
+      };
+    }
+    if (!userCheck?.user) {
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
+      return {
+        ok: false,
+        revoked: true,
+        banned: false,
+        bannedReason: '',
+        err: 'Sesi akun telah berakhir atau akun dihapus.',
+      };
+    }
+
+    if (pErr) {
       return { ok: false, err: GENERIC_PUBLIC_ERROR };
     }
 
     if (!progressRow) {
-      await client.auth.signOut().catch(() => {});
-      return { ok: false, notFound: true, revoked: true, err: 'Akun penjelajah tidak ditemukan atau telah dihapus.' };
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
+      return { ok: false, notFound: true, revoked: true, banned: false, bannedReason: '', err: 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.' };
     }
 
-    if (progressRow.is_active === false) {
-      await client.auth.signOut().catch(() => {});
+    if (userCheck.user.banned_until && new Date(userCheck.user.banned_until) > new Date()) {
+      const reason = String(progressRow.banned_reason || '').trim();
+      await client.auth.signOut({ scope: 'local' }).catch(() => {});
       return {
         ok: false,
         banned: true,
         revoked: true,
-        err: formatBannedMessage(progressRow.banned_reason),
+        bannedReason: reason,
+        err: formatBannedMessage(reason),
       };
     }
 
@@ -820,7 +1093,7 @@ export async function syncPlayerCloudProgress(sessionOrUserId, localStoreData) {
       settings_data: merged.settings_data,
       astro_id: assignedAstroId,
       updated_at: new Date().toISOString(),
-    }).eq('user_id', userId);
+    }).eq('user_id', progressRow.user_id);
 
     return {
       ok: true,

@@ -14,6 +14,8 @@ import {
   loginPlayerToCloud,
   logoutPlayerFromCloud,
   scheduleCloudSave,
+  cancelScheduledCloudSave,
+  checkPlayerAccountStatus,
   sanitizeUsername,
   generateAstroId,
   signInWithGoogle,
@@ -242,6 +244,11 @@ export const store = reactive({
   profileTab: 'kuis',
   hangarPreview: 'astra',
   oauthError: '',          // Pesan error callback Google agar tampil aman di form masuk
+  bannedModal: {
+    show: false,
+    reason: '',
+    message: '',
+  },
 });
 
 // Inisialisasi keymap terisolasi akun / tamu setelah store siap (mencegah TDZ ReferenceError)
@@ -271,6 +278,30 @@ function getAccountSessionInfo() {
     authProvider: store.account.authProvider || (store.account.sessionToken ? 'username' : 'google'),
     sessionToken: store.account.sessionToken || '',
   };
+}
+
+let syncedSessionUserId = null;
+let isRevokingSession = false;
+
+function clearLocalAccountToGuest() {
+  syncedSessionUserId = null;
+  let guestAstroId = ls.read(KEYS.astroId);
+  if (!guestAstroId) {
+    guestAstroId = generateAstroId();
+    ls.write(KEYS.astroId, guestAstroId);
+  }
+  Object.assign(store.account, {
+    loggedIn: false,
+    name: '',
+    username: '',
+    userId: null,
+    authProvider: '',
+    sessionToken: '',
+    cloudSynced: false,
+    astroId: guestAstroId,
+  });
+  saveAccount();
+  switchAccountKeymap(null);
 }
 
 // Memicu sinkronisasi otomatis (debounced 2 detik) jika pemain masuk akun online
@@ -304,13 +335,66 @@ function triggerCloudSync() {
     store.saved.show = true;
     setTimeout(() => { store.saved.show = false; }, 2200);
   }, (revoked) => {
-    forceRevokeAccountSession(revoked?.reason);
+    forceRevokeAccountSession({
+      banned: !!revoked?.banned,
+      reason: revoked?.bannedReason || '',
+      message: revoked?.reason,
+    });
   });
 }
 
-async function forceRevokeAccountSession(reasonMsg) {
-  await logoutUser();
-  showToast(reasonMsg || formatBannedMessage(), 5000);
+async function forceRevokeAccountSession(payload) {
+  if (isRevokingSession) return;
+  isRevokingSession = true;
+  try {
+    const isObj = payload && typeof payload === 'object';
+    const isBanned = isObj ? !!payload.banned : true;
+    const cleanReason = isObj ? String(payload.reason || payload.bannedReason || '').trim() : '';
+    const message = isObj ? String(payload.message || '') : String(payload || '');
+    const silentModal = isObj ? !!payload.silentModal : false;
+
+    cancelScheduledCloudSave();
+    store.capturing = false;
+    const info = getAccountSessionInfo();
+    clearLocalAccountToGuest();
+
+    if (isBanned && !silentModal) {
+      store.modal = null;
+      store.bannedModal.reason = cleanReason;
+      store.bannedModal.message = message || formatBannedMessage(cleanReason);
+      store.bannedModal.show = true;
+    } else if (!silentModal && message) {
+      showToast(message, 4800);
+    }
+
+    manualAuthFlowDepth++;
+    try {
+      await logoutPlayerFromCloud(info, { localOnly: isBanned });
+    } finally {
+      manualAuthFlowDepth = Math.max(0, manualAuthFlowDepth - 1);
+    }
+  } finally {
+    isRevokingSession = false;
+  }
+}
+
+export function acknowledgeBannedModal() {
+  store.bannedModal.show = false;
+  store.bannedModal.reason = '';
+  store.bannedModal.message = '';
+  store.modal = null;
+  store.journalId = null;
+  store.approach.show = false;
+  store.autopilot = false;
+  const eng = game();
+  if (eng) {
+    try {
+      eng.toSplash(true);
+    } catch {}
+  }
+  store.phase = 'splash';
+  store.screen = 'welcome';
+  store.mode = 'jelajah';
 }
 
 export function saveSettings() {
@@ -339,7 +423,11 @@ export async function pullCloudProgress() {
       astroId: store.account.astroId,
     });
     if (!res.offline && (res.banned || res.revoked)) {
-      await forceRevokeAccountSession(res.err);
+      await forceRevokeAccountSession({
+        banned: !!res.banned,
+        reason: res.bannedReason || '',
+        message: res.err,
+      });
       return res;
     }
     if (res.offline) {
@@ -575,25 +663,15 @@ export async function loginUser(name, pass) {
 
 // Keluar Akun
 export async function logoutUser() {
+  cancelScheduledCloudSave();
   const info = getAccountSessionInfo();
-  await logoutPlayerFromCloud(info);
-  let guestAstroId = ls.read(KEYS.astroId);
-  if (!guestAstroId) {
-    guestAstroId = generateAstroId();
-    ls.write(KEYS.astroId, guestAstroId);
+  clearLocalAccountToGuest();
+  manualAuthFlowDepth++;
+  try {
+    await logoutPlayerFromCloud(info);
+  } finally {
+    manualAuthFlowDepth = Math.max(0, manualAuthFlowDepth - 1);
   }
-  Object.assign(store.account, {
-    loggedIn: false,
-    name: '',
-    username: '',
-    userId: null,
-    authProvider: '',
-    sessionToken: '',
-    cloudSynced: false,
-    astroId: guestAstroId,
-  });
-  saveAccount();
-  switchAccountKeymap(null);
 }
 
 // Masuk dengan Google
@@ -789,17 +867,64 @@ if (typeof window !== 'undefined') {
       description: INITIAL_OAUTH_ERROR,
     });
     cleanOAuthUrl();
-    const msg = 'Autentikasi Google dibatalkan atau gagal diproses. Silakan coba lagi.';
+    const isBannedOAuth = INITIAL_OAUTH_ERROR_CODE.toLowerCase() === 'user_banned'
+      || INITIAL_OAUTH_ERROR.toLowerCase().includes('banned')
+      || INITIAL_OAUTH_ERROR.toLowerCase().includes('disabled');
+    const msg = isBannedOAuth
+      ? formatBannedMessage()
+      : 'Autentikasi Google dibatalkan atau gagal diproses. Silakan coba lagi.';
     store.oauthError = msg;
     if (store.phase === 'splash') store.screen = 'login';
-    showToast(msg, 3600);
+    showToast(msg, 4500);
   }
+
+  let lastStatusCheckAt = 0;
+  async function verifyActiveAccountStatus({ force = false } = {}) {
+    if (!store.account.loggedIn || !store.account.cloudSynced || !store.account.userId) return;
+    if (window.location.pathname.startsWith('/admin')) return;
+    if (store.bannedModal.show || isRevokingSession || manualAuthFlowDepth > 0) return;
+    if (isBrowserOffline()) return;
+
+    const now = Date.now();
+    if (!force && now - lastStatusCheckAt < 2500) return;
+    lastStatusCheckAt = now;
+
+    const snapshot = getAccountSessionInfo();
+    if (snapshot.authProvider === 'username' && !snapshot.sessionToken) return;
+
+    const statusRes = await checkPlayerAccountStatus(snapshot);
+    if (!store.account.loggedIn || store.account.userId !== snapshot.userId) return;
+    if (statusRes.offline) return;
+
+    if (statusRes.banned || statusRes.revoked) {
+      await forceRevokeAccountSession({
+        banned: !!statusRes.banned,
+        reason: statusRes.bannedReason || '',
+        message: statusRes.err,
+      });
+    }
+  }
+
+  // Pemeriksaan status akun aktif berkala (setiap 15 detik) & saat tab kembali aktif
+  setInterval(() => {
+    verifyActiveAccountStatus();
+  }, 15000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      verifyActiveAccountStatus();
+    }
+  });
+  window.addEventListener('focus', () => {
+    verifyActiveAccountStatus();
+  });
+  window.addEventListener('online', () => {
+    verifyActiveAccountStatus({ force: true });
+  });
 
   // Pulihkan sesi aktif Supabase Auth saat halaman dibuka jika ada
   const client = getSupabaseClient();
   if (client) {
     let oauthRedirectHandled = false;
-    let syncedSessionUserId = null;
     let sessionSyncQueue = Promise.resolve();
 
     async function processUserSession(user, fromOAuth = false) {
@@ -821,11 +946,6 @@ if (typeof window !== 'undefined') {
           }
         }
       } catch {}
-
-      if (user.banned_until && new Date(user.banned_until) > new Date()) {
-        await forceRevokeAccountSession(formatBannedMessage());
-        return;
-      }
 
       const isSyntheticPlayer = user.email?.endsWith('@player.astrosphere.app');
       const isGoogle = user.app_metadata?.provider === 'google' ||
@@ -865,8 +985,22 @@ if (typeof window !== 'undefined') {
         });
 
         if (syncRes.banned) {
-          syncedSessionUserId = null;
-          await forceRevokeAccountSession(syncRes.err);
+          const isFreshLoginAttempt = (INITIAL_OAUTH_CALLBACK || fromOAuth)
+            && !INITIAL_LOGGED_IN_UID
+            && !store.account.loggedIn
+            && store.phase === 'splash';
+          cleanOAuthUrl();
+          await forceRevokeAccountSession({
+            banned: true,
+            reason: syncRes.bannedReason || '',
+            message: syncRes.err,
+            silentModal: isFreshLoginAttempt,
+          });
+          if (isFreshLoginAttempt) {
+            store.oauthError = syncRes.err;
+            store.screen = 'login';
+            showToast(syncRes.err, 5000);
+          }
           return;
         }
         if (syncRes.offline) {
@@ -929,7 +1063,7 @@ if (typeof window !== 'undefined') {
           }
         }
       } else {
-        // Akun pemain sintetis biasa: cek status is_active pada player_progress
+        // Akun pemain sintetis lama: cek status is_active pada player_progress
         if (isBrowserOffline()) {
           store.account.loggedIn = true;
           store.account.userId = user.id;
@@ -956,12 +1090,14 @@ if (typeof window !== 'undefined') {
         }
 
         if (!pRow || pRow.is_active === false) {
-          syncedSessionUserId = null;
-          await forceRevokeAccountSession(
-            pRow?.is_active === false
-              ? formatBannedMessage(pRow.banned_reason)
-              : 'Akun Anda telah dihapus atau tidak lagi aktif.'
-          );
+          const reason = String(pRow?.banned_reason || '').trim();
+          await forceRevokeAccountSession({
+            banned: pRow?.is_active === false,
+            reason,
+            message: pRow?.is_active === false
+              ? formatBannedMessage(reason)
+              : 'Akun Anda tidak lagi aktif atau telah dihapus.',
+          });
           return;
         }
 
@@ -996,10 +1132,13 @@ if (typeof window !== 'undefined') {
           console.error('[AstroSphere] OAuth / session init error:', sessErr);
           if (INITIAL_OAUTH_CALLBACK || window.location.search.includes('code=') || window.location.search.includes('error=')) {
             cleanOAuthUrl();
-            const msg = 'Autentikasi Google dibatalkan atau gagal diproses. Silakan coba lagi.';
+            const errStr = String(sessErr.code || sessErr.message || '').toLowerCase();
+            const msg = errStr.includes('banned') || errStr.includes('disabled')
+              ? formatBannedMessage()
+              : 'Autentikasi Google dibatalkan atau gagal diproses. Silakan coba lagi.';
             store.oauthError = msg;
             if (store.phase === 'splash') store.screen = 'login';
-            showToast(msg, 3600);
+            showToast(msg, 4200);
           }
           return;
         }
@@ -1013,29 +1152,36 @@ if (typeof window !== 'undefined') {
             return;
           }
           if (store.account.loggedIn && store.account.cloudSynced) {
-            syncedSessionUserId = null;
-            await forceRevokeAccountSession('Sesi akun berakhir. Silakan masuk kembali.');
+            await forceRevokeAccountSession({
+              banned: false,
+              message: 'Sesi akun berakhir. Silakan masuk kembali.',
+            });
           }
           return;
         }
-        const { data, error } = await client.auth.getUser();
-        if (error) {
-          if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+
+        // Proses & periksa status row player_progress LEBIH DAHULU sebelum memanggil getUser()
+        await handleUserSession(sessData.session.user, INITIAL_OAUTH_CALLBACK);
+        if (!store.account.loggedIn || !store.account.cloudSynced) return;
+
+        const { error: userErr } = await client.auth.getUser();
+        if (userErr) {
+          if (isOfflineOrNetworkError(userErr) || isBrowserOffline()) {
             return;
           }
-          if (store.account.loggedIn && store.account.cloudSynced) {
-            const banned = String(error.message || '').toLowerCase().includes('banned');
-            syncedSessionUserId = null;
-            forceRevokeAccountSession(
-              banned
-                ? formatBannedMessage()
-                : 'Sesi akun tidak lagi valid atau telah dihapus administrator.'
-            );
-          }
-          return;
-        }
-        if (data?.user) {
-          handleUserSession(data.user, INITIAL_OAUTH_CALLBACK);
+          const preCheck = await checkPlayerAccountStatus({
+            userId: sessData.session.user.id,
+            authProvider: 'google',
+          });
+          if (preCheck.offline) return;
+          const isBanned = !!preCheck.banned || String(userErr.message || '').toLowerCase().includes('banned');
+          await forceRevokeAccountSession({
+            banned: isBanned,
+            reason: preCheck.bannedReason || '',
+            message: isBanned
+              ? (preCheck.err || formatBannedMessage())
+              : 'Sesi akun tidak lagi valid atau telah dihapus pengelola.',
+          });
         }
       }).catch(() => {});
     }
@@ -1047,23 +1193,10 @@ if (typeof window !== 'undefined') {
       } else if (event === 'SIGNED_OUT') {
         syncedSessionUserId = null;
         if (store.account.loggedIn && store.account.cloudSynced && store.account.authProvider !== 'username') {
-          let guestAstroId = ls.read(KEYS.astroId);
-          if (!guestAstroId) {
-            guestAstroId = generateAstroId();
-            ls.write(KEYS.astroId, guestAstroId);
-          }
-          Object.assign(store.account, {
-            loggedIn: false,
-            name: '',
-            username: '',
-            userId: null,
-            authProvider: '',
-            sessionToken: '',
-            cloudSynced: false,
-            astroId: guestAstroId,
+          forceRevokeAccountSession({
+            banned: false,
+            message: 'Sesi akun Anda telah berakhir. Silakan masuk kembali.',
           });
-          saveAccount();
-          switchAccountKeymap(null);
         }
       }
     });

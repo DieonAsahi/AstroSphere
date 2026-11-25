@@ -233,6 +233,7 @@ onBeforeUnmount(() => { game()?.dispose(); });
         </div>
       </template>
     </NuxtErrorBoundary>
+    <AccountDisabledModal />
   </div>
 </template>
 

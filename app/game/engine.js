@@ -106,6 +106,15 @@ export function createEngine(el) {
     syncSelectedShip,
     { deep: true }
   );
+  const stopBannedWatch = watch(
+    () => store.bannedModal?.show,
+    (shown) => {
+      if (shown) {
+        clearAllInputs();
+        exitFreeLook();
+      }
+    }
+  );
 
   // ---------- Renderer ----------
   function initRenderer() {
@@ -1055,6 +1064,13 @@ export function createEngine(el) {
   const isAct = (id, code) => (keymap[id] || []).includes(code);
   const FLY = ['forward', 'back', 'left', 'right', 'turnL', 'turnR', 'up', 'down', 'turbo', 'brake', 'stop', 'map', 'cam', 'target'];
   on(window, 'keydown', (e) => {
+    if (store.bannedModal?.show) {
+      if (e.code === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
     if (store.capturing) return; // Profil → Kontrol sedang merekam tombol baru
     if (typing(e) && e.code !== 'Escape') return;
     if (store.modal) { if (e.code === 'Escape') store.modal = null; return; }
@@ -1516,6 +1532,7 @@ export function createEngine(el) {
     dispose() {
       stopPlanetWatch?.();
       stopShipWatch?.();
+      stopBannedWatch?.();
       hazards?.dispose();
       if (renderer) { renderer.setAnimationLoop(null); composer && composer.dispose(); renderer.dispose(); renderer.forceContextLoss(); }
       for (const [t, ev, fn, opt] of listeners) t.removeEventListener(ev, fn, opt);
