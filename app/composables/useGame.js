@@ -881,13 +881,12 @@ export const setEngine = (e) => { engineRef = e; };
 export const game = () => engineRef;
 
 /**
- * Panduan 5 slide (Guide.vue) SELALU tampil saat menekan "Mulai" / "Lanjutkan" — untuk tamu maupun pemain yang
- * sudah login/punya simpanan. Panduan sekaligus menjadi layar muat: dunia 3D dimuat di belakangnya, dan
- * "Lewati" / Enter langsung terbang begitu siap. Layar muat cepat (phase 'loading') hanya dipakai bila pemain
- * melewati panduan sebelum dunia selesai dimuat, atau sepulang dari login Google.
+ * Panduan 5 slide (Guide.vue) tampil setiap kali pemain memulai petualangan BARU ("Mulai bermain" / "Mulai baru").
+ * "Lanjutkan" (store.startFromSave) langsung masuk ke game lewat layar muat cepat tanpa panduan.
+ * Panggil setelah store.startFromSave diisi.
  */
 export function shouldShowGuide() {
-  return true;
+  return !store.startFromSave;
 }
 
 export function useGame() { return { store, game, shouldShowGuide }; }

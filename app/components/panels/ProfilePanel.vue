@@ -521,18 +521,18 @@ const FAQ = [
               </div>
               <div class="key-row fixed">
                 <div class="key-desc">
-                  <span class="action-label">Lihat Sekeliling</span>
-                  <span class="action-sub">Kamera berputar selama tombol mouse ditahan dan digeser</span>
+                  <span class="action-label">Aktifkan Kamera Bebas (POV)</span>
+                  <span class="action-sub">Atur sudut pandang 360° dengan gerak mouse atau trackpad</span>
                 </div>
-                <div class="key-capsules"><span class="key-badge mouse">Tahan klik &amp; geser</span></div>
+                <div class="key-capsules"><span class="key-badge mouse">Klik Kiri 1×</span></div>
                 <span />
               </div>
               <div class="key-row fixed">
                 <div class="key-desc">
-                  <span class="action-label">Luruskan Kamera</span>
-                  <span class="action-sub">Kamera kembali ke haluan depan pesawat</span>
+                  <span class="action-label">Matikan Kamera Bebas</span>
+                  <span class="action-sub">Luruskan kamera kembali ke haluan depan pesawat</span>
                 </div>
-                <div class="key-capsules"><span class="key-badge mouse">Lepas klik</span></div>
+                <div class="key-capsules"><span class="key-badge mouse">Klik Kanan 1× / Klik Kiri 2×</span></div>
                 <span />
               </div>
             </div>

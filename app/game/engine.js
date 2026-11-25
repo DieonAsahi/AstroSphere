@@ -347,6 +347,18 @@ export function createEngine(el) {
   const obsCam = { yaw: .9, pitch: .22, dist: 3.4, drag: false };
   const lookActive = () => worldMode() === 'jelajah' && store.phase === 'playing' && (freeLookMode || look.rmb || !!keys.KeyL || look.touchId !== null);
 
+  function enterFreeLook() {
+    if (worldMode() !== 'jelajah' || store.phase !== 'playing') return;
+    freeLookMode = true;
+    store.look.freeLook = true;
+    store.look.active = true;
+    try {
+      if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+        canvas.requestPointerLock();
+      }
+    } catch {}
+  }
+
   function exitFreeLook() {
     if (!freeLookMode && (typeof document === 'undefined' || document.pointerLockElement !== canvas)) return;
     freeLookMode = false;
@@ -985,14 +997,17 @@ export function createEngine(el) {
   });
   on(window, 'blur', () => { clearAllInputs(); });
   function applyLookDelta(dx, dy, k) { look.yaw -= dx * k; look.pitch = clamp(look.pitch - dy * k * (settings.invertY ? -1 : 1), -1.35, 1.35); }
-  let lastTouchT = 0;
+  let lastTouchT = 0, downX = 0, downY = 0, downT = 0;
   on(canvas, 'mousedown', (e) => {
     if (performance.now() - lastTouchT < 800) return;
     const wm = worldMode();
     if ((wm === 'menu' || wm === 'hangar' || wm === 'observe' || wm === 'lab') && e.button === 0) { look.drag = true; obsCam.drag = true; return; }
     if (wm === 'jelajah' && store.phase === 'playing') {
       if (e.button === 0) {
-        look.rmb = true; // kamera berputar hanya selama tombol ditahan (lihat mousemove)
+        downX = e.clientX;
+        downY = e.clientY;
+        downT = performance.now();
+        look.rmb = true;
       } else if (e.button === 2) {
         if (freeLookMode) exitFreeLook();
       }
@@ -1003,6 +1018,13 @@ export function createEngine(el) {
       look.drag = false;
       obsCam.drag = false;
       look.rmb = false;
+      if (worldMode() === 'jelajah' && store.phase === 'playing') {
+        const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
+        const elapsed = performance.now() - downT;
+        if (moved < 6 && elapsed < 350) {
+          if (!freeLookMode) enterFreeLook();
+        }
+      }
     }
     if (e.button === 0 || e.button === 2) look.rmb = false;
   });

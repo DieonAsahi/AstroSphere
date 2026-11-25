@@ -66,10 +66,10 @@ onBeforeUnmount(() => { game()?.dispose(); });
     <!-- Layar Awal Splash (Beranda / Masuk / Daftar) -->
     <Transition name="fade"><Splash v-if="store.phase === 'splash'" /></Transition>
 
-    <!-- Panduan 5 slide: tampil setiap kali Mulai / Lanjutkan (sekaligus layar muat) -->
+    <!-- Panduan 5 slide: tampil setiap kali memulai petualangan baru (sekaligus layar muat) -->
     <Transition name="fade"><Guide v-if="store.phase === 'guide'" /></Transition>
 
-    <!-- Layar muat cepat: bila panduan dilewati sebelum dunia 3D siap, atau sepulang dari login Google -->
+    <!-- Layar muat cepat: saat Lanjutkan, bila panduan dilewati sebelum dunia 3D siap, atau sepulang dari login Google -->
     <Transition name="fade">
       <div v-if="store.phase === 'loading'" class="quick-loader" role="status" aria-live="polite">
         <div class="card box-loader">

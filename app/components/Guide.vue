@@ -543,12 +543,12 @@ onBeforeUnmount(() => {
                 <span class="ctrl-sublabel">Kamera Bebas (Free-Look POV)</span>
                 <div class="cam-hint-grid">
                   <div class="cam-hint-item">
-                    <b class="kbd">Tahan klik &amp; geser</b>
-                    <span>Lihat sekeliling</span>
+                    <b class="kbd">Klik Kiri 1&times;</b>
+                    <span>Atur POV Kamera Bebas</span>
                   </div>
                   <div class="cam-hint-item">
-                    <b class="kbd">Lepas klik</b>
-                    <span>Kamera kembali lurus</span>
+                    <b class="kbd">Klik Kanan 1&times; / Klik Kiri 2&times;</b>
+                    <span>Keluar &amp; Luruskan Kamera</span>
                   </div>
                 </div>
               </div>
