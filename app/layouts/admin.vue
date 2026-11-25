@@ -282,6 +282,17 @@ onBeforeUnmount(() => {
 
 <style>
 /* Reset khusus tata letak admin dalam mode terang (Light Mode) */
+html:has(.admin-theme-root),
+body:has(.admin-theme-root),
+#__nuxt:has(.admin-theme-root) {
+  background-color: #f8fafc;
+  color: #0f172a;
+  height: 100%;
+  overflow: hidden;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .admin-theme-root {
   --adm-bg: #f8fafc;
   --adm-surface: #ffffff;
@@ -300,10 +311,19 @@ onBeforeUnmount(() => {
   --adm-warning: #d97706;
   --adm-warning-light: #fffbeb;
 
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #f8fafc;
   background-color: var(--adm-bg);
   color: var(--adm-text);
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Zero Leak Loader */
@@ -313,7 +333,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  min-height: 100vh;
+  min-height: 100%;
   background-color: #f8fafc;
   color: #475569;
   font-size: 14px;
@@ -332,7 +352,10 @@ onBeforeUnmount(() => {
 
 .admin-shell {
   display: flex;
-  min-height: 100vh;
+  align-items: stretch;
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--adm-bg);
   position: relative;
 }
 
@@ -381,9 +404,13 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   flex: none;
+  align-self: flex-start;
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  z-index: 20;
 }
 .sidebar-brand {
   padding: 20px 18px;
@@ -417,6 +444,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 .nav-item {
@@ -524,6 +552,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 100%;
+  background-color: var(--adm-bg);
 }
 .admin-topbar {
   height: 60px;
@@ -566,7 +596,7 @@ onBeforeUnmount(() => {
 }
 
 .admin-offline-gate {
-  min-height: 100vh;
+  min-height: 100%;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -686,6 +716,18 @@ onBeforeUnmount(() => {
   .nav-item {
     justify-content: center;
     padding: 12px 0;
+  }
+  .public-link {
+    justify-content: center;
+    padding: 8px 0;
+  }
+  .sidebar-footer {
+    padding: 10px 8px;
+  }
+  .admin-profile-box {
+    flex-direction: column;
+    padding: 8px 4px;
+    gap: 6px;
   }
 }
 </style>
