@@ -1453,7 +1453,7 @@ export function createEngine(el) {
     } catch (err) {
       console.error(err);
       booting = null;
-      store.loading.error = 'Saat ini halaman ruang angkasa 3D belum bisa diakses. Pastikan koneksi stabil dan browser mendukung WebGL2.';
+      store.loading.error = 'Saat ini halaman ruang angkasa 3D belum bisa diakses. Pastikan koneksi stabil dan coba beberapa saat lagi.';
     }
   }
 

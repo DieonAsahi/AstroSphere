@@ -187,7 +187,7 @@ const f3 = (v) => (+v).toFixed(3);
         </div>
         <UiToggle v-model="store.lab.labels" label="Label" />
         <UiToggle v-model="store.lab.volume" label="Tampilkan bayangan" />
-        <p class="fine">Sumber: {{ phenoData?.sumber_referensi || 'NASA' }} · Materi disinkronkan dengan data edukasi Supabase &amp; katalog AstroSphere.</p>
+        <p class="fine">Sumber: {{ phenoData?.sumber_referensi || 'NASA' }} · Katalog Edukasi AstroSphere.</p>
       </div>
 
       <div v-if="asking" class="sfoot">

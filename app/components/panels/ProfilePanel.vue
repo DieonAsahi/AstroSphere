@@ -49,7 +49,7 @@ const TABS = [
   ['kuis', 'Riwayat Kuis'],
   ['armada', 'Pesawat'],
   ['kontrol', 'Kontrol'],
-  ['akun', 'Akun & Awan'],
+  ['akun', 'Akun'],
   ['faq', 'Bantuan'],
 ];
 
@@ -211,7 +211,7 @@ async function handleAuthSubmit() {
 
   authForm.password = '';
   const act = isReg ? 'Akun baru berhasil dibuat' : 'Berhasil masuk akun';
-  authForm.success = `${act}! Progres lokal Anda telah digabungkan ke awan Supabase.`;
+  authForm.success = `${act}! Progres Anda telah disimpan dan disinkronkan.`;
   const safeName = (store.account.name || '').replace(/[<>&"]/g, '');
   showToast(`Selamat datang, <b>${safeName}</b>!`, 3200);
 }
@@ -224,13 +224,13 @@ async function handleGoogleAuth() {
   const res = await loginWithGoogle();
   authForm.busy = false;
   if (!res.ok) {
-    authForm.err = res.err || 'Gagal menghubungkan ke layanan Google.';
+    authForm.err = res.err || 'Tidak dapat menghubungkan ke layanan Google saat ini.';
   }
 }
 
 async function handleLogout() {
   await logoutUser();
-  showToast('Anda telah keluar dari akun awan. Beralih ke Mode Tamu lokal.', 2800);
+  showToast('Anda telah keluar dari akun. Beralih ke Mode Tamu.', 2800);
 }
 
 async function triggerManualSync() {
@@ -242,7 +242,7 @@ async function triggerManualSync() {
   }
   const res = await pullCloudProgress();
   if (res?.ok) {
-    showToast('Progres berhasil disinkronkan ke awan Supabase!', 2200);
+    showToast('Progres berhasil disinkronkan!', 2200);
   } else if (res?.offline) {
     showToast(res.err || OFFLINE_ACTION_NOTICE, 3200);
   } else {
@@ -272,7 +272,7 @@ function promptResetData() {
 function promptDeleteAccount() {
   confirmDialog.type = 'delete_account';
   confirmDialog.title = 'Hapus Akun Permanen?';
-  confirmDialog.message = 'Akun serta seluruh progres permainanmu di awan akan dihapus secara permanen dan tidak dapat dipulihkan. Yakin ingin menghapus akun?';
+  confirmDialog.message = 'Akun serta seluruh progres permainanmu akan dihapus secara permanen dan tidak dapat dipulihkan. Yakin ingin menghapus akun?';
   confirmDialog.confirmLabel = 'Hapus Akun Permanen';
   confirmDialog.busy = false;
   confirmDialog.show = true;
@@ -307,7 +307,7 @@ const FAQ = [
   ['Bagaimana cara ke planet tertentu?', 'Buka Peta (tombol M atau lewat navigasi), pilih planet tujuan, lalu tekan "Terbang ke sini". Pesawat akan bermanuver otomatis dan berhenti tepat saat mendekati planet.'],
   ['Bagaimana mendapat bintang?', 'Kerjakan kuis planet: 4 soal, 50 bintang per jawaban benar. Bintang hanya bertambah jika skormu melampaui skor terbaik sebelumnya. Jawaban salah tidak mengurangi saldo bintang.'],
   ['Untuk apa bintang digunakan?', 'Membuka armada pesawat baru di Hanggar: Orion Glider (300 bintang) dan Nova Voyager (700 bintang).'],
-  ['Apakah progres tersimpan di awan?', 'Ya! Saat Anda mendaftar atau masuk akun, seluruh saldo bintang, armada pesawat, dan jurnal tersimpan permanen di Supabase. Dalam Mode Tamu, seluruh data tetap aman tersimpan di peramban lokal perangkat ini.'],
+  ['Apakah progres tersimpan aman?', 'Ya! Saat Anda mendaftar atau masuk akun, seluruh saldo bintang, armada pesawat, dan jurnal tersimpan otomatis di akun Anda. Dalam Mode Tamu, progres tetap tersimpan di peramban perangkat ini.'],
   ['Apakah ukuran dan jaraknya berskala nyata?', 'Rasio ukuran planet dibandingkan satu sama lain akurat sesuai data NASA JPL. Jarak orbit antarplanet dipadatkan secara ergonomis agar seluruh tata surya dapat dijelajahi dengan nyaman.'],
 ];
 </script>
@@ -324,7 +324,7 @@ const FAQ = [
             <div class="status-indicator">
               <span class="status-dot" :class="{ cloud: store.account.cloudSynced, local: !store.account.cloudSynced }" />
               <span class="status-text">
-                {{ store.account.cloudSynced ? 'TELEMETRI AWAN TERHUBUNG' : 'MODE TAMU · TERSIMPAN LOKAL' }}
+                {{ store.account.cloudSynced ? 'AKUN TERHUBUNG' : 'MODE TAMU · TERSIMPAN LOKAL' }}
               </span>
             </div>
           </div>
@@ -627,13 +627,13 @@ const FAQ = [
           </div>
         </section>
 
-        <!-- TAB 4: AKUN & AWAN -->
+        <!-- TAB 4: AKUN -->
         <section v-else-if="tab === 'akun'" class="tab-pane">
           <div class="account-panel">
             <div class="panel-section-header">
               <div class="header-titles">
-                <h3 class="section-title">Telemetri Awan &amp; Akun Pemain</h3>
-                <p class="section-sub">Simpan progres penjelajahan, ekonomi bintang, dan armada pesawat secara permanen di basis data Supabase.</p>
+                <h3 class="section-title">Akun &amp; Sinkronisasi Progres</h3>
+                <p class="section-sub">Simpan progres penjelajahan, saldo bintang, dan armada pesawat Anda secara otomatis ke akun.</p>
               </div>
             </div>
 
@@ -642,11 +642,11 @@ const FAQ = [
               <div class="cloud-status-banner" :class="{ offline: isOffline }">
                 <UiIcon :name="isOffline ? 'info' : 'cek'" :size="20" :class="isOffline ? 'status-ic-warn' : 'status-ic-ok'" />
                 <div class="banner-text">
-                  <span class="banner-title">{{ isOffline ? 'Sedang Offline — Sinkronisasi Awan Dijeda' : 'Akun Awan Aktif & Terhubung' }}</span>
+                  <span class="banner-title">{{ isOffline ? 'Sedang Offline — Sinkronisasi Dijeda' : 'Akun Aktif & Terhubung' }}</span>
                   <p class="banner-desc">
                     {{
                       isOffline
-                        ? 'Anda tetap dapat menjelajah secara lokal. Hubungkan kembali internet untuk menyinkronkan progres ke awan.'
+                        ? 'Anda tetap dapat menjelajah di perangkat ini. Hubungkan kembali internet untuk menyinkronkan progres Anda.'
                         : 'Setiap perolehan bintang, kuis, dan armada baru disinkronkan secara otomatis.'
                     }}
                   </p>
@@ -667,8 +667,8 @@ const FAQ = [
                   <span class="detail-val cyan">{{ formattedAstroId }}</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">STATUS TELEMETRI</span>
-                  <span class="detail-val" :class="isOffline ? 'warn' : 'green'">{{ isOffline ? 'Mode Offline (Menunggu Koneksi)' : 'Awan Supabase Aktif' }}</span>
+                  <span class="detail-label">STATUS AKUN</span>
+                  <span class="detail-val" :class="isOffline ? 'warn' : 'green'">{{ isOffline ? 'Mode Offline (Menunggu Koneksi)' : 'Sinkronisasi Aktif' }}</span>
                 </div>
               </div>
 
@@ -750,7 +750,7 @@ const FAQ = [
                   </p>
 
                   <button type="submit" class="btn-auth-submit" :disabled="authForm.busy">
-                    {{ authForm.busy ? 'Menghubungkan…' : (authMode === 'login' ? 'Masuk & Sinkronkan Progres' : 'Daftar Akun & Simpan ke Awan') }}
+                    {{ authForm.busy ? 'Menghubungkan…' : (authMode === 'login' ? 'Masuk & Sinkronkan Progres' : 'Daftar Akun Baru') }}
                   </button>
 
                   <div class="auth-divider">
@@ -801,7 +801,7 @@ const FAQ = [
               <div v-if="store.account.loggedIn" class="danger-action-box">
                 <div class="danger-info">
                   <span class="danger-action-title text-danger">Hapus Akun Permanen</span>
-                  <p class="danger-action-desc">Menghapus akun awan dan seluruh progres permainan di Supabase secara permanen tanpa sisa.</p>
+                  <p class="danger-action-desc">Menghapus akun beserta seluruh progres permainan Anda secara permanen tanpa sisa.</p>
                 </div>
                 <button type="button" class="btn-danger-solid" @click="promptDeleteAccount">
                   Hapus Akun Permanen
@@ -1386,7 +1386,7 @@ const FAQ = [
 }
 .hrc-badge {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   color: #38bdf8;
   text-transform: uppercase;
@@ -1394,7 +1394,7 @@ const FAQ = [
 .hrc-title {
   font-family: var(--display);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   color: #f8fafc;
   margin: 0;
 }

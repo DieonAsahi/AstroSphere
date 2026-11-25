@@ -77,7 +77,7 @@ const economyStatus = computed(() => {
 async function loadDashboardData() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -247,7 +247,7 @@ async function loadDashboardData() {
     updates.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     recentUpdates.value = updates.slice(0, 5);
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat data dasbor.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat data dasbor.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -437,7 +437,7 @@ onMounted(() => {
       </div>
 
       <div v-if="!recentUpdates.length" class="empty-log">
-        Belum ada catatan pembaruan materi di basis data.
+        Belum ada catatan pembaruan materi.
       </div>
       <div v-else class="log-list">
         <NuxtLink

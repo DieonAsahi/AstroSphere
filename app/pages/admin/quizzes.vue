@@ -63,7 +63,7 @@ const formData = ref({ ...DEFAULT_QUESTION });
 async function loadQuestions() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -78,7 +78,7 @@ async function loadQuestions() {
     if (fetchErr) throw fetchErr;
     questions.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat bank soal.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat bank soal.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -192,7 +192,7 @@ async function confirmToggleActive() {
     showNotification('success', `Soal kuis berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif soal.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status soal.'));
   } finally {
     togglingId.value = '';
   }
@@ -277,7 +277,7 @@ async function handleSave() {
     closeModal();
     await loadQuestions();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan soal kuis.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui soal kuis.');
   } finally {
     saving.value = false;
   }
@@ -300,7 +300,7 @@ async function handleDelete() {
     deletingQuestion.value = null;
     await loadQuestions();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menghapus soal.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus soal.'));
   } finally {
     saving.value = false;
   }
@@ -432,7 +432,7 @@ async function handleImportSubmit() {
     importText.value = '';
     await loadQuestions();
   } catch (err) {
-    importError.value = formatSupabaseError(err, 'Gagal memproses data impor.');
+    importError.value = formatSupabaseError(err, 'Tidak bisa menambahkan data impor.');
   } finally {
     saving.value = false;
   }
@@ -504,7 +504,7 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat bank soal kuis dari Supabase…</p>
+        <p>Memuat bank soal kuis…</p>
       </div>
 
       <div v-else-if="!filteredQuestions.length" class="empty-state">

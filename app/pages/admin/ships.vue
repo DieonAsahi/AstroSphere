@@ -111,7 +111,7 @@ function parseBar(val, fallback) {
 async function loadShips() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -126,7 +126,7 @@ async function loadShips() {
     if (fetchErr) throw fetchErr;
     ships.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat daftar pesawat hanggar.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat data pesawat.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -207,7 +207,7 @@ async function confirmToggleActive() {
     showNotification('success', `Pesawat ${ship.nama} berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status pesawat.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status pesawat.'));
   } finally {
     togglingId.value = '';
   }
@@ -314,7 +314,7 @@ async function handleSave() {
     closeModal();
     await loadShips();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan perubahan pesawat.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui data pesawat.');
   } finally {
     saving.value = false;
   }
@@ -399,12 +399,12 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat data armada pesawat dari Supabase…</p>
+        <p>Memuat data armada pesawat…</p>
       </div>
 
       <div v-else-if="!ships.length" class="empty-state">
         <UiIcon name="hanggar" :size="28" />
-        <p>Belum ada data armada pesawat di tabel <code>public.ships</code>. Jalankan <code>structure.sql</code> terlebih dahulu.</p>
+        <p>Belum ada data armada pesawat yang tersedia.</p>
       </div>
 
       <table v-else class="adm-table">

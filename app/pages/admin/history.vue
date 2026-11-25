@@ -93,7 +93,7 @@ const formData = ref({ ...DEFAULT_EVENT });
 async function loadHistoryEvents() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -108,7 +108,7 @@ async function loadHistoryEvents() {
     if (fetchErr) throw fetchErr;
     events.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat catatan sejarah.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat catatan sejarah.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -190,7 +190,7 @@ async function confirmToggleActive() {
     showNotification('success', `Peristiwa sejarah "${eventItem.judul}" berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif sejarah.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status aktif sejarah.'));
   } finally {
     togglingId.value = '';
   }
@@ -337,7 +337,7 @@ async function handleSave() {
     closeModal();
     await loadHistoryEvents();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan peristiwa.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui peristiwa.');
   } finally {
     saving.value = false;
   }
@@ -360,7 +360,7 @@ async function handleDelete() {
     deletingEvent.value = null;
     await loadHistoryEvents();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menghapus peristiwa.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus peristiwa.'));
   } finally {
     saving.value = false;
   }
@@ -376,9 +376,9 @@ async function handleImageUpload(e) {
 
   if (res.ok) {
     formData.value.gambar_url = res.url;
-    showNotification('success', 'Foto peristiwa berhasil diunggah ke Storage.');
+    showNotification('success', 'Foto peristiwa berhasil diunggah.');
   } else {
-    showNotification('error', res.error || 'Gagal mengunggah foto.');
+    showNotification('error', res.error || 'Tidak bisa mengunggah foto.');
   }
 }
 
@@ -485,7 +485,7 @@ async function handleImportSubmit() {
     importText.value = '';
     await loadHistoryEvents();
   } catch (err) {
-    importError.value = formatSupabaseError(err, 'Gagal memproses data impor.');
+    importError.value = formatSupabaseError(err, 'Tidak bisa menambahkan data impor.');
   } finally {
     saving.value = false;
   }
@@ -574,7 +574,7 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat catatan sejarah dari Supabase…</p>
+        <p>Memuat catatan sejarah…</p>
       </div>
 
       <div v-else-if="!filteredEvents.length" class="empty-state">

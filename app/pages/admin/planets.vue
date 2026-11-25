@@ -49,7 +49,7 @@ const formData = ref({ ...EMPTY_FORM });
 async function loadPlanets() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -64,7 +64,7 @@ async function loadPlanets() {
     if (fetchErr) throw fetchErr;
     planets.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat daftar planet.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat data planet.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -108,7 +108,7 @@ async function confirmToggleActive() {
     showNotification('success', `Planet ${planet.nama} berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status data.'));
   } finally {
     togglingId.value = '';
   }
@@ -205,7 +205,7 @@ async function handleSave() {
     closeModal();
     await loadPlanets();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan perubahan planet.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui data planet.');
   } finally {
     saving.value = false;
   }
@@ -251,7 +251,7 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat data planet dari Supabase…</p>
+        <p>Memuat data planet…</p>
       </div>
 
       <div v-else-if="!planets.length" class="empty-state">

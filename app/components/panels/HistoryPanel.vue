@@ -708,7 +708,7 @@ function downloadPdf() {
           </div>
         </template>
 
-        <p class="fine">Data tersinkronisasi dengan Supabase & katalog lokal AstroSphere.</p>
+        <p class="fine">Data tersinkronisasi dengan katalog AstroSphere.</p>
       </div>
     </aside>
   </div>

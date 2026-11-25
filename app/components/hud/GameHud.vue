@@ -404,10 +404,7 @@ function handleQuickStop() {
       </div>
     </div>
 
-    <!-- NOTIFIKASI LAINNYA -->
-    <Transition name="fade"><div v-if="store.msg.show" class="msg">{{ store.msg.text }}</div></Transition>
-    <Transition name="fade"><div v-if="store.hud.boundary" class="bound" role="status"><UiIcon name="info" :size="18" />Batas tata surya — putar balik</div></Transition>
-    <Transition name="fade"><div v-if="store.saved.show" class="saved"><UiIcon name="cek" :size="15" />{{ store.saved.label }}</div></Transition>
+    <!-- PETUNJUK TOMBOL -->
     <Transition name="fade">
       <div v-if="hint && !store.approach.show" class="hint">
         <span><b class="kbd sm">{{ k('forward') }}</b> maju</span>
@@ -523,10 +520,7 @@ function handleQuickStop() {
 .throttle-hint-box{display:flex;align-items:center;justify-content:center;width:100%;margin-top:4px}
 .throttle-keys{font-size:10px;color:var(--faint);white-space:nowrap}
 
-/* Notifikasi lainnya */
-.msg{position:absolute;left:50%;top:calc(50% + 48px);transform:translateX(-50%);padding:6px 16px;border-radius:999px;background:var(--surface-a);font-family:var(--display);font-weight:500;white-space:nowrap}
-.bound{position:absolute;left:50%;top:calc(var(--top) + 116px + var(--safe-t));transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:var(--coral);color:#2a0606;font-family:var(--display);font-weight:500;white-space:nowrap}
-.saved{position:absolute;right:calc(var(--gap) + var(--safe-r));top:calc(var(--top) + 60px + var(--safe-t));display:flex;align-items:center;gap:6px;font-size:13px;color:var(--green)}
+/* Petunjuk tombol */
 .hint{position:absolute;left:50%;bottom:calc(var(--gap) + 8px + var(--safe-b));transform:translateX(-50%);display:flex;gap:16px;padding:8px 16px;border-radius:999px;background:var(--surface-a);border:1px solid var(--line);font-size:13px;color:var(--muted);white-space:nowrap;pointer-events:none}
 .hint span{display:flex;align-items:center;gap:5px}
 @media (max-width:1100px){ .hint{display:none} }

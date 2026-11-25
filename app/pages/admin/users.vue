@@ -46,7 +46,7 @@ const totalStarsSum = computed(() => users.value.reduce((sum, u) => sum + (Numbe
 async function loadUsers() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -75,7 +75,7 @@ async function loadUsers() {
   } catch (err) {
     error.value = formatSupabaseError(
       err,
-      'Gagal memuat daftar penjelajah. Pastikan SQL terbaru (user_structure.sql) telah dijalankan di Supabase.'
+      'Tidak bisa memuat daftar penjelajah. Silakan coba beberapa saat lagi.'
     );
   } finally {
     loading.value = false;
@@ -211,7 +211,7 @@ async function confirmStatusChange() {
     }
     await loadUsers();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status akun pengguna.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status akun pengguna.'));
   } finally {
     acting.value = false;
   }
@@ -237,7 +237,7 @@ async function confirmDeleteUser() {
     }
     await loadUsers();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menghapus akun pengguna.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus akun pengguna.'));
   } finally {
     acting.value = false;
   }
@@ -323,7 +323,7 @@ onMounted(() => {
           <div class="kpi-ic total"><UiIcon name="pengguna" :size="18" /></div>
         </div>
         <b class="kpi-val">{{ totalUsers }}</b>
-        <small class="kpi-sub">Akun terdaftar di basis data</small>
+        <small class="kpi-sub">Akun terdaftar di sistem</small>
       </div>
 
       <div class="kpi-card">
@@ -332,7 +332,7 @@ onMounted(() => {
           <div class="kpi-ic active"><UiIcon name="cek" :size="18" /></div>
         </div>
         <b class="kpi-val">{{ activeUsersCount }}</b>
-        <small class="kpi-sub">Dapat masuk &amp; sinkron awan</small>
+        <small class="kpi-sub">Dapat masuk &amp; sinkronisasi</small>
       </div>
 
       <div class="kpi-card">
@@ -369,7 +369,7 @@ onMounted(() => {
         <label>Metode Masuk</label>
         <select v-model="selectedProvider" class="adm-select" @change="currentPage = 1">
           <option value="all">Semua Metode</option>
-          <option value="google">Google OAuth</option>
+          <option value="google">Google</option>
           <option value="username">Username</option>
         </select>
       </div>
@@ -392,13 +392,13 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat daftar pengguna dari Supabase…</p>
+        <p>Memuat daftar pengguna…</p>
       </div>
 
       <div v-else-if="!filteredUsers.length" class="empty-state">
         <UiIcon name="pengguna" :size="28" />
         <p v-if="users.length">Tidak ada akun pengguna yang cocok dengan filter atau kata kunci pencarian.</p>
-        <p v-else>Belum ada pengguna terdaftar di basis data.</p>
+        <p v-else>Belum ada pengguna terdaftar.</p>
         <button v-if="users.length" type="button" class="btn-head line" @click="resetFilters">Tampilkan Semua</button>
       </div>
 
@@ -551,8 +551,8 @@ onMounted(() => {
               <b>{{ detailUser.is_active !== false ? 'Aktif' : 'Dinonaktifkan' }}</b>
             </div>
             <div class="detail-box">
-              <small>Metode Autentikasi</small>
-              <b>{{ detailUser.auth_provider === 'google' ? 'Google OAuth' : 'Username & Sandi' }}</b>
+              <small>Metode Masuk</small>
+              <b>{{ detailUser.auth_provider === 'google' ? 'Google' : 'Username & Sandi' }}</b>
             </div>
             <div class="detail-box">
               <small>Saldo Bintang Aktif</small>
@@ -618,7 +618,7 @@ onMounted(() => {
             Akun <b>{{ displayNameOf(statusModal.user) }}</b> (@{{ statusModal.user.username }}) akan langsung dikeluarkan dari semua sesi aktif dan diblokir untuk login kembali hingga diaktifkan ulang.
           </template>
           <template v-else>
-            Akses login dan sinkronisasi awan untuk <b>{{ displayNameOf(statusModal.user) }}</b> (@{{ statusModal.user.username }}) akan dipulihkan sepenuhnya.
+            Akses masuk dan sinkronisasi untuk <b>{{ displayNameOf(statusModal.user) }}</b> (@{{ statusModal.user.username }}) akan dipulihkan sepenuhnya.
           </template>
         </p>
 

@@ -93,7 +93,7 @@ const bodyCountMap = computed(() => {
 async function loadFacts() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -109,7 +109,7 @@ async function loadFacts() {
     if (fetchErr) throw fetchErr;
     facts.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat daftar kartu fakta.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat data kartu fakta.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -242,7 +242,7 @@ async function confirmToggleActive() {
     showNotification('success', `Kartu fakta "${fact.judul}" berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status kartu fakta.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status kartu fakta.'));
   } finally {
     togglingId.value = '';
   }
@@ -298,7 +298,7 @@ async function handleSave() {
     closeModal();
     await loadFacts();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan kartu fakta.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui kartu fakta.');
   } finally {
     saving.value = false;
   }
@@ -321,7 +321,7 @@ async function handleDelete() {
     deletingFact.value = null;
     await loadFacts();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menghapus kartu fakta.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus kartu fakta.'));
   } finally {
     saving.value = false;
   }
@@ -415,7 +415,7 @@ async function handleImportSubmit() {
     importText.value = '';
     await loadFacts();
   } catch (err) {
-    importError.value = formatSupabaseError(err, 'Gagal memproses data impor JSON.');
+    importError.value = formatSupabaseError(err, 'Tidak bisa menambahkan data impor.');
   } finally {
     saving.value = false;
   }
@@ -526,7 +526,7 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat kartu fakta dari Supabase…</p>
+        <p>Memuat kartu fakta…</p>
       </div>
 
       <div v-else-if="!filteredFacts.length" class="empty-state">

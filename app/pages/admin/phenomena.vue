@@ -82,7 +82,7 @@ const formData = ref({ ...DEFAULT_FORM, tebak_single: createDefaultGuess(), teba
 async function loadPhenomena() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -97,7 +97,7 @@ async function loadPhenomena() {
     if (fetchErr) throw fetchErr;
     phenomena.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat daftar fenomena.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat data fenomena.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -144,7 +144,7 @@ async function confirmToggleActive() {
     showNotification('success', `Fenomena "${item.judul}" berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status data.'));
   } finally {
     togglingId.value = '';
   }
@@ -321,7 +321,7 @@ async function handleSave() {
     closeModal();
     await loadPhenomena();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan perubahan fenomena.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui data fenomena.');
   } finally {
     saving.value = false;
   }
@@ -392,7 +392,7 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat data fenomena dari Supabase…</p>
+        <p>Memuat data fenomena…</p>
       </div>
 
       <div v-else-if="!filteredPhenomena.length" class="empty-state">

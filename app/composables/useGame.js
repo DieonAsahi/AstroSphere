@@ -287,7 +287,7 @@ function triggerCloudSync() {
     game_state: readGameState() || {},
     settings_data: store.settings,
   }), () => {
-    store.saved.label = 'Tersimpan di Awan';
+    store.saved.label = 'Tersimpan';
     store.saved.show = true;
     setTimeout(() => { store.saved.show = false; }, 2200);
   }, (revoked) => {

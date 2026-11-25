@@ -83,7 +83,7 @@ const mythCount = computed(() => myths.value.filter((m) => !m.is_fact).length);
 async function loadMyths() {
   const client = getSupabaseClient();
   if (!client) {
-    error.value = 'Klien Supabase belum terkonfigurasi.';
+    error.value = 'Layanan data belum siap. Muat ulang halaman.';
     loading.value = false;
     return;
   }
@@ -98,7 +98,7 @@ async function loadMyths() {
     if (fetchErr) throw fetchErr;
     myths.value = data || [];
   } catch (err) {
-    error.value = formatSupabaseError(err, 'Gagal memuat daftar pernyataan Mitos atau Fakta.');
+    error.value = formatSupabaseError(err, 'Tidak bisa memuat daftar pernyataan.');
   } finally {
     loading.value = false;
     refreshing.value = false;
@@ -246,7 +246,7 @@ async function confirmToggleActive() {
     showNotification('success', `Pernyataan berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
-    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status pernyataan.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa memperbarui status pernyataan.'));
   } finally {
     togglingId.value = '';
   }
@@ -305,7 +305,7 @@ async function handleSave() {
     closeModal();
     await loadMyths();
   } catch (err) {
-    formError.value = formatSupabaseError(err, 'Gagal menyimpan pernyataan.');
+    formError.value = formatSupabaseError(err, 'Tidak bisa memperbarui pernyataan.');
   } finally {
     saving.value = false;
   }
@@ -328,7 +328,7 @@ async function handleDelete() {
     deletingMyth.value = null;
     await loadMyths();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menghapus pernyataan.'));
+    showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus pernyataan.'));
   } finally {
     saving.value = false;
   }
@@ -431,7 +431,7 @@ async function handleImportSubmit() {
     importText.value = '';
     await loadMyths();
   } catch (err) {
-    importError.value = formatSupabaseError(err, 'Gagal memproses data impor JSON.');
+    importError.value = formatSupabaseError(err, 'Tidak bisa menambahkan data impor.');
   } finally {
     saving.value = false;
   }
@@ -531,7 +531,7 @@ onMounted(() => {
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
-        <p>Memuat daftar pernyataan dari Supabase…</p>
+        <p>Memuat daftar pernyataan…</p>
       </div>
 
       <div v-else-if="!filteredMyths.length" class="empty-state">

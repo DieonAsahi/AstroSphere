@@ -26,7 +26,7 @@ export async function uploadAdminAsset(file, folder = 'history') {
 
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, error: 'Klien Supabase tidak tersedia.' };
+    return { ok: false, error: 'Layanan unggah berkas belum tersedia saat ini.' };
   }
   if (isBrowserOffline()) {
     return { ok: false, error: OFFLINE_ACTION_NOTICE };
@@ -52,7 +52,7 @@ export async function uploadAdminAsset(file, folder = 'history') {
       if (lower.includes('bucket not found')) {
         return {
           ok: false,
-          error: 'Penyimpanan aset belum tersedia di server. Hubungi administrator sistem.',
+          error: 'Penyimpanan media belum tersedia saat ini. Hubungi pengelola sistem.',
         };
       }
       if (lower.includes('maximum allowed size') || lower.includes('payload too large') || lower.includes('size')) {
@@ -61,7 +61,7 @@ export async function uploadAdminAsset(file, folder = 'history') {
       if (lower.includes('mime') || lower.includes('invalid type')) {
         return { ok: false, error: 'Format berkas tidak didukung. Harap unggah gambar JPG, PNG, atau WebP.' };
       }
-      return { ok: false, error: 'Gagal mengunggah berkas ke Storage. Silakan coba lagi.' };
+      return { ok: false, error: 'Tidak bisa mengunggah berkas saat ini. Silakan coba lagi.' };
     }
 
     const { data: publicUrlData } = client.storage

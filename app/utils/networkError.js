@@ -5,7 +5,7 @@ export const OFFLINE_PUBLIC_NOTICE = 'Koneksi internet terputus. Progres disimpa
 export const OFFLINE_ADMIN_NOTICE = 'Koneksi internet terputus. Saat ini halaman Admin belum dapat diakses. Periksa koneksi Anda lalu coba lagi.';
 export const OFFLINE_ACTION_NOTICE = 'Koneksi internet terputus. Fitur ini memerlukan koneksi internet.';
 export const GENERIC_PUBLIC_ERROR = 'Saat ini permintaan belum dapat diproses. Silakan coba beberapa saat lagi.';
-export const GENERIC_ADMIN_ERROR = 'Terjadi kendala saat menghubungi server. Silakan coba beberapa saat lagi.';
+export const GENERIC_ADMIN_ERROR = 'Saat ini halaman masih belum bisa diakses. Silakan coba beberapa saat lagi.';
 
 export function isBrowserOffline() {
   return typeof navigator !== 'undefined' && navigator.onLine === false;

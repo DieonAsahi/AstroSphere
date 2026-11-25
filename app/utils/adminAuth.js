@@ -395,7 +395,7 @@ export async function adminLogin(emailInput, passwordInput) {
   if (!client) {
     return {
       ok: false,
-      error: 'Klien Supabase belum terkonfigurasi. Pastikan SUPABASE_URL dan SUPABASE_ANON_KEY telah diatur.',
+      error: 'Layanan belum siap. Silakan muat ulang atau coba beberapa saat lagi.',
     };
   }
 
@@ -483,7 +483,7 @@ export function formatSupabaseError(err, fallback = GENERIC_ADMIN_ERROR) {
     const comb = `${msg} ${details}`.toLowerCase();
 
     if (code === '42501' || comb.includes('row-level security') || comb.includes('permission denied')) {
-      return 'Akses ditolak oleh kebijakan keamanan database. Pastikan Anda masuk sebagai Admin yang sah.';
+      return 'Akses ditolak. Pastikan Anda masuk dengan akun Administrator yang sah.';
     }
     if (code === '23505' || comb.includes('duplicate key')) {
       if (comb.includes('urutan_planet')) {

@@ -157,11 +157,11 @@ export async function checkUsernameAvailability(username) {
     if (error) throw error;
     return { ok: true, available: !!data };
   } catch (err) {
-    console.warn('[AstroSphere] Gagal mengecek ketersediaan username via RPC:', err);
+    console.warn('[AstroSphere] Gagal mengecek ketersediaan nama:', err);
     if (isOfflineOrNetworkError(err)) {
       return { ok: true, available: true, offline: true };
     }
-    return { ok: true, available: true, warning: 'Gagal menghubungi server ketersediaan nama, melanjutkan pemeriksaan di pendaftaran.' };
+    return { ok: true, available: true, warning: 'Pemeriksaan nama tertunda, melanjutkan proses pendaftaran.' };
   }
 }
 
@@ -177,7 +177,7 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
 
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, offline: true, noClient: true, err: 'Koneksi Supabase tidak aktif. Akun disimpan lokal di perangkat ini.' };
+    return { ok: false, offline: true, noClient: true, err: 'Layanan akun belum tersedia. Data disimpan di perangkat ini.' };
   }
   if (isBrowserOffline()) {
     return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
@@ -214,15 +214,15 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
       if (authErr.message?.includes('User already registered') || authErr.message?.includes('already exists')) {
         return { ok: false, err: 'Nama pengguna ini sudah terdaftar. Silakan pilih Masuk.' };
       }
-      return { ok: false, err: 'Gagal mendaftar di server awan. Silakan coba lagi.' };
+      return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
     }
 
     const user = authData.user;
     if (!user) {
-      return { ok: false, err: 'Pendaftaran gagal membuat sesi pengguna.' };
+      return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
     }
     if (!authData.session) {
-      return { ok: false, err: 'Akun dibuat tetapi sesi belum aktif (periksa pengaturan verifikasi email Supabase).' };
+      return { ok: false, err: 'Akun dibuat tetapi sesi belum aktif. Silakan coba masuk kembali.' };
     }
 
     // 3. Susun data awal progres yang menggabungkan capaian lokal tamu
@@ -255,7 +255,7 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
 
     if (insertRes.error) {
       console.warn('[AstroSphere] Gagal menyimpan data awal player_progress:', insertRes.error);
-      return { ok: false, err: 'Akun dibuat tetapi gagal menyimpan data awal ke awan. Silakan coba masuk kembali.' };
+      return { ok: false, err: 'Akun dibuat tetapi penyimpanan data awal tertunda. Silakan coba masuk kembali.' };
     }
 
     return {
@@ -287,7 +287,7 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
 
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, offline: true, noClient: true, err: 'Koneksi Supabase tidak aktif.' };
+    return { ok: false, offline: true, noClient: true, err: 'Layanan akun belum tersedia saat ini.' };
   }
   if (isBrowserOffline()) {
     return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
@@ -311,7 +311,7 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
       if (authErr.message?.includes('Invalid login credentials')) {
         return { ok: false, err: 'Nama penjelajah atau kata sandi salah.', unknown: false };
       }
-      return { ok: false, err: 'Gagal masuk akun awan. Silakan coba lagi.' };
+      return { ok: false, err: 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.' };
     }
 
     const user = authData.user;
@@ -395,7 +395,7 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
 export async function signInWithGoogle() {
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, offline: true, noClient: true, err: 'Layanan akun awan belum dikonfigurasi.' };
+    return { ok: false, offline: true, noClient: true, err: 'Layanan masuk dengan Google belum siap saat ini.' };
   }
   if (isBrowserOffline()) {
     return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
@@ -759,23 +759,23 @@ export async function resetPlayerCloudProgress(userId) {
     };
     const { error } = await client.from('player_progress').update(cleanData).eq('user_id', userId);
     if (error) {
-      console.warn('[AstroSphere] Gagal mereset player_progress di awan:', error);
+      console.warn('[AstroSphere] Gagal mengatur ulang progres:', error);
       if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
       }
-      return { ok: false, err: 'Gagal mereset progres di awan. Silakan coba lagi.' };
+      return { ok: false, err: 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.' };
     }
     return { ok: true };
   } catch (err) {
-    console.error('[AstroSphere] Error saat mereset progres awan:', err);
+    console.error('[AstroSphere] Error saat mengatur ulang progres:', err);
     if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
       return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
     }
-    return { ok: false, err: 'Gagal mereset progres di awan. Silakan coba lagi.' };
+    return { ok: false, err: 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.' };
   }
 }
 
-// Hapus akun pemain secara permanen via RPC delete_my_account
+// Hapus akun pemain secara permanen
 export async function deletePlayerAccountFromCloud() {
   const client = getSupabaseClient();
   if (!client) return { ok: false, offline: true, noClient: true };
@@ -786,19 +786,19 @@ export async function deletePlayerAccountFromCloud() {
   try {
     const { data, error } = await client.rpc('delete_my_account');
     if (error) {
-      console.warn('[AstroSphere] Gagal memanggil delete_my_account:', error);
+      console.warn('[AstroSphere] Gagal menghapus akun:', error);
       if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
       }
-      return { ok: false, err: 'Gagal menghapus akun dari server. Silakan coba lagi.' };
+      return { ok: false, err: 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.' };
     }
     await client.auth.signOut().catch(() => {});
     return { ok: true, data };
   } catch (err) {
-    console.error('[AstroSphere] Error saat menghapus akun awan:', err);
+    console.error('[AstroSphere] Error saat menghapus akun:', err);
     if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
       return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
     }
-    return { ok: false, err: 'Gagal menghapus akun dari server. Silakan coba lagi.' };
+    return { ok: false, err: 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.' };
   }
 }
