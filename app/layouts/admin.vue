@@ -388,6 +388,11 @@ body:has(.admin-theme-root),
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
 }
 
+.admin-theme-root b,
+.admin-theme-root strong {
+  font-weight: 600;
+}
+
 .admin-theme-root .table-wrap {
   overflow-x: auto;
 }
@@ -760,6 +765,139 @@ body:has(.admin-theme-root),
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Toggle Switch visual & aksi baris konsisten di semua tabel Admin */
+.admin-theme-root .adm-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  color: #64748b;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+.admin-theme-root .adm-switch-btn:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
+}
+.admin-theme-root .adm-switch-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.admin-theme-root .adm-switch-btn.is-locked {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+.admin-theme-root .adm-switch-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background-color: #94a3b8;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+.admin-theme-root .adm-switch-thumb {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.admin-theme-root .adm-switch-btn.on {
+  border-color: #bbf7d0;
+  background-color: #f0fdf4;
+  color: #15803d;
+}
+.admin-theme-root .adm-switch-btn.on:hover:not(:disabled) {
+  border-color: #86efac;
+  background-color: #dcfce7;
+}
+.admin-theme-root .adm-switch-btn.on .adm-switch-track {
+  background-color: #16a34a;
+}
+.admin-theme-root .adm-switch-btn.on .adm-switch-thumb {
+  transform: translateX(14px);
+}
+.admin-theme-root .adm-switch-label {
+  min-width: 52px;
+  text-align: left;
+  font-weight: 500;
+}
+.admin-theme-root .btn-action.edit:hover,
+.admin-theme-root .btn-edit:hover {
+  color: #2563eb;
+  border-color: #93c5fd;
+  background-color: #eff6ff;
+}
+.admin-theme-root .btn-action.del:hover,
+.admin-theme-root .btn-icon.del:hover {
+  color: #dc2626;
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+}
+.admin-theme-root .btn-warn {
+  background-color: #d97706;
+  color: #ffffff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-theme-root .btn-warn:hover:not(:disabled) {
+  background-color: #b45309;
+}
+.admin-theme-root .btn-warn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.admin-theme-root .modal-card.adm-confirm-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  gap: 12px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+.admin-theme-root .adm-confirm-card .modal-desc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #475569;
+}
+.admin-theme-root .adm-confirm-card .modal-desc b {
+  font-weight: 600;
+  color: #0f172a;
+}
+.admin-theme-root .adm-confirm-quote {
+  margin: 0;
+  font-size: 12.5px;
+  color: #64748b;
+  font-style: italic;
+  background-color: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
 @media (max-width: 768px) {

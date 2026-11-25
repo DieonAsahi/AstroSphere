@@ -452,9 +452,32 @@ onMounted(() => {
             </td>
             <td>
               <div class="status-cell">
-                <span class="status-pill" :class="u.is_active !== false ? 'ok' : 'ban'">
-                  {{ u.is_active !== false ? 'Aktif' : 'Dinonaktifkan' }}
-                </span>
+                <button
+                  v-if="isProtectedAdminRow(u)"
+                  type="button"
+                  class="adm-switch-btn on is-locked"
+                  disabled
+                  title="Akun administrator terlindungi"
+                >
+                  <span class="adm-switch-track" aria-hidden="true">
+                    <span class="adm-switch-thumb" />
+                  </span>
+                  <span class="adm-switch-label">Aktif</span>
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="adm-switch-btn"
+                  :class="{ on: u.is_active !== false }"
+                  :disabled="acting"
+                  :title="u.is_active !== false ? 'Klik untuk menonaktifkan akun' : 'Klik untuk mengaktifkan akun'"
+                  @click="openStatusModal(u, u.is_active === false)"
+                >
+                  <span class="adm-switch-track" aria-hidden="true">
+                    <span class="adm-switch-thumb" />
+                  </span>
+                  <span class="adm-switch-label">{{ u.is_active !== false ? 'Aktif' : 'Nonaktif' }}</span>
+                </button>
                 <small v-if="u.is_active === false && u.banned_reason" class="ban-reason" :title="u.banned_reason">
                   {{ u.banned_reason }}
                 </small>
@@ -462,28 +485,23 @@ onMounted(() => {
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
-                <button type="button" class="btn-row-act detail" title="Lihat Detail" @click="detailUser = u">
+                <button type="button" class="btn-row-act detail" title="Lihat Detail Pengguna" @click="detailUser = u">
                   <UiIcon name="mata" :size="14" />
                   <span>Detail</span>
                 </button>
                 <span v-if="isProtectedAdminRow(u)" class="admin-protected-tag" title="Akun administrator terlindungi">
                   Admin
                 </span>
-                <template v-else>
-                  <button
-                    type="button"
-                    class="btn-row-act"
-                    :class="u.is_active !== false ? 'warn' : 'ok'"
-                    :disabled="acting"
-                    :title="u.is_active !== false ? 'Nonaktifkan Akun' : 'Aktifkan Akun'"
-                    @click="openStatusModal(u, u.is_active === false)"
-                  >
-                    {{ u.is_active !== false ? 'Nonaktifkan' : 'Aktifkan' }}
-                  </button>
-                  <button type="button" class="btn-icon del" :disabled="acting" title="Hapus Permanen" @click="openDeleteModal(u)">
-                    <UiIcon name="silang" :size="14" />
-                  </button>
-                </template>
+                <button
+                  v-else
+                  type="button"
+                  class="btn-icon del"
+                  :disabled="acting"
+                  title="Hapus Akun Permanen"
+                  @click="openDeleteModal(u)"
+                >
+                  <UiIcon name="hapus" :size="14" />
+                </button>
               </div>
             </td>
           </tr>

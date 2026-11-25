@@ -210,13 +210,24 @@ function closeImportModal() {
   importModalOpen.value = false;
 }
 
-async function toggleActive(fact) {
+const confirmStatusTarget = ref(null);
+
+function openStatusModal(fact) {
+  if (togglingId.value === fact.fact_id) return;
+  const isCurrentlyActive = fact.is_active !== false;
+  confirmStatusTarget.value = {
+    item: fact,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item: fact, nextState } = confirmStatusTarget.value;
   if (togglingId.value === fact.fact_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !(fact.is_active !== false);
-  fact.is_active = nextState;
   togglingId.value = fact.fact_id;
 
   try {
@@ -226,9 +237,11 @@ async function toggleActive(fact) {
       .eq('fact_id', fact.fact_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Kartu fakta "${fact.judul}" diubah menjadi ${nextState ? 'Aktif' : 'Nonaktif'}.`);
+    fact.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Kartu fakta "${fact.judul}" berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    fact.is_active = !nextState;
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status kartu fakta.'));
   } finally {
     togglingId.value = '';
@@ -559,22 +572,25 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: f.is_active !== false }"
                 :disabled="togglingId === f.fact_id"
-                :title="f.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(f)"
+                :title="f.is_active !== false ? 'Klik untuk menonaktifkan fakta' : 'Klik untuk mengaktifkan fakta'"
+                @click="openStatusModal(f)"
               >
-                {{ togglingId === f.fact_id ? '…' : (f.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === f.fact_id ? '…' : (f.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
-                <button type="button" class="btn-action edit" title="Ubah & Pratinjau" @click="openEditModal(f)">
-                  <UiIcon name="atur" :size="14" />
+                <button type="button" class="btn-action edit" title="Ubah &amp; Pratinjau" @click="openEditModal(f)">
+                  <UiIcon name="edit" :size="14" />
                 </button>
-                <button type="button" class="btn-action del" title="Hapus" @click="deletingFact = f">
-                  <UiIcon name="silang" :size="14" />
+                <button type="button" class="btn-action del" title="Hapus Fakta" @click="deletingFact = f">
+                  <UiIcon name="hapus" :size="14" />
                 </button>
               </div>
             </td>
@@ -690,6 +706,34 @@ onMounted(() => {
           <button type="button" class="btn-cancel" :disabled="saving" @click="deletingFact = null">Batal</button>
           <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
             {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Kartu Fakta?' : 'Nonaktifkan Kartu Fakta?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali kartu fakta <b>"{{ confirmStatusTarget.item.judul }}"</b> agar tampil di Jurnal Penjelajah?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan kartu fakta <b>"{{ confirmStatusTarget.item.judul }}"</b>? Kartu ini akan disembunyikan sementara dari Jurnal Penjelajah.
+          </template>
+        </p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
           </button>
         </div>
       </div>

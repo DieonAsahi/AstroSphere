@@ -76,13 +76,24 @@ async function handleRefresh() {
   await loadPlanets();
 }
 
-async function toggleActive(planet) {
+const confirmStatusTarget = ref(null);
+
+function openStatusModal(planet) {
+  if (togglingId.value === planet.planet_id) return;
+  const isCurrentlyActive = planet.is_active !== false;
+  confirmStatusTarget.value = {
+    item: planet,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item: planet, nextState } = confirmStatusTarget.value;
   if (togglingId.value === planet.planet_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !planet.is_active;
-  planet.is_active = nextState;
   togglingId.value = planet.planet_id;
 
   try {
@@ -92,9 +103,11 @@ async function toggleActive(planet) {
       .eq('planet_id', planet.planet_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Status aktif ${planet.nama} berhasil diubah.`);
+    planet.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Planet ${planet.nama} berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    planet.is_active = !nextState; // Kembalikan jika gagal
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif.'));
   } finally {
     togglingId.value = '';
@@ -283,18 +296,21 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: p.is_active !== false }"
                 :disabled="togglingId === p.planet_id"
-                :title="p.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(p)"
+                :title="p.is_active !== false ? 'Klik untuk menonaktifkan planet' : 'Klik untuk mengaktifkan planet'"
+                @click="openStatusModal(p)"
               >
-                {{ togglingId === p.planet_id ? '…' : (p.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === p.planet_id ? '…' : (p.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
-              <button type="button" class="btn-edit" @click="openEditModal(p)">
-                <UiIcon name="atur" :size="15" /> Ubah
+              <button type="button" class="btn-edit" title="Ubah Materi Planet" @click="openEditModal(p)">
+                <UiIcon name="edit" :size="15" /> Ubah
               </button>
             </td>
           </tr>
@@ -494,6 +510,34 @@ onMounted(() => {
               <p>{{ formData.deskripsi_rotasi }}<span v-if="formData.sumber_referensi"> — {{ formData.sumber_referensi }}</span></p>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Planet?' : 'Nonaktifkan Planet?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali <b>Planet {{ confirmStatusTarget.item.nama }}</b> agar objek 3D tampil kembali di ruang angkasa dan dapat dikunjungi?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan <b>Planet {{ confirmStatusTarget.item.nama }}</b>? Objek 3D akan disembunyikan sementara dan ditandai <b>Sedang Perbaikan</b> di Peta Tata Surya.
+          </template>
+        </p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
+          </button>
         </div>
       </div>
     </div>

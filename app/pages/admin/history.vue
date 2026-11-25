@@ -158,13 +158,24 @@ const filteredEvents = computed(() => {
 
 const ALLOWED_PLANET_IDS = new Set(PLANET_OPTIONS.map((p) => p.id));
 
-async function toggleActive(eventItem) {
+const confirmStatusTarget = ref(null);
+
+function openStatusModal(eventItem) {
+  if (togglingId.value === eventItem.event_id) return;
+  const isCurrentlyActive = eventItem.is_active !== false;
+  confirmStatusTarget.value = {
+    item: eventItem,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item: eventItem, nextState } = confirmStatusTarget.value;
   if (togglingId.value === eventItem.event_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !(eventItem.is_active !== false);
-  eventItem.is_active = nextState;
   togglingId.value = eventItem.event_id;
 
   try {
@@ -174,9 +185,11 @@ async function toggleActive(eventItem) {
       .eq('event_id', eventItem.event_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Status sejarah "${eventItem.judul}" diperbarui.`);
+    eventItem.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Peristiwa sejarah "${eventItem.judul}" berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    eventItem.is_active = !nextState;
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif sejarah.'));
   } finally {
     togglingId.value = '';
@@ -607,22 +620,25 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: e.is_active !== false }"
                 :disabled="togglingId === e.event_id"
-                :title="e.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(e)"
+                :title="e.is_active !== false ? 'Klik untuk menonaktifkan peristiwa' : 'Klik untuk mengaktifkan peristiwa'"
+                @click="openStatusModal(e)"
               >
-                {{ togglingId === e.event_id ? '…' : (e.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === e.event_id ? '…' : (e.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
-                <button type="button" class="btn-action edit" title="Ubah" @click="openEditModal(e)">
-                  <UiIcon name="atur" :size="14" />
+                <button type="button" class="btn-action edit" title="Ubah Peristiwa" @click="openEditModal(e)">
+                  <UiIcon name="edit" :size="14" />
                 </button>
-                <button type="button" class="btn-action del" title="Hapus" @click="deletingEvent = e">
-                  <UiIcon name="silang" :size="14" />
+                <button type="button" class="btn-action del" title="Hapus Peristiwa" @click="deletingEvent = e">
+                  <UiIcon name="hapus" :size="14" />
                 </button>
               </div>
             </td>
@@ -811,6 +827,34 @@ onMounted(() => {
           <button type="button" class="btn-cancel" :disabled="saving" @click="deletingEvent = null">Batal</button>
           <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
             {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Peristiwa Sejarah?' : 'Nonaktifkan Peristiwa Sejarah?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali peristiwa <b>"{{ confirmStatusTarget.item.judul }}"</b> agar tampil di lini masa sejarah?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan peristiwa <b>"{{ confirmStatusTarget.item.judul }}"</b>? Peristiwa tidak akan muncul di simulasi publik hingga diaktifkan kembali.
+          </template>
+        </p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
           </button>
         </div>
       </div>

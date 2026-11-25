@@ -44,7 +44,7 @@ export function createHazards({ scene, camera, ship, sys, store, sfx, markersEl,
   function pickShelter() {
     let best = null, bs = Infinity;
     for (const b of sys.bodies) {
-      if (b.isSun || !(b.radius > 2.5)) continue;
+      if (b.isSun || !(b.radius > 2.5) || b.active === false) continue;
       const d = shelterPoint(b, _p).distanceTo(ship.pos);
       const score = d + (b.radius < 10 ? 400 : 0); // bayangan satelit kecil sempit → utamakan planet
       if (score < bs) { bs = score; best = b; }
@@ -52,7 +52,7 @@ export function createHazards({ scene, camera, ship, sys, store, sfx, markersEl,
     return best && shelterPoint(best, _p).distanceTo(ship.pos) < 4200 ? best : null;
   }
   function nearEarth() {
-    const e = sys.byId.bumi; if (!e) return false;
+    const e = sys.byId.bumi; if (!e || e.active === false) return false;
     const alt = ship.pos.distanceTo(e.pos) - e.radius;
     return alt > 20 && alt < 320 && ship.speed > 4;
   }

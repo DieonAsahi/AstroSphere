@@ -2,6 +2,7 @@
 // Konteks: menu (memuat/belum bermain), jelajah (terbang), observe (Planet, Sejarah, fenomena planet), lab (gerhana Bumi),
 // hangar (pratinjau pesawat), frozen (Kuis/Peta/Profil — dirender hemat).
 import * as THREE from 'three';
+import { watch } from 'vue';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -44,8 +45,47 @@ export function createEngine(el) {
   let sys = null, skyGroup, starsMat, dust, lab = null, models = null, mission = null;
   const missionMods = {}; // adegan misi kisah nyata, dibuat sekali per misi
   const sfx = createAudio(() => store.settings.soundEnabled);
+  const sup = useSupabaseContent();
   const listeners = [];
   const on = (t, ev, fn, opt) => { t.addEventListener(ev, fn, opt); listeners.push([t, ev, fn, opt]); };
+
+  function isBodyActive(b) {
+    if (!b) return false;
+    if (b.isSun) return true;
+    if (b.isMoon && b.parent) return sup.isPlanetActive(b.parent);
+    if (PLANET_IDS.has(b.id)) return sup.isPlanetActive(b.id);
+    return true;
+  }
+  function pickInitialTargetId() {
+    if (sys?.byId?.mars && isBodyActive(sys.byId.mars)) return 'mars';
+    const firstPlanet = sys?.bodies?.find((b) => PLANET_IDS.has(b.id) && isBodyActive(b));
+    return firstPlanet?.id || 'matahari';
+  }
+  function syncBodyVisibility() {
+    if (!sys) return;
+    for (const b of sys.bodies) {
+      const active = isBodyActive(b);
+      b.active = active;
+      if (b.holder) b.holder.visible = active;
+      if (b.orbitLine) b.orbitLine.visible = active;
+      if (!active) {
+        b.inRange = false;
+        if (b.mk?.vis) { b.mk.el.style.display = 'none'; b.mk.vis = false; }
+      }
+    }
+    if (target && !isBodyActive(target)) {
+      if (store.autopilot) autopilotOff(false);
+      setTarget(pickInitialTargetId(), true);
+    }
+    if (store.approach.show && store.approach.id && !sup.isPlanetActive(store.approach.id)) {
+      store.approach.show = false;
+    }
+  }
+  const stopPlanetWatch = watch(
+    () => [sup.state.planets, sup.loadedFromDb.value.planets],
+    syncBodyVisibility,
+    { deep: true }
+  );
 
   // ---------- Renderer ----------
   function initRenderer() {
@@ -313,6 +353,7 @@ export function createEngine(el) {
     }
     ship.pos.addScaledVector(ship.vel, dt);
     for (const b of sys.bodies) {
+      if (!isBodyActive(b)) continue;
       const minD = b.radius + (b.isSun ? 25 : 1.6);
       _v2.subVectors(ship.pos, b.pos); const d = _v2.length();
       if (d < minD) {
@@ -494,7 +535,7 @@ export function createEngine(el) {
   function isOccluded(b, dist) {
     _od.copy(b.pos).sub(camera.position).divideScalar(dist || 1);
     for (const o of sys.bodies) {
-      if (o === b || o.radius < 3) continue;
+      if (o === b || o.radius < 3 || !isBodyActive(o)) continue;
       _oc.copy(o.pos).sub(camera.position);
       const t = _oc.dot(_od);
       if (t <= 0 || t >= dist - b.radius) continue;
@@ -506,7 +547,12 @@ export function createEngine(el) {
     const W = innerWidth, Hh = innerHeight, tanH = Math.tan(camera.fov * DEG / 2), show3 = worldMode() === 'jelajah' && store.phase === 'playing';
     let arrowShown = false; const placed = [];
     for (const b of sys.bodies) {
-      const m = b.mk, dist = camera.position.distanceTo(b.pos);
+      const m = b.mk;
+      if (!isBodyActive(b)) {
+        if (m.vis) { m.el.style.display = 'none'; m.vis = false; }
+        continue;
+      }
+      const dist = camera.position.distanceTo(b.pos);
       _p.copy(b.pos).project(camera);
       const onScreen = _p.z < 1 && Math.abs(_p.x) < 1.02 && Math.abs(_p.y) < 1.02;
       const pxR = b.radius / dist * (Hh / 2) / tanH, isT = b === target;
@@ -649,6 +695,7 @@ export function createEngine(el) {
     let best = null, bestAlt = Infinity;
     const playing = worldMode() === 'jelajah' && store.phase === 'playing';
     for (const b of sys.bodies) {
+      if (!isBodyActive(b)) { b.inRange = false; continue; }
       b.dist = ship.pos.distanceTo(b.pos); b.alt = b.dist - b.radius;
       if (b.alt < bestAlt) { bestAlt = b.alt; best = b; }
       const near = b.dist < b.approach;
@@ -666,6 +713,7 @@ export function createEngine(el) {
     inBelt = belt;
   }
   function onApproach(b) {
+    if (!isBodyActive(b)) return;
     const isNew = !discovered.has(b.id);
     if (isNew) { discovered.add(b.id); syncDiscovered(); saveGame('Tersimpan'); }
     if (isNew) sfx.chime(); else sfx.approach();
@@ -677,11 +725,11 @@ export function createEngine(el) {
   // Mendekati planet: pesawat berhenti sendiri dan menawarkan tampilan planet (Ya → mode Planet, Tidak → lanjut terbang)
   let approachShownAt = 0;
   function arrive(b, isNew) {
+    if (!isBodyActive(b)) return;
     autopilotOff();
     clearAllInputs();
     ship.throttle = 0; ship.braking = true;
     approachShownAt = performance.now();
-    const sup = useSupabaseContent();
     const rawPh = sup.getPhenomenon(b.id) || (sup.loadedFromDb?.value?.phenomena ? null : PHENOMENA[b.id]);
     const ph = rawPh && rawPh.is_active !== false ? rawPh : null;
     Object.assign(store.approach, { show: true, id: b.id, name: b.name, kind: b.kind, color: b.color, desc: (b.desc || '').split('. ')[0].replace(/\.$/, '') + '.', pheno: ph ? ph.title : '', isNew });
@@ -689,17 +737,23 @@ export function createEngine(el) {
   function autopilotOff(manual) { if (!store.autopilot) return; store.autopilot = false; if (manual) toast('Kemudi manual', 1300); }
   function flyTo(id) {
     const b = sys.byId[id]; if (!b) return;
+    if (!isBodyActive(b)) {
+      toast(`<b>${b.name}</b> sedang dalam perbaikan dan belum dapat dikunjungi`, 2600);
+      return;
+    }
     if (store.mode !== 'jelajah') setMode('jelajah');
     setTarget(id, true); store.autopilot = true; b.inRange = false; store.approach.show = false;
     toast(`Terbang otomatis ke <b>${b.name}</b>`, 2400);
   }
   function setTarget(id, quiet) {
-    const b = sys.byId[id]; if (!b) return;
+    const b = sys.byId[id]; if (!b || !isBodyActive(b)) return;
     target = b; store.hud.target.id = id; store.hud.target.name = displayName(b);
     if (!quiet) { sfx.target(); toast(`Tujuan: <b>${displayName(b)}</b>`, 1800); }
   }
   function cycleTarget(dir = 1) {
-    const list = sys.bodies; let i = target ? list.indexOf(target) : -1;
+    const list = sys.bodies.filter((b) => isBodyActive(b));
+    if (!list.length) return;
+    let i = target ? list.indexOf(target) : -1;
     i = (i + dir + list.length) % list.length; setTarget(list[i].id);
   }
 
@@ -727,9 +781,10 @@ export function createEngine(el) {
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
     ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false;
     discovered.clear(); discovered.add('matahari');
-    if (Array.isArray(s.discovered)) for (const id of s.discovered) if (sys.byId[id] || id === BELT.id) discovered.add(id);
+    if (Array.isArray(s.discovered)) for (const id of s.discovered) if ((sys.byId[id] && isBodyActive(sys.byId[id])) || id === BELT.id) discovered.add(id);
     syncDiscovered();
-    if (s.target && sys.byId[s.target]) setTarget(s.target, true);
+    if (s.target && sys.byId[s.target] && isBodyActive(sys.byId[s.target])) setTarget(s.target, true);
+    else setTarget(pickInitialTargetId(), true);
   }
   function refreshSaveMeta() { refreshSaveInfo(); }
 
@@ -811,7 +866,12 @@ export function createEngine(el) {
     orbitsVisible(store.toggles.orbit);
     for (const x of sys.bodies) if (x.axisLine) x.axisLine.visible = store.toggles.axis && x === b;
   }
-  function focus(id) { if (!sys.byId[id]) return; if (store.mode === 'sejarah') { store.sejarah.body = id; store.sejarah.selected = null; clearPOIs(); buildPOIs(); } else store.focus = id; frameBody(sys.byId[id]); beginCamTransition(); applyObsToggles(); }
+  function focus(id) {
+    if (!sys.byId[id] || !isBodyActive(sys.byId[id])) return;
+    if (store.mode === 'sejarah') { store.sejarah.body = id; store.sejarah.selected = null; clearPOIs(); buildPOIs(); }
+    else store.focus = id;
+    frameBody(sys.byId[id]); beginCamTransition(); applyObsToggles();
+  }
   function back() {
     if (store.mode === 'planet' && pheno.id) { stopPheno(); return; }
     const to = store.backTo;
@@ -824,15 +884,14 @@ export function createEngine(el) {
   const pheno = { id: null, def: null, view: null, spin: 0, t0: 0, tick: 0, prevDec: null };
   let pinMesh = null;
   const _q2 = new THREE.Quaternion();
-  function moonsVisible(parent, v) { for (const x of sys.bodies) if (x.isMoon && x.parent === parent) x.holder.visible = v; }
+  function moonsVisible(parent, v) { for (const x of sys.bodies) if (x.isMoon && x.parent === parent) x.holder.visible = v && isBodyActive(x); }
   function startPheno(id) {
-    const sup = useSupabaseContent();
     const livePh = sup.getPhenomenon(id);
     if (sup.loadedFromDb?.value?.phenomena && (!livePh || livePh.is_active === false)) return;
     if (livePh && livePh.is_active === false) return;
     const def = livePh || PHENOMENA[id];
     const b = sys.byId[id];
-    if (!def || def.lab || !b) return;
+    if (!def || def.lab || !b || !isBodyActive(b)) return;
     if (store.mode !== 'planet' || store.focus !== id) setMode('planet', { body: id, force: true });
     Object.assign(pheno, { id, def, view: def.view, t0: obsTime, spin: obsTime, tick: 1, prevDec: null });
     store.obs.mul = def.mul;
@@ -1112,12 +1171,17 @@ export function createEngine(el) {
     sfx.init();
     snapshot = null;
     if (fromSave) { const s = readGameState(); if (s) applySave(s); else { resetShip(defaultPose()); } }
-    else { gameTime = daysSinceJ2000(); updateBodies(sys.bodies, sys.byId, gameTime); resetShip(defaultPose()); discovered.clear(); discovered.add('matahari'); syncDiscovered(); setTarget('mars', true); }
+    else { gameTime = daysSinceJ2000(); updateBodies(sys.bodies, sys.byId, gameTime); resetShip(defaultPose()); discovered.clear(); discovered.add('matahari'); syncDiscovered(); setTarget(pickInitialTargetId(), true); }
+    syncBodyVisibility();
     // planet yang sudah dekat saat mulai (mis. Bumi) dicatat diam-diam — tidak langsung memunculkan tawaran
-    for (const b of sys.bodies) { b.inRange = ship.pos.distanceTo(b.pos) < b.approach; if (b.inRange) discovered.add(b.id); }
+    for (const b of sys.bodies) {
+      if (!isBodyActive(b)) { b.inRange = false; continue; }
+      b.inRange = ship.pos.distanceTo(b.pos) < b.approach;
+      if (b.inRange) discovered.add(b.id);
+    }
     syncDiscovered();
     inBelt = false; sessionActive = true; hazards?.reset();
-    if (!target) setTarget('mars', true);
+    if (!target || !isBodyActive(target)) setTarget(pickInitialTargetId(), true);
     setShip(store.progress.selectedShip);
     store.mode = 'jelajah'; store.phase = 'playing'; store.autopilot = false; store.approach.show = false; store.backTo = null;
     saveGame();
@@ -1263,7 +1327,7 @@ export function createEngine(el) {
     sys.sunLight.position.copy(ship.pos).addScaledVector(_v, -50); sys.sunLight.target.position.copy(ship.pos);
     let lightF = 1; const toSunLen = ship.pos.length();
     for (const b of sys.bodies) {
-      if (b.isSun) continue;
+      if (b.isSun || !isBodyActive(b)) continue;
       _v2.copy(b.pos).sub(ship.pos);
       const t = _v2.dot(_v.set(-ship.pos.x, -ship.pos.y, -ship.pos.z).divideScalar(toSunLen || 1));
       if (t <= 0 || t > toSunLen) continue;
@@ -1277,6 +1341,7 @@ export function createEngine(el) {
     renderer.toneMappingExposure = damp(renderer.toneMappingExposure, 1 - glare * .55, 2.5, dt);
     // Distance culling atmosfer planet: jika jarak > 25x radius, sembunyikan atmosfer untuk menghemat GPU
     for (const b of sys.bodies) {
+      if (!isBodyActive(b)) continue;
       if (b.atm) {
         const dCam = camera.position.distanceTo(b.pos);
         if (dCam > b.radius * 25) {
@@ -1332,6 +1397,7 @@ export function createEngine(el) {
       setLoad(.72, 'Menghitung orbit'); await nextFrame();
       sys = buildSystem(scene, U, { touch: isTouch, models });
       updateBodies(sys.bodies, sys.byId, gameTime);
+      syncBodyVisibility();
       orbitsVisible(false);
       buildDust();
       scene.add(shipRoot);
@@ -1344,7 +1410,7 @@ export function createEngine(el) {
       setShip(store.progress.selectedShip);
       const s = readGameState();
       if (s) applySave(s); else resetShip(defaultPose());
-      if (!target) setTarget('mars', true);
+      if (!target || !isBodyActive(target)) setTarget(pickInitialTargetId(), true);
       buildMarkers(); sizeCompass(); refreshSaveMeta(); syncDiscovered();
       setLoad(.88, 'Menyiapkan tampilan'); await nextFrame();
       updateShipVisual(0, 0);
@@ -1413,8 +1479,8 @@ export function createEngine(el) {
       const fwd = _v.set(0, 0, -1).applyQuaternion((snapshot && store.mode !== 'peta') ? snapshot.quat : ship.quat);
       const sp = (snapshot && store.mode !== 'peta') ? snapshot.pos : ship.pos;
       return {
-        bodies: sys.bodies.map((b) => ({ id: b.id, name: b.name, kind: b.kind, x: b.pos.x, z: b.pos.z, r: b.radius, color: b.color, isSun: !!b.isSun, isMoon: !!b.isMoon, found: discovered.has(b.id), d: Math.max(0, sp.distanceTo(b.pos) - b.radius) })),
-        orbits: sys.bodies.filter((b) => b.orbitPts).map((b) => ({ id: b.id, pts: b.orbitPts.filter((_, i) => i % 4 === 0).map((p) => [p.x, p.z]) })),
+        bodies: sys.bodies.map((b) => ({ id: b.id, name: b.name, kind: b.kind, x: b.pos.x, z: b.pos.z, r: b.radius, color: b.color, isSun: !!b.isSun, isMoon: !!b.isMoon, active: isBodyActive(b), found: discovered.has(b.id), d: Math.max(0, sp.distanceTo(b.pos) - b.radius) })),
+        orbits: sys.bodies.filter((b) => b.orbitPts).map((b) => ({ id: b.id, active: isBodyActive(b), pts: b.orbitPts.filter((_, i) => i % 4 === 0).map((p) => [p.x, p.z]) })),
         ship: { x: sp.x, z: sp.z, heading: Math.atan2(fwd.x, -fwd.z) },
         target: target ? target.id : null, belt: [BELT.inner, BELT.outer], rmax: RMAX, cruise: shipDef().speed * shipDef().boost,
       };
@@ -1425,6 +1491,7 @@ export function createEngine(el) {
     },
     get _debug() { return { cam: camera.position.toArray(), camQ: camera.quaternion.toArray(), ship: ship.pos.toArray(), earth: sys?.byId.bumi.pos.toArray(), exposure: renderer?.toneMappingExposure, fov: camera.fov, mode: worldMode() }; },
     dispose() {
+      stopPlanetWatch?.();
       hazards?.dispose();
       if (renderer) { renderer.setAnimationLoop(null); composer && composer.dispose(); renderer.dispose(); renderer.forceContextLoss(); }
       for (const [t, ev, fn, opt] of listeners) t.removeEventListener(ev, fn, opt);

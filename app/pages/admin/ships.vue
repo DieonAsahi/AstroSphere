@@ -112,13 +112,24 @@ function closeModal() {
   formError.value = '';
 }
 
-async function toggleActive(ship) {
+const confirmStatusTarget = ref(null);
+
+function openStatusModal(ship) {
+  if (togglingId.value === ship.ship_id) return;
+  const isCurrentlyActive = ship.is_active !== false;
+  confirmStatusTarget.value = {
+    item: ship,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item: ship, nextState } = confirmStatusTarget.value;
   if (togglingId.value === ship.ship_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !(ship.is_active !== false);
-  ship.is_active = nextState;
   togglingId.value = ship.ship_id;
 
   try {
@@ -128,9 +139,11 @@ async function toggleActive(ship) {
       .eq('ship_id', ship.ship_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Armada ${ship.nama} diubah menjadi ${nextState ? 'Aktif' : 'Nonaktif'}.`);
+    ship.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Pesawat ${ship.nama} berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    ship.is_active = !nextState;
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status pesawat.'));
   } finally {
     togglingId.value = '';
@@ -360,18 +373,21 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: s.is_active !== false }"
                 :disabled="togglingId === s.ship_id"
-                :title="s.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(s)"
+                :title="s.is_active !== false ? 'Klik untuk menonaktifkan pesawat' : 'Klik untuk mengaktifkan pesawat'"
+                @click="openStatusModal(s)"
               >
-                {{ togglingId === s.ship_id ? '…' : (s.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === s.ship_id ? '…' : (s.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
-              <button type="button" class="btn-edit" @click="openEditModal(s)">
-                <UiIcon name="atur" :size="14" /> Ubah
+              <button type="button" class="btn-edit" title="Ubah Armada Pesawat" @click="openEditModal(s)">
+                <UiIcon name="edit" :size="14" /> Ubah
               </button>
             </td>
           </tr>
@@ -546,6 +562,34 @@ onMounted(() => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Armada Pesawat?' : 'Nonaktifkan Armada Pesawat?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali pesawat <b>{{ confirmStatusTarget.item.nama }}</b> agar tersedia di Hanggar Penjelajah?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan pesawat <b>{{ confirmStatusTarget.item.nama }}</b>? Pesawat ini akan disembunyikan sementara dari daftar armada di Hanggar.
+          </template>
+        </p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
+          </button>
         </div>
       </div>
     </div>

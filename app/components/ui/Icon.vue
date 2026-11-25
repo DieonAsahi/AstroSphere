@@ -61,6 +61,8 @@ const P = {
   plus: [['path', { d: 'M12 5v14M5 12h14' }]],
   minus: [['path', { d: 'M5 12h14' }]],
   mouse: [['rect', { x: 6.5, y: 3, width: 11, height: 18, rx: 5.5 }], ['path', { d: 'M12 7v3' }]],
+  edit: [['path', { d: 'M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z' }], ['path', { d: 'M13.5 6.5l4 4' }]],
+  hapus: [['path', { d: 'M3 6h18M8 6V4a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 16 4v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6' }], ['path', { d: 'M10 11v6M14 11v6' }]],
 };
 
 const shapes = computed(() => P[props.name] || []);

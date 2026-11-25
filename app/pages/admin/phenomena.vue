@@ -20,8 +20,7 @@ const notification = ref(null);
 const phenomena = ref([]);
 const selectedPlanet = ref('all');
 const editingPheno = ref(null);
-const deletingPheno = ref(null);
-const isCreating = ref(false);
+const confirmStatusTarget = ref(null);
 
 const PLANET_OPTIONS = [
   { id: 'mercury', name: 'Merkurius' },
@@ -115,13 +114,22 @@ const filteredPhenomena = computed(() => {
   return phenomena.value.filter((p) => p.planet_id === selectedPlanet.value);
 });
 
-async function toggleActive(item) {
+function openStatusModal(item) {
+  if (togglingId.value === item.phenomenon_id) return;
+  const isCurrentlyActive = item.is_active !== false;
+  confirmStatusTarget.value = {
+    item,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item, nextState } = confirmStatusTarget.value;
   if (togglingId.value === item.phenomenon_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !item.is_active;
-  item.is_active = nextState;
   togglingId.value = item.phenomenon_id;
 
   try {
@@ -131,9 +139,11 @@ async function toggleActive(item) {
       .eq('phenomenon_id', item.phenomenon_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Status aktif fenomena "${item.judul}" diperbarui.`);
+    item.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Fenomena "${item.judul}" berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    item.is_active = !nextState;
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif.'));
   } finally {
     togglingId.value = '';
@@ -176,22 +186,8 @@ function validateGuessBlock(g, label) {
   return '';
 }
 
-function openCreateModal() {
-  formError.value = '';
-  isCreating.value = true;
-  editingPheno.value = { phenomenon_id: null };
-  formData.value = {
-    ...DEFAULT_FORM,
-    planet_id: selectedPlanet.value !== 'all' ? selectedPlanet.value : 'mercury',
-    tebak_single: createDefaultGuess(),
-    tebak_solar: createDefaultGuess(),
-    tebak_lunar: createDefaultGuess(),
-  };
-}
-
 function openEditModal(item) {
   formError.value = '';
-  isCreating.value = false;
   editingPheno.value = item;
   const kv = item.konfigurasi_visual && typeof item.konfigurasi_visual === 'object' ? item.konfigurasi_visual : {};
   const td = item.tebak_dulu && typeof item.tebak_dulu === 'object' ? item.tebak_dulu : {};
@@ -221,7 +217,6 @@ function openEditModal(item) {
 function closeModal() {
   if (saving.value) return;
   editingPheno.value = null;
-  isCreating.value = false;
   formError.value = '';
 }
 
@@ -315,47 +310,18 @@ async function handleSave() {
       is_active: formData.value.is_active,
     };
 
-    if (isCreating.value) {
-      const { error: insErr } = await client.from('phenomena').insert(payload);
-      if (insErr) throw insErr;
-      showNotification('success', `Fenomena baru "${payload.judul}" berhasil ditambahkan.`);
-    } else {
-      const { error: saveErr } = await client
-        .from('phenomena')
-        .update(payload)
-        .eq('phenomenon_id', editingPheno.value.phenomenon_id);
-      if (saveErr) throw saveErr;
-      showNotification('success', `Fenomena "${payload.judul}" berhasil disimpan.`);
-    }
+    const { error: saveErr } = await client
+      .from('phenomena')
+      .update(payload)
+      .eq('phenomenon_id', editingPheno.value.phenomenon_id);
+    if (saveErr) throw saveErr;
+    showNotification('success', `Fenomena "${payload.judul}" berhasil disimpan.`);
 
     saving.value = false;
     closeModal();
     await loadPhenomena();
   } catch (err) {
     formError.value = formatSupabaseError(err, 'Gagal menyimpan perubahan fenomena.');
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function handleDelete() {
-  if (!deletingPheno.value) return;
-  const client = getSupabaseClient();
-  if (!client) return;
-
-  saving.value = true;
-  try {
-    const { error: delErr } = await client
-      .from('phenomena')
-      .delete()
-      .eq('phenomenon_id', deletingPheno.value.phenomenon_id);
-
-    if (delErr) throw delErr;
-    showNotification('success', `Fenomena "${deletingPheno.value.judul}" berhasil dihapus.`);
-    deletingPheno.value = null;
-    await loadPhenomena();
-  } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menghapus fenomena.'));
   } finally {
     saving.value = false;
   }
@@ -381,10 +347,6 @@ onMounted(() => {
         <p class="page-desc">Kelola simulasi edukatif, narasi ilmiah, dan penjelasan interaktif untuk seluruh 8 planet Tata Surya.</p>
       </div>
       <div class="head-actions">
-        <button class="btn-primary-action" @click="openCreateModal">
-          <UiIcon name="plus" :size="16" />
-          <span>Tambah Fenomena</span>
-        </button>
         <button class="btn-refresh" :disabled="refreshing" @click="handleRefresh">
           <UiIcon name="ulang" :size="16" :class="{ 'spin-active': refreshing }" />
           <span>{{ refreshing ? 'Memperbarui…' : 'Segarkan Data' }}</span>
@@ -469,22 +431,22 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: item.is_active !== false }"
                 :disabled="togglingId === item.phenomenon_id"
-                :title="item.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(item)"
+                :title="item.is_active !== false ? 'Klik untuk menonaktifkan fenomena' : 'Klik untuk mengaktifkan fenomena'"
+                @click="openStatusModal(item)"
               >
-                {{ togglingId === item.phenomenon_id ? '…' : (item.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === item.phenomenon_id ? '…' : (item.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
-                <button type="button" class="btn-action edit" title="Ubah" @click="openEditModal(item)">
-                  <UiIcon name="atur" :size="14" />
-                </button>
-                <button type="button" class="btn-action del" title="Hapus" @click="deletingPheno = item">
-                  <UiIcon name="silang" :size="14" />
+                <button type="button" class="btn-action edit" title="Ubah Fenomena" @click="openEditModal(item)">
+                  <UiIcon name="edit" :size="14" />
                 </button>
               </div>
             </td>
@@ -493,12 +455,12 @@ onMounted(() => {
       </table>
     </div>
 
-    <!-- MODAL EDIT / TAMBAH FENOMENA -->
+    <!-- MODAL EDIT FENOMENA -->
     <div v-if="editingPheno" class="modal-backdrop" @click.self="closeModal">
       <div class="modal-card">
         <div class="modal-header">
           <div>
-            <h3 class="modal-title">{{ isCreating ? 'Tambah Fenomena Baru' : `Ubah Fenomena: ${formData.judul}` }}</h3>
+            <h3 class="modal-title">Ubah Fenomena: {{ formData.judul }}</h3>
             <p class="modal-sub">Target Planet: {{ formData.planet_id.toUpperCase() }}</p>
           </div>
           <button type="button" class="btn-close-modal" :disabled="saving" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
@@ -512,7 +474,7 @@ onMounted(() => {
           <div class="grid-2">
             <label class="field">
               <span>Target Planet</span>
-              <select v-model="formData.planet_id" class="adm-select" :disabled="!isCreating" required>
+              <select v-model="formData.planet_id" class="adm-select" disabled required>
                 <option v-for="p in PLANET_OPTIONS" :key="p.id" :value="p.id">Planet {{ p.name }}</option>
               </select>
             </label>
@@ -694,22 +656,36 @@ onMounted(() => {
           <div class="modal-footer">
             <button type="button" class="btn-cancel" :disabled="saving" @click="closeModal">Batal</button>
             <button type="submit" class="btn-save" :disabled="saving">
-              {{ saving ? 'Menyimpan…' : (isCreating ? 'Tambah Fenomena' : 'Simpan Perubahan') }}
+              {{ saving ? 'Menyimpan…' : 'Simpan Perubahan' }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- MODAL KONFIRMASI HAPUS -->
-    <div v-if="deletingPheno" class="modal-backdrop" @click.self="!saving && (deletingPheno = null)">
-      <div class="modal-card small">
-        <h3 class="modal-title">Hapus Fenomena?</h3>
-        <p class="modal-desc">Apakah Anda yakin ingin menghapus fenomena <b>"{{ deletingPheno.judul }}"</b>? Tindakan ini tidak dapat dibatalkan.</p>
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Fenomena?' : 'Nonaktifkan Fenomena?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali fenomena <b>{{ confirmStatusTarget.item.judul }}</b> ({{ confirmStatusTarget.item.planet_id }}) agar dapat diobservasi di tampilan publik?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan fenomena <b>{{ confirmStatusTarget.item.judul }}</b> ({{ confirmStatusTarget.item.planet_id }})? Simulasi fenomena ini tidak akan tampil sampai diaktifkan kembali.
+          </template>
+        </p>
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" :disabled="saving" @click="deletingPheno = null">Batal</button>
-          <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
-            {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
           </button>
         </div>
       </div>
@@ -727,8 +703,6 @@ onMounted(() => {
 .dash-alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 500; border: 1px solid transparent; }
 .dash-alert.success { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
 .dash-alert.error { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
-.btn-primary-action { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s; }
-.btn-primary-action:hover { background: #1d4ed8; }
 .btn-refresh { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #334155; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
 
 .filter-strip { display: flex; align-items: center; gap: 12px; background: #fff; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; overflow-x: auto; }
@@ -750,8 +724,6 @@ onMounted(() => {
 .anim-tag { font-size: 11.5px; background: #f1f5f9; padding: 3px 8px; border-radius: 4px; color: #334155; font-family: inherit; font-weight: 500; white-space: nowrap; }
 .desc-clamp { margin: 0; font-size: 13px; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; }
 
-.status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
-.status-toggle-btn.on { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
 .btn-edit { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 12.5px; font-weight: 500; cursor: pointer; }
 
 .empty-state { padding: 40px; text-align: center; color: #64748b; }

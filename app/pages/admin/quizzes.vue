@@ -30,6 +30,7 @@ const modalOpen = ref(false);
 const isEditing = ref(false);
 const modalViewMode = ref('EDIT'); // 'EDIT' | 'PREVIEW'
 const deletingQuestion = ref(null);
+const confirmStatusTarget = ref(null);
 const importModalOpen = ref(false);
 const importText = ref('');
 const importError = ref('');
@@ -161,13 +162,22 @@ function openEditModal(q) {
   modalOpen.value = true;
 }
 
-async function toggleActive(q) {
+function openStatusModal(q) {
+  if (togglingId.value === q.question_id) return;
+  const isCurrentlyActive = q.is_active !== false;
+  confirmStatusTarget.value = {
+    item: q,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item: q, nextState } = confirmStatusTarget.value;
   if (togglingId.value === q.question_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !(q.is_active !== false);
-  q.is_active = nextState;
   togglingId.value = q.question_id;
 
   try {
@@ -177,9 +187,11 @@ async function toggleActive(q) {
       .eq('question_id', q.question_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Status soal kuis berhasil diubah menjadi ${nextState ? 'Aktif' : 'Nonaktif'}.`);
+    q.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Soal kuis berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    q.is_active = !nextState;
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif soal.'));
   } finally {
     togglingId.value = '';
@@ -503,13 +515,13 @@ onMounted(() => {
       <table v-else class="adm-table">
         <thead>
           <tr>
-            <th style="width: 100px;">Planet</th>
-            <th>Pertanyaan Soal</th>
-            <th>Kunci Jawaban</th>
-            <th style="width: 110px;">Bobot Poin</th>
-            <th>Pembahasan Edukatif</th>
-            <th style="width: 96px; text-align: center;">Status</th>
-            <th style="width: 110px; text-align: right;">Aksi</th>
+            <th style="width: 96px;">Planet</th>
+            <th style="width: 42%; min-width: 320px;">Pertanyaan Soal</th>
+            <th style="width: 18%; min-width: 150px;">Kunci Jawaban</th>
+            <th style="width: 105px;">Bobot Poin</th>
+            <th style="width: 24%; min-width: 210px;">Pembahasan Edukatif</th>
+            <th style="width: 128px; text-align: center;">Status</th>
+            <th style="width: 92px; text-align: right;">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -534,22 +546,25 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: q.is_active !== false }"
                 :disabled="togglingId === q.question_id"
-                :title="q.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(q)"
+                :title="q.is_active !== false ? 'Klik untuk menonaktifkan soal' : 'Klik untuk mengaktifkan soal'"
+                @click="openStatusModal(q)"
               >
-                {{ togglingId === q.question_id ? '…' : (q.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === q.question_id ? '…' : (q.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
                 <button type="button" class="btn-action edit" title="Ubah Soal" @click="openEditModal(q)">
-                  <UiIcon name="atur" :size="14" />
+                  <UiIcon name="edit" :size="14" />
                 </button>
                 <button type="button" class="btn-action del" title="Hapus Soal" @click="deletingQuestion = q">
-                  <UiIcon name="silang" :size="14" />
+                  <UiIcon name="hapus" :size="14" />
                 </button>
               </div>
             </td>
@@ -691,6 +706,35 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Soal Kuis?' : 'Nonaktifkan Soal Kuis?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali Soal Kuis ini agar muncul di Kuis Planet <b>{{ confirmStatusTarget.item.planet_id }}</b>?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan Soal Kuis ini dari bank soal <b>{{ confirmStatusTarget.item.planet_id }}</b>? Soal tidak akan keluar pada sesi kuis siswa hingga diaktifkan kembali.
+          </template>
+        </p>
+        <p class="adm-confirm-quote">"{{ confirmStatusTarget.item.soal }}"</p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL IMPOR MASSAL JSON -->
     <div v-if="importModalOpen" class="modal-backdrop" @click.self="closeImportModal">
       <div class="modal-card">
@@ -742,8 +786,8 @@ onMounted(() => {
 .adm-table tbody tr:hover { background: #f8fafc; }
 
 .planet-badge { padding: 2px 7px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
-.q-text { color: #0f172a; font-size: 13.5px; display: block; max-width: 320px; }
-.ans-badge { font-size: 12px; font-weight: 500; color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+.q-text { color: #0f172a; font-size: 13.5px; font-weight: 600; line-height: 1.48; display: block; min-width: 280px; }
+.ans-badge { font-size: 12px; font-weight: 500; color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 3px 8px; border-radius: 4px; display: inline-block; white-space: normal; line-height: 1.35; }
 .points-tag { font-size: 12px; font-weight: 500; color: #d97706; background: #fffbeb; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 .desc-clamp { margin: 0; font-size: 12.5px; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 

@@ -642,11 +642,46 @@ export function useSupabaseContent() {
       return state.facts[cleanId] || state.facts[id] || FACTS[cleanId] || FACTS[id] || [];
     },
     facts: computed(() => state.facts),
+    allPlanets: computed(() => {
+      return PLANETS.map((fallbackP) => {
+        const supId = toSupabasePlanetId(fallbackP.id);
+        const live = state.planets[fallbackP.id] || state.planets[supId];
+        const active = state.loadedFromDb.planets
+          ? (!!live && live.is_active !== false)
+          : (!live || live.is_active !== false);
+        const data = live || {};
+        return {
+          ...fallbackP,
+          ...data,
+          id: fallbackP.id,
+          name: data.nama || data.name || fallbackP.name,
+          order: data.urutan_planet ?? fallbackP.order,
+          desc: data.deskripsi_materi || data.desc || fallbackP.desc,
+          color: fallbackP.color,
+          sumber_referensi: data.sumber_referensi || fallbackP.sumber_referensi,
+          is_active: active,
+        };
+      }).sort((a, b) => (a.order || 0) - (b.order || 0));
+    }),
+    isPlanetActive: (id) => {
+      if (!id) return true;
+      const localId = toLocalPlanetId(String(id).toLowerCase().trim());
+      if (!PLANETS.some((p) => p.id === localId)) return true;
+      if (state.loadedFromDb.planets) {
+        const hit = state.planets[localId] || state.planets[id];
+        return hit ? hit.is_active !== false : false;
+      }
+      const hit = state.planets[localId] || state.planets[id];
+      return hit ? hit.is_active !== false : true;
+    },
     planets: computed(() => {
       return PLANETS.map((fallbackP) => {
         const supId = toSupabasePlanetId(fallbackP.id);
         const live = state.planets[fallbackP.id] || state.planets[supId];
         if (state.loadedFromDb.planets && (!live || live.is_active === false)) {
+          return null;
+        }
+        if (live && live.is_active === false) {
           return null;
         }
         const data = live || {};

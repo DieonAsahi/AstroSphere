@@ -214,13 +214,24 @@ function sanitizeSlug(raw) {
   return clean || null;
 }
 
-async function toggleActive(item) {
+const confirmStatusTarget = ref(null);
+
+function openStatusModal(item) {
+  if (togglingId.value === item.myth_id) return;
+  const isCurrentlyActive = item.is_active !== false;
+  confirmStatusTarget.value = {
+    item,
+    nextState: !isCurrentlyActive,
+  };
+}
+
+async function confirmToggleActive() {
+  if (!confirmStatusTarget.value) return;
+  const { item, nextState } = confirmStatusTarget.value;
   if (togglingId.value === item.myth_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
-  const nextState = !(item.is_active !== false);
-  item.is_active = nextState;
   togglingId.value = item.myth_id;
 
   try {
@@ -230,9 +241,11 @@ async function toggleActive(item) {
       .eq('myth_id', item.myth_id);
 
     if (updErr) throw updErr;
-    showNotification('success', `Status pernyataan diubah menjadi ${nextState ? 'Aktif' : 'Nonaktif'}.`);
+    item.is_active = nextState;
+    confirmStatusTarget.value = null;
+    showNotification('success', `Pernyataan berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
-    item.is_active = !nextState;
+    confirmStatusTarget.value = null;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status pernyataan.'));
   } finally {
     togglingId.value = '';
@@ -568,22 +581,25 @@ onMounted(() => {
             <td style="text-align: center;">
               <button
                 type="button"
-                class="status-toggle-btn"
+                class="adm-switch-btn"
                 :class="{ on: m.is_active !== false }"
                 :disabled="togglingId === m.myth_id"
-                :title="m.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
-                @click="toggleActive(m)"
+                :title="m.is_active !== false ? 'Klik untuk menonaktifkan pernyataan' : 'Klik untuk mengaktifkan pernyataan'"
+                @click="openStatusModal(m)"
               >
-                {{ togglingId === m.myth_id ? '…' : (m.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+                <span class="adm-switch-track" aria-hidden="true">
+                  <span class="adm-switch-thumb" />
+                </span>
+                <span class="adm-switch-label">{{ togglingId === m.myth_id ? '…' : (m.is_active !== false ? 'Aktif' : 'Nonaktif') }}</span>
               </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
-                <button type="button" class="btn-action edit" title="Ubah & Pratinjau" @click="openEditModal(m)">
-                  <UiIcon name="atur" :size="14" />
+                <button type="button" class="btn-action edit" title="Ubah &amp; Pratinjau" @click="openEditModal(m)">
+                  <UiIcon name="edit" :size="14" />
                 </button>
-                <button type="button" class="btn-action del" title="Hapus" @click="deletingMyth = m">
-                  <UiIcon name="silang" :size="14" />
+                <button type="button" class="btn-action del" title="Hapus Pernyataan" @click="deletingMyth = m">
+                  <UiIcon name="hapus" :size="14" />
                 </button>
               </div>
             </td>
@@ -747,6 +763,35 @@ onMounted(() => {
           <button type="button" class="btn-cancel" :disabled="saving" @click="deletingMyth = null">Batal</button>
           <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
             {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI STATUS -->
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && (confirmStatusTarget = null)">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Pernyataan?' : 'Nonaktifkan Pernyataan?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali pernyataan ini agar tampil di permainan Mitos atau Fakta?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan pernyataan ini? Pernyataan tidak akan muncul di permainan publik hingga diaktifkan kembali.
+          </template>
+        </p>
+        <p class="adm-confirm-quote">"{{ confirmStatusTarget.item.pernyataan }}"</p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="confirmStatusTarget = null">Batal</button>
+          <button
+            type="button"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
+            @click="confirmToggleActive"
+          >
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
           </button>
         </div>
       </div>
