@@ -335,7 +335,7 @@ void main(){
 
 export const SUN_VS = PLANET_VS;
 export const SUN_FS = /* glsl */`
-uniform float uTime;
+uniform float uTime; uniform float uStorm; uniform float uFlare; uniform vec3 uActive;
 varying vec3 vObj; varying vec3 vWorldPos; varying vec3 vN; varying vec3 vCenter;
 ${GLSL_NOISE}
 void main(){
@@ -347,6 +347,16 @@ void main(){
   col = mix(col, vec3(1.0, 0.95, 0.8), smoothstep(0.75, 1.1, cells));
   float spot = smoothstep(0.64, 0.72, fbm(p * 2.0 + 11.0, 3) * 0.5 + 0.5);
   col *= 1.0 - spot * 0.5;
+  // Badai Matahari (fenomena): wilayah aktif terang + bintik gelap + kilat suar. uActive = arah satuan (ruang objek),
+  // nol di luar fenomena (juga di lab gerhana yang tidak mengisi uniform ini) sehingga blok ini dilewati.
+  float ad = dot(p, uActive);
+  if (ad > 0.85) {
+    float reg = smoothstep(0.9, 0.985, ad) * uStorm;
+    float umb = smoothstep(0.6, 0.78, fbm(p * 22.0 + 3.0, 2) * 0.5 + 0.5) * smoothstep(0.955, 0.985, ad);
+    col *= 1.0 - umb * 0.75 * uStorm;
+    col += vec3(1.0, 0.82, 0.5) * reg * (0.18 + 0.3 * g);
+    col += vec3(1.0, 0.97, 0.92) * (smoothstep(0.975, 0.998, ad) * 3.0 + smoothstep(0.9, 1.0, ad) * 0.5) * uFlare;
+  }
   float mu = max(dot(normalize(vN), normalize(cameraPosition - vWorldPos)), 0.0);
   col *= 0.55 + 0.45 * sqrt(mu);
   gl_FragColor = vec4(col * 2.2, 1.0);
@@ -358,7 +368,7 @@ export const CORONA_VS = /* glsl */`
 varying vec2 vUv;
 void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 export const CORONA_FS = /* glsl */`
-uniform float uTime; uniform float uScale;
+uniform float uTime; uniform float uScale; uniform float uCme; uniform float uCmeAng; uniform float uProm; uniform float uFlare;
 varying vec2 vUv;
 ${GLSL_NOISE}
 void main(){
@@ -373,6 +383,30 @@ void main(){
   float cor = glow * (0.75 + 0.6 * rays + 0.25 * rays2);
   cor *= smoothstep(uScale, uScale * 0.65, r);
   vec3 col = mix(vec3(1.0, 0.42, 0.1), vec3(1.0, 0.85, 0.6), exp(-rr * 1.2)) * cor * 1.5;
+  // Badai Matahari (fenomena): prominensa di tepi, kilat suar, lalu CME berbentuk kipas yang melebar sambil menjauh.
+  // uCmeAng = sudut layar wilayah aktif. Semua nol di luar fenomena.
+  if (uProm + uFlare + uCme > 0.0) {
+    vec2 q = p * uScale;
+    vec2 cd = vec2(cos(uCmeAng), sin(uCmeAng));
+    float along = dot(q, cd), lat = cd.x * q.y - cd.y * q.x;
+    vec2 lq = vec2(lat, along - 1.0);
+    float arc = abs(length(lq) - 0.2);
+    float ptex = fbm(vec3(lq * 12.0, uTime * 0.5), 2) * 0.5 + 0.5;
+    float ak = arc / 0.035;
+    col += vec3(1.0, 0.34, 0.12) * exp(-ak * ak) * step(0.0, lq.y) * (0.5 + 0.9 * ptex) * uProm * 1.8;
+    col += vec3(1.0, 0.9, 0.75) * exp(-length(q - cd * 1.02) * 5.0) * uFlare * 1.6;
+    if (uCme > 0.0 && uCme < 1.0 && along > 0.95) {
+      float front = 1.05 + 3.4 * uCme;
+      float width = 0.1 + 0.55 * max(0.0, along - 1.0);
+      float lk = lat / width, sk = (along - front) / (0.12 + 0.3 * uCme);
+      float cone = exp(-lk * lk);
+      float shell = exp(-sk * sk);
+      float fill = smoothstep(1.0, front, along) * step(along, front) * 0.3;
+      float streaks = fbm(vec3(lat / width * 2.5, along * 2.0 - uTime * 0.4, 1.7), 3) * 0.5 + 0.5;
+      float fade = pow(1.0 - uCme, 1.3) * smoothstep(0.0, 0.06, uCme);
+      col += vec3(1.0, 0.86, 0.68) * cone * (shell + fill) * (0.4 + 0.9 * streaks) * fade * 1.3;
+    }
+  }
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

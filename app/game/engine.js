@@ -815,10 +815,10 @@ export function createEngine(el) {
   function startPheno(id) {
     const def = PHENOMENA[id], b = sys.byId[id]; if (!def || def.lab || !b) return;
     if (store.mode !== 'planet' || store.focus !== id) setMode('planet', { body: id, force: true });
-    Object.assign(pheno, { id, def, view: def.view, t0: obsTime, spin: obsTime, tick: 1, prevDec: null });
+    Object.assign(pheno, { id, def, view: def.view, t0: obsTime, spin: obsTime, tick: 1, prevDec: null, clock: 0, lastT: 0, region: null });
     store.obs.mul = def.mul;
     Object.assign(store.pheno, { on: true, id, playing: true, line1: '', line2: '', state: '' });
-    obsCam.dist = def.view === 'wide' ? 8 : def.view === 'top' ? 3.4 : b.ring ? 4.6 : 3.8;
+    obsCam.dist = def.dist || (def.view === 'wide' ? 8 : def.view === 'top' ? 3.4 : b.ring ? 4.6 : 3.8);
     if (def.show === 'pin') {
       if (!pinMesh) {
         pinMesh = new THREE.Group();
@@ -836,6 +836,7 @@ export function createEngine(el) {
     const b = sys.byId[pheno.id];
     if (pinMesh && pinMesh.parent) pinMesh.parent.remove(pinMesh);
     moonsVisible(pheno.id, true);
+    if (b?.fx) stormReset(b.fx);
     Object.assign(pheno, { id: null, def: null, view: null });
     store.obs.mul = 1; store.pheno.on = false; store.pheno.id = '';
     if (!silent && b) { frameBody(b); beginCamTransition(); }
@@ -844,12 +845,15 @@ export function createEngine(el) {
     const b = sys.byId[pheno.id], def = pheno.def; if (!b) return;
     // rotasi yang terlalu cepat diperlambat khusus tampilan (≤ 0,6 putaran/detik) agar tidak berkedip
     pheno.spin += dt * TIME_RATE * Math.min(store.obs.mul, .6 * b.rotationDays / TIME_RATE);
-    b.spinMesh.rotation.y = b.spinPhase0 + TAU * pheno.spin / b.rotationDays;
+    b.spinMesh.rotation.y = (b.spinPhase0 || 0) + TAU * pheno.spin / b.rotationDays;
+    if (def.show === 'storm') stormFx(b, dt);
     pheno.tick += dt; if (pheno.tick < .12) return; pheno.tick = 0;
     const P = store.pheno, days = Math.max(0, obsTime - pheno.t0);
     const toSun = _v.copy(b.pos).negate().normalize();
     const axis = _v2.set(0, 1, 0).applyQuaternion(b.spinMesh.getWorldQuaternion(_q2));
-    if (def.show === 'pin' && pinMesh) {
+    if (def.show === 'storm') {
+      stormText(P);
+    } else if (def.show === 'pin' && pinMesh) {
       const nrm = pinMesh.getWorldPosition(_p).sub(b.pos).normalize();
       const day = nrm.dot(toSun) > 0;
       P.state = day ? 'siang' : 'malam';
@@ -871,6 +875,44 @@ export function createEngine(el) {
       if (b.id === 'saturnus') { const B = Math.abs(Math.asin(clamp(axis.dot(toSun), -1, 1)) / DEG); P.state = B < 3 ? 'tipis' : ''; P.line2 = B < 3 ? 'Cincin sejajar Matahari — nyaris hilang!' : `Cincin terbuka ${B.toFixed(0)}° ke arah Matahari`; }
       else { P.state = frac >= 1 ? 'selesai' : ''; P.line2 = frac >= 1 ? 'Satu putaran orbit selesai!' : `${Math.round(frac * 100)}% satu putaran orbit`; }
     }
+  }
+
+  // ---- Badai Matahari: satu siklus tiap STORM_T detik nyata — wilayah aktif menguat → prominensa naik → suar → CME ----
+  const STORM_T = 14;
+  const _sw = new THREE.Vector3(), _sr = new THREE.Vector3(), _su = new THREE.Vector3(), _sq = new THREE.Quaternion();
+  function stormReset(fx) { fx.storm.value = 0; fx.flare.value = 0; fx.prom.value = 0; fx.cme.value = 0; fx.active.value.set(0, 0, 0); }
+  // wilayah aktif baru di sisi piringan yang menghadap kamera, dekat tepi kiri/atas layar (tidak tertutup kartu kanan)
+  function stormRegion(b) {
+    const a = (.55 + Math.random() * .8) * Math.PI;
+    _sr.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    _su.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    _sw.copy(camera.position).sub(b.pos).normalize().multiplyScalar(.5).addScaledVector(_sr, Math.cos(a)).addScaledVector(_su, Math.sin(a)).normalize();
+    pheno.region = _sw.clone().applyQuaternion(_sq.copy(b.mesh.quaternion).invert()); // ruang objek → ikut berotasi
+  }
+  function stormFx(b, dt) {
+    const fx = b.fx; if (!fx) return;
+    if (store.pheno.playing) pheno.clock += dt;
+    const t = pheno.clock % STORM_T;
+    if (!pheno.region || t < pheno.lastT) stormRegion(b);
+    pheno.lastT = t;
+    fx.active.value.copy(pheno.region);
+    fx.storm.value = clamp(t / 1.5, 0, 1) * (1 - clamp((t - 11.5) / 2, 0, 1));
+    fx.prom.value = clamp((t - .8) / 1.4, 0, 1) * (1 - clamp((t - 3.2) / .5, 0, 1));
+    fx.flare.value = t < 3 ? 0 : Math.exp(-(((t - 3.5) / .3) ** 2)) + (t > 3.5 ? .35 * clamp(1 - (t - 3.5) / 3, 0, 1) : 0);
+    const c = clamp((t - 3.4) / 8, 0, 1);
+    fx.cme.value = c > 0 && c < 1 ? 1 - (1 - c) ** 1.6 : 0;
+    // arah semburan di layar = proyeksi wilayah aktif (korona adalah papan yang selalu menghadap kamera)
+    _sw.copy(pheno.region).applyQuaternion(b.mesh.quaternion);
+    _sr.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    _su.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    fx.cmeAng.value = Math.atan2(_sw.dot(_su), _sw.dot(_sr));
+  }
+  function stormText(P) {
+    const t = pheno.clock % STORM_T;
+    if (t < 3) { P.state = 'aktif'; P.line1 = 'Bintik Matahari menumpuk energi magnet'; P.line2 = 'Lengkung plasma (prominensa) mulai naik'; }
+    else if (t < 4.8) { P.state = 'suar'; P.line1 = 'Suar Matahari meledak!'; P.line2 = 'Kilatnya sampai di Bumi dalam ± 8 menit'; }
+    else if (t < 11.5) { P.state = 'cme'; P.line1 = 'Awan plasma (CME) melesat'; P.line2 = '± 1.000 km/detik, sampai di Bumi dalam ± 1–3 hari'; }
+    else { P.state = 'aurora'; P.line1 = 'Bila mengarah ke Bumi, muncul aurora'; P.line2 = 'Badai ini juga bisa mengganggu satelit & GPS'; }
   }
 
   // ---------- Mode Sejarah: tampilan planet bersih tanpa titik POI 3D ----------
@@ -1355,7 +1397,7 @@ export function createEngine(el) {
     applyObsToggles, flyTo,
     approachYes() { const id = store.approach.id; store.approach.show = false; if (id) setMode('planet', { body: id }); },
     approachNo() { store.approach.show = false; },
-    pheno: { start: startPheno, stop: () => stopPheno(), restart() { if (!pheno.id) return; obsTime = pheno.t0; pheno.spin = pheno.t0; pheno.prevDec = null; store.obs.mul = pheno.def.mul; store.pheno.playing = true; },
+    pheno: { start: startPheno, stop: () => stopPheno(), restart() { if (!pheno.id) return; obsTime = pheno.t0; pheno.spin = pheno.t0; pheno.prevDec = null; pheno.clock = 0; pheno.lastT = 0; pheno.region = null; store.obs.mul = pheno.def.mul; store.pheno.playing = true; },
       toggle() { if (!pheno.id) return; store.pheno.playing = !store.pheno.playing; store.obs.mul = store.pheno.playing ? pheno.def.mul : 0; } },
     setShip(id) { setShip(id); },
     previewShip(id) { setShip(id); store.hangarPreview = id; },
