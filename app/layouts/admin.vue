@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
         <div class="sidebar-footer">
           <NuxtLink to="/" class="public-link">
             <UiIcon name="mata" :size="16" />
-            <span>Ke Tampilan Siswa</span>
+            <span>Buka Simulasi Publik</span>
           </NuxtLink>
 
           <div class="admin-profile-box">
@@ -238,9 +238,6 @@ onBeforeUnmount(() => {
       <!-- KONTEN UTAMA HALAMAN -->
       <div class="admin-main-wrap">
         <header class="admin-topbar">
-          <div class="topbar-title">
-            <span class="route-tag">Admin / {{ route.name || 'Dashboard' }}</span>
-          </div>
           <div class="topbar-actions">
             <NuxtLink to="/" class="btn-view-pub">
               <UiIcon name="planet" :size="15" /> Buka Simulasi Publik
@@ -562,16 +559,10 @@ body:has(.admin-theme-root),
   padding: 0 28px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   position: sticky;
   top: 0;
   z-index: 10;
-}
-.route-tag {
-  font-size: 13px;
-  font-weight: 500;
-  color: #64748b;
-  text-transform: capitalize;
 }
 .btn-view-pub {
   display: inline-flex;
