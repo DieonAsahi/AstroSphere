@@ -180,14 +180,15 @@ function setting(k, v) {
   game()?.applySettings();
 }
 
-// ---- Autentikasi Akun & Awan ----
+// ---- Autentikasi Akun ----
 const authMode = ref('login'); // 'login' | 'register'
-const authForm = reactive({ username: '', password: '', busy: false, err: '', success: '' });
+const authForm = reactive({ username: '', password: '', busy: false, err: store.oauthError || '', success: '' });
 
 async function handleAuthSubmit() {
   if (authForm.busy) return;
   authForm.err = '';
   authForm.success = '';
+  store.oauthError = '';
   if (!authForm.username.trim()) {
     authForm.err = 'Isi nama penjelajah.';
     return;
@@ -198,33 +199,46 @@ async function handleAuthSubmit() {
   }
 
   authForm.busy = true;
-  const isReg = authMode.value === 'register';
-  const res = isReg
-    ? await registerUser(authForm.username, authForm.password)
-    : await loginUser(authForm.username, authForm.password);
-  authForm.busy = false;
+  try {
+    const isReg = authMode.value === 'register';
+    const res = isReg
+      ? await registerUser(authForm.username, authForm.password)
+      : await loginUser(authForm.username, authForm.password);
 
-  if (!res.ok) {
-    authForm.err = res.err || 'Gagal memproses akun.';
-    return;
+    if (!res.ok) {
+      authForm.err = res.err || 'Tidak dapat memproses akun saat ini.';
+      return;
+    }
+
+    authForm.password = '';
+    const act = isReg ? 'Akun baru berhasil dibuat' : 'Berhasil masuk akun';
+    authForm.success = `${act}! Progres Anda telah disimpan dan disinkronkan.`;
+    const safeName = (store.account.name || '').replace(/[<>&"]/g, '');
+    showToast(`Selamat datang, <b>${safeName}</b>!`, 3200);
+  } catch (err) {
+    console.error('[AstroSphere] Profile auth error:', err);
+    authForm.err = GENERIC_PUBLIC_ERROR;
+  } finally {
+    authForm.busy = false;
   }
-
-  authForm.password = '';
-  const act = isReg ? 'Akun baru berhasil dibuat' : 'Berhasil masuk akun';
-  authForm.success = `${act}! Progres Anda telah disimpan dan disinkronkan.`;
-  const safeName = (store.account.name || '').replace(/[<>&"]/g, '');
-  showToast(`Selamat datang, <b>${safeName}</b>!`, 3200);
 }
 
 async function handleGoogleAuth() {
   if (authForm.busy) return;
   authForm.err = '';
   authForm.success = '';
+  store.oauthError = '';
   authForm.busy = true;
-  const res = await loginWithGoogle();
-  authForm.busy = false;
-  if (!res.ok) {
-    authForm.err = res.err || 'Tidak dapat menghubungkan ke layanan Google saat ini.';
+  try {
+    const res = await loginWithGoogle();
+    if (!res.ok) {
+      authForm.err = res.err || 'Tidak dapat menghubungkan ke layanan Google saat ini.';
+    }
+  } catch (err) {
+    console.error('[AstroSphere] Profile Google auth error:', err);
+    authForm.err = 'Tidak dapat menghubungkan ke layanan Google saat ini.';
+  } finally {
+    authForm.busy = false;
   }
 }
 

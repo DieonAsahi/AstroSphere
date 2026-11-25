@@ -9,7 +9,10 @@ import { PLANETS } from '~/data/solarSystem.js';
 import { SHIP_IDS } from '~/data/ships.js';
 
 const f = reactive({ name: '', pass: '', show: false, err: '', busy: false, unknown: false });
-function go(screen) { store.screen = screen; f.err = ''; f.pass = ''; f.unknown = false; }
+watch(() => store.oauthError, (msg) => {
+  if (msg) f.err = msg;
+}, { immediate: true });
+function go(screen) { store.screen = screen; f.err = ''; f.pass = ''; f.unknown = false; store.oauthError = ''; }
 function play(fromSave) {
   if (!fromSave && store.hasSave) { store.modal = 'confirmNew'; return; }
   store.startFromSave = !!fromSave;
@@ -24,22 +27,35 @@ async function submit() {
   const reg = store.screen === 'register';
   if (!f.name.trim()) { f.err = 'Isi nama penjelajah.'; return; }
   if (!f.pass) { f.err = 'Isi kata sandi.'; return; }
-  f.busy = true; f.err = ''; f.unknown = false;
-  const r = reg ? await registerUser(f.name, f.pass) : await loginUser(f.name, f.pass);
-  f.busy = false;
-  if (!r.ok) { f.err = r.err; f.unknown = !!r.unknown; return; }
-  f.pass = '';
-  showToast(`${reg ? 'Akun dibuat' : 'Selamat datang'}, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
-  play(store.hasSave);
+  f.busy = true; f.err = ''; f.unknown = false; store.oauthError = '';
+  try {
+    const r = reg ? await registerUser(f.name, f.pass) : await loginUser(f.name, f.pass);
+    if (!r.ok) { f.err = r.err || 'Tidak dapat memproses permintaan saat ini. Silakan coba lagi.'; f.unknown = !!r.unknown; return; }
+    f.pass = '';
+    showToast(`${reg ? 'Akun dibuat' : 'Selamat datang'}, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
+    play(store.hasSave);
+  } catch (err) {
+    console.error('[AstroSphere] Splash auth submit error:', err);
+    f.err = 'Saat ini permintaan belum dapat diproses. Silakan coba lagi.';
+  } finally {
+    f.busy = false;
+  }
 }
 async function handleGoogleLogin() {
   if (f.busy) return;
   f.busy = true;
   f.err = '';
-  const r = await loginWithGoogle();
-  f.busy = false;
-  if (!r.ok) {
-    f.err = r.err || 'Gagal menghubungkan Google.';
+  store.oauthError = '';
+  try {
+    const r = await loginWithGoogle();
+    if (!r.ok) {
+      f.err = r.err || 'Tidak dapat menghubungkan layanan Google saat ini.';
+    }
+  } catch (err) {
+    console.error('[AstroSphere] Splash Google login error:', err);
+    f.err = 'Tidak dapat menghubungkan layanan Google saat ini.';
+  } finally {
+    f.busy = false;
   }
 }
 

@@ -239,6 +239,7 @@ export const store = reactive({
   journalId: null,         // Jurnal: benda yang kartunya sedang dibuka
   profileTab: 'kuis',
   hangarPreview: 'astra',
+  oauthError: '',          // Pesan error callback Google agar tampil aman di form masuk
 });
 
 // Inisialisasi keymap terisolasi akun / tamu setelah store siap (mencegah TDZ ReferenceError)
@@ -380,9 +381,9 @@ let manualAuthFlowDepth = 0;
 
 // Pendaftaran Akun: Prioritas Supabase Auth -> Cadangan Lokal
 export async function registerUser(name, pass) {
-  const clean = sanitizeUsername(name);
-  if (clean.length < 3 || clean.length > 20) {
-    return { ok: false, err: 'Nama penjelajah harus 3–20 karakter alfanumerik (huruf kecil, angka, atau garis bawah).' };
+  const clean = String(name || '').trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+    return { ok: false, err: 'Nama penjelajah harus 3–20 karakter (huruf kecil, angka, atau garis bawah _).' };
   }
   if (!pass || pass.length < 6) {
     return { ok: false, err: 'Kata sandi minimal 6 karakter.' };
@@ -576,11 +577,12 @@ export async function logoutUser() {
   switchAccountKeymap(null);
 }
 
-// Masuk dengan Google OAuth
+// Masuk dengan Google
 export async function loginUserWithGoogle() {
+  store.oauthError = '';
   const res = await signInWithGoogle();
   if (!res.ok) {
-    showToast(res.err || 'Gagal menghubungkan Google.', 3500);
+    showToast(res.err || 'Tidak dapat menghubungkan layanan Google saat ini.', 3500);
   }
   return res;
 }
@@ -736,21 +738,40 @@ export function refreshSaveInfo() {
 if (typeof window !== 'undefined') {
   refreshSaveInfo();
 
+  const cleanOAuthUrl = () => {
+    if (!window.history?.replaceState) return;
+    const sp = new URLSearchParams(window.location.search || '');
+    const hp = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    for (const k of ['code', 'state', 'error', 'error_code', 'error_description']) sp.delete(k);
+    for (const k of ['access_token', 'refresh_token', 'expires_in', 'expires_at', 'token_type', 'provider_token', 'type', 'error', 'error_code', 'error_description']) hp.delete(k);
+    const nextSearch = sp.toString();
+    const nextHash = hp.toString();
+    const cleanTarget = `${window.location.pathname || '/'}${nextSearch ? `?${nextSearch}` : ''}${nextHash ? `#${nextHash}` : ''}`;
+    window.history.replaceState({}, document.title, cleanTarget);
+  };
+
   // Tangkap indikator callback OAuth Google sebelum SDK membersihkan URL fragment/query
   const initialSp = new URLSearchParams(window.location.search || '');
   const initialHp = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-  const INITIAL_OAUTH_CALLBACK = initialHp.has('access_token') || initialHp.has('refresh_token') || initialSp.has('code');
   const INITIAL_OAUTH_ERROR = initialSp.get('error_description') || initialHp.get('error_description') || initialSp.get('error') || initialHp.get('error') || '';
+  const INITIAL_OAUTH_ERROR_CODE = initialSp.get('error_code') || initialHp.get('error_code') || '';
+  const INITIAL_OAUTH_CALLBACK = !INITIAL_OAUTH_ERROR && (initialHp.has('access_token') || initialHp.has('refresh_token') || initialSp.has('code'));
   const INITIAL_LOGGED_IN_UID = (() => {
     const a = ls.read(KEYS.account);
     return a?.loggedIn && typeof a.userId === 'string' && a.userId ? a.userId : null;
   })();
 
   if (INITIAL_OAUTH_ERROR) {
-    if (window.history?.replaceState) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    showToast('Autentikasi Google dibatalkan atau gagal diproses.', 3600);
+    console.error('[AstroSphere] Google OAuth callback error:', {
+      error: initialSp.get('error') || initialHp.get('error') || '',
+      code: INITIAL_OAUTH_ERROR_CODE,
+      description: INITIAL_OAUTH_ERROR,
+    });
+    cleanOAuthUrl();
+    const msg = 'Autentikasi Google dibatalkan atau gagal diproses. Silakan coba lagi.';
+    store.oauthError = msg;
+    if (store.phase === 'splash') store.screen = 'login';
+    showToast(msg, 3600);
   }
 
   // Pulihkan sesi aktif Supabase Auth saat halaman dibuka jika ada
@@ -947,8 +968,22 @@ if (typeof window !== 'undefined') {
 
     // Tunggu getSession() terlebih dahulu agar detectSessionInUrl (PKCE ?code= / implicit #access_token=) selesai diproses
     if (!isBrowserOffline()) {
-      client.auth.getSession().then(async ({ data: sessData }) => {
+      client.auth.getSession().then(async ({ data: sessData, error: sessErr }) => {
+        if (sessErr) {
+          console.error('[AstroSphere] OAuth / session init error:', sessErr);
+          if (INITIAL_OAUTH_CALLBACK || window.location.search.includes('code=') || window.location.search.includes('error=')) {
+            cleanOAuthUrl();
+            const msg = 'Autentikasi Google dibatalkan atau gagal diproses. Silakan coba lagi.';
+            store.oauthError = msg;
+            if (store.phase === 'splash') store.screen = 'login';
+            showToast(msg, 3600);
+          }
+          return;
+        }
         if (!sessData?.session?.user) {
+          if (INITIAL_OAUTH_CALLBACK || window.location.search.includes('code=')) {
+            cleanOAuthUrl();
+          }
           if (store.account.loggedIn && store.account.cloudSynced) {
             syncedSessionUserId = null;
             await forceRevokeAccountSession('Sesi akun berakhir. Silakan masuk kembali.');
