@@ -10,6 +10,7 @@ import {
   registerUser,
   loginUser,
   logoutUser,
+  loginWithGoogle,
   pullCloudProgress,
   resetAllGameData,
   deleteUserAccount,
@@ -213,6 +214,18 @@ async function handleAuthSubmit() {
   authForm.success = `${act}! Progres lokal Anda telah digabungkan ke awan Supabase.`;
   const safeName = (store.account.name || '').replace(/[<>&"]/g, '');
   showToast(`Selamat datang, <b>${safeName}</b>!`, 3200);
+}
+
+async function handleGoogleAuth() {
+  if (authForm.busy) return;
+  authForm.err = '';
+  authForm.success = '';
+  authForm.busy = true;
+  const res = await loginWithGoogle();
+  authForm.busy = false;
+  if (!res.ok) {
+    authForm.err = res.err || 'Gagal menghubungkan ke layanan Google.';
+  }
 }
 
 async function handleLogout() {
@@ -724,7 +737,7 @@ const FAQ = [
                       v-model="authForm.password"
                       type="password"
                       placeholder="Minimal 6 karakter"
-                      autocomplete="current-password"
+                      :autocomplete="authMode === 'login' ? 'current-password' : 'new-password'"
                       class="field-input"
                     />
                   </div>
@@ -738,6 +751,27 @@ const FAQ = [
 
                   <button type="submit" class="btn-auth-submit" :disabled="authForm.busy">
                     {{ authForm.busy ? 'Menghubungkan…' : (authMode === 'login' ? 'Masuk & Sinkronkan Progres' : 'Daftar Akun & Simpan ke Awan') }}
+                  </button>
+
+                  <div class="auth-divider">
+                    <span class="auth-divider-line" />
+                    <span class="auth-divider-text">ATAU</span>
+                    <span class="auth-divider-line" />
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn-google-auth"
+                    :disabled="authForm.busy || isOffline"
+                    @click="handleGoogleAuth"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    <span>Lanjutkan dengan Google</span>
                   </button>
                 </form>
               </div>
@@ -1961,6 +1995,48 @@ const FAQ = [
   background: #2563eb;
 }
 .btn-auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+}
+.auth-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(148, 174, 255, 0.16);
+}
+.auth-divider-text {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(148, 174, 255, 0.65);
+}
+.btn-google-auth {
+  height: 40px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-size: 13.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.btn-google-auth:hover:not(:disabled) {
+  background: #f8fafc;
+}
+.btn-google-auth:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn-google-auth:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

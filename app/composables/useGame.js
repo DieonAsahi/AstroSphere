@@ -375,6 +375,9 @@ async function hashPass(salt, pass) {
   return 'fnv:' + (h >>> 0).toString(16);
 }
 
+// Flag anti-race: cegah listener onAuthStateChange membatalkan akun baru sebelum upsert player_progress selesai
+let manualAuthFlowDepth = 0;
+
 // Pendaftaran Akun: Prioritas Supabase Auth -> Cadangan Lokal
 export async function registerUser(name, pass) {
   const clean = sanitizeUsername(name);
@@ -386,12 +389,18 @@ export async function registerUser(name, pass) {
   }
 
   // 1. Coba daftarkan ke Supabase Auth & Cloud Save
-  const cloudRes = await registerPlayerToCloud(clean, pass, {
-    progress: store.progress,
-    settings: store.settings,
-    gameState: readGameState(),
-    astroId: store.account.astroId,
-  });
+  manualAuthFlowDepth++;
+  let cloudRes;
+  try {
+    cloudRes = await registerPlayerToCloud(clean, pass, {
+      progress: store.progress,
+      settings: store.settings,
+      gameState: readGameState(),
+      astroId: store.account.astroId,
+    });
+  } finally {
+    manualAuthFlowDepth = Math.max(0, manualAuthFlowDepth - 1);
+  }
 
   if (cloudRes.ok) {
     // Terapkan data gabungan
@@ -451,12 +460,18 @@ export async function loginUser(name, pass) {
   if (!pass) return { ok: false, err: 'Isi kata sandi.' };
 
   // 1. Coba masuk via Supabase Auth
-  const cloudRes = await loginPlayerToCloud(clean, pass, {
-    progress: store.progress,
-    settings: store.settings,
-    gameState: readGameState(),
-    astroId: store.account.astroId,
-  });
+  manualAuthFlowDepth++;
+  let cloudRes;
+  try {
+    cloudRes = await loginPlayerToCloud(clean, pass, {
+      progress: store.progress,
+      settings: store.settings,
+      gameState: readGameState(),
+      astroId: store.account.astroId,
+    });
+  } finally {
+    manualAuthFlowDepth = Math.max(0, manualAuthFlowDepth - 1);
+  }
 
   if (cloudRes.ok) {
     if (cloudRes.mergedData) {
@@ -721,13 +736,32 @@ export function refreshSaveInfo() {
 if (typeof window !== 'undefined') {
   refreshSaveInfo();
 
+  // Tangkap indikator callback OAuth Google sebelum SDK membersihkan URL fragment/query
+  const initialSp = new URLSearchParams(window.location.search || '');
+  const initialHp = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  const INITIAL_OAUTH_CALLBACK = initialHp.has('access_token') || initialHp.has('refresh_token') || initialSp.has('code');
+  const INITIAL_OAUTH_ERROR = initialSp.get('error_description') || initialHp.get('error_description') || initialSp.get('error') || initialHp.get('error') || '';
+  const INITIAL_LOGGED_IN_UID = (() => {
+    const a = ls.read(KEYS.account);
+    return a?.loggedIn && typeof a.userId === 'string' && a.userId ? a.userId : null;
+  })();
+
+  if (INITIAL_OAUTH_ERROR) {
+    if (window.history?.replaceState) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    showToast('Autentikasi Google dibatalkan atau gagal diproses.', 3600);
+  }
+
   // Pulihkan sesi aktif Supabase Auth saat halaman dibuka jika ada
   const client = getSupabaseClient();
   if (client) {
-    let authHandled = false;
+    let oauthRedirectHandled = false;
+    let syncedSessionUserId = null;
+    let sessionSyncQueue = Promise.resolve();
 
-    async function handleUserSession(user, fromOAuth = false) {
-      if (!user) return;
+    async function processUserSession(user, fromOAuth = false) {
+      if (!user || manualAuthFlowDepth > 0) return;
       if (window.location.pathname.startsWith('/admin')) return;
 
       // Cek apakah user adalah admin (jangan sentuh sesi admin)
@@ -756,6 +790,30 @@ if (typeof window !== 'undefined') {
                        user.identities?.some(i => i.provider === 'google') ||
                        !isSyntheticPlayer;
 
+      // Cegah duplikasi upsert paralel untuk sesi pengguna yang sama saat event auth beruntun
+      if (syncedSessionUserId === user.id && store.account.loggedIn && store.account.cloudSynced) {
+        const shouldFinishOAuthNav = !oauthRedirectHandled && (
+          INITIAL_OAUTH_CALLBACK ||
+          (fromOAuth && INITIAL_LOGGED_IN_UID !== user.id) ||
+          window.location.hash.includes('access_token') ||
+          window.location.search.includes('code=')
+        );
+        if (shouldFinishOAuthNav) {
+          oauthRedirectHandled = true;
+          if (window.history?.replaceState && (window.location.hash.includes('access_token') || window.location.search.includes('code='))) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          if (store.phase === 'splash') {
+            store.settings.tutorialSeen = true;
+            saveSettings();
+            showToast(`Selamat datang, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
+            store.startFromSave = store.hasSave;
+            store.phase = 'loading';
+          }
+        }
+        return;
+      }
+
       if (isGoogle) {
         const syncRes = await syncGooglePlayerSession(user, {
           progress: store.progress,
@@ -765,6 +823,7 @@ if (typeof window !== 'undefined') {
         });
 
         if (syncRes.banned) {
+          syncedSessionUserId = null;
           await forceRevokeAccountSession(syncRes.err);
           return;
         }
@@ -776,8 +835,13 @@ if (typeof window !== 'undefined') {
           saveAccount();
           return;
         }
+        if (!syncRes.ok) {
+          showToast(syncRes.err || GENERIC_PUBLIC_ERROR, 3800);
+          return;
+        }
 
         if (syncRes.ok) {
+          syncedSessionUserId = user.id;
           if (syncRes.mergedData) {
             applyMergedData(syncRes.mergedData);
           }
@@ -798,20 +862,26 @@ if (typeof window !== 'undefined') {
           switchAccountKeymap(user.id, cloudKeymap);
           saveSettings();
 
-          // Deteksi jika baru kembali dari redirect Google OAuth
-          const isRedirectReturn = fromOAuth || 
-            window.location.hash.includes('access_token') || 
-            window.location.search.includes('code=');
+          // Deteksi jika baru kembali dari redirect Google OAuth (PKCE maupun implicit)
+          const isRedirectReturn = !oauthRedirectHandled && (
+            INITIAL_OAUTH_CALLBACK ||
+            (fromOAuth && INITIAL_LOGGED_IN_UID !== user.id) ||
+            window.location.hash.includes('access_token') ||
+            window.location.search.includes('code=')
+          );
 
           if (isRedirectReturn) {
+            oauthRedirectHandled = true;
             if (window.history?.replaceState) {
               window.history.replaceState({}, document.title, window.location.pathname);
             }
-            store.settings.tutorialSeen = true;
-            saveSettings();
-            showToast(`Selamat datang, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
-            store.startFromSave = store.hasSave;
-            store.phase = 'loading';
+            if (store.phase === 'splash') {
+              store.settings.tutorialSeen = true;
+              saveSettings();
+              showToast(`Selamat datang, <b>${store.account.name.replace(/[<>&"]/g, '')}</b>!`, 3200);
+              store.startFromSave = store.hasSave;
+              store.phase = 'loading';
+            }
           }
         }
       } else {
@@ -842,6 +912,7 @@ if (typeof window !== 'undefined') {
         }
 
         if (!pRow || pRow.is_active === false) {
+          syncedSessionUserId = null;
           await forceRevokeAccountSession(
             pRow?.is_active === false
               ? formatBannedMessage(pRow.banned_reason)
@@ -850,6 +921,7 @@ if (typeof window !== 'undefined') {
           return;
         }
 
+        syncedSessionUserId = user.id;
         store.account.loggedIn = true;
         store.account.userId = user.id;
         store.account.cloudSynced = true;
@@ -865,15 +937,32 @@ if (typeof window !== 'undefined') {
       }
     }
 
-    // Verifikasi sesi langsung ke server Auth via getUser() agar ban / hapus akun segera terdeteksi saat online
+    function handleUserSession(user, fromOAuth = false) {
+      if (!user || manualAuthFlowDepth > 0) return Promise.resolve();
+      sessionSyncQueue = sessionSyncQueue
+        .catch(() => {})
+        .then(() => processUserSession(user, fromOAuth));
+      return sessionSyncQueue;
+    }
+
+    // Tunggu getSession() terlebih dahulu agar detectSessionInUrl (PKCE ?code= / implicit #access_token=) selesai diproses
     if (!isBrowserOffline()) {
-      client.auth.getUser().then(({ data, error }) => {
+      client.auth.getSession().then(async ({ data: sessData }) => {
+        if (!sessData?.session?.user) {
+          if (store.account.loggedIn && store.account.cloudSynced) {
+            syncedSessionUserId = null;
+            await forceRevokeAccountSession('Sesi akun berakhir. Silakan masuk kembali.');
+          }
+          return;
+        }
+        const { data, error } = await client.auth.getUser();
         if (error) {
           if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
             return;
           }
           if (store.account.loggedIn && store.account.cloudSynced) {
             const banned = String(error.message || '').toLowerCase().includes('banned');
+            syncedSessionUserId = null;
             forceRevokeAccountSession(
               banned
                 ? formatBannedMessage()
@@ -882,33 +971,35 @@ if (typeof window !== 'undefined') {
           }
           return;
         }
-        if (data?.user && !authHandled) {
-          authHandled = true;
-          handleUserSession(data.user);
+        if (data?.user) {
+          handleUserSession(data.user, INITIAL_OAUTH_CALLBACK);
         }
       }).catch(() => {});
     }
 
     client.auth.onAuthStateChange((event, session) => {
+      if (manualAuthFlowDepth > 0) return;
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        authHandled = true;
-        handleUserSession(session.user, event === 'SIGNED_IN');
-      } else if (event === 'SIGNED_OUT' && store.account.loggedIn && store.account.cloudSynced) {
-        let guestAstroId = ls.read(KEYS.astroId);
-        if (!guestAstroId) {
-          guestAstroId = generateAstroId();
-          ls.write(KEYS.astroId, guestAstroId);
+        handleUserSession(session.user, event === 'SIGNED_IN' || INITIAL_OAUTH_CALLBACK);
+      } else if (event === 'SIGNED_OUT') {
+        syncedSessionUserId = null;
+        if (store.account.loggedIn && store.account.cloudSynced) {
+          let guestAstroId = ls.read(KEYS.astroId);
+          if (!guestAstroId) {
+            guestAstroId = generateAstroId();
+            ls.write(KEYS.astroId, guestAstroId);
+          }
+          Object.assign(store.account, {
+            loggedIn: false,
+            name: '',
+            username: '',
+            userId: null,
+            cloudSynced: false,
+            astroId: guestAstroId,
+          });
+          saveAccount();
+          switchAccountKeymap(null);
         }
-        Object.assign(store.account, {
-          loggedIn: false,
-          name: '',
-          username: '',
-          userId: null,
-          cloudSynced: false,
-          astroId: guestAstroId,
-        });
-        saveAccount();
-        switchAccountKeymap(null);
       }
     });
   }
