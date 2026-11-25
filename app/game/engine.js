@@ -8,7 +8,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SKY_VS, SKY_FS, STARS_VS, STARS_FS } from './shaders.js';
-import { clamp, lerp, damp, smooth, dead, nextFrame, DEG, TAU, KM, fmtDist, fmtEta, fmtInt, daysSinceJ2000, fmtSimDate, dateFromDays, isTouchDevice } from './util.js';
+import { clamp, lerp, damp, smooth, dead, nextFrame, DEG, TAU, KM, fmtDist, fmtEta, fmtInt, fmtSpeedKm, daysSinceJ2000, fmtSimDate, dateFromDays, isTouchDevice } from './util.js';
 import { buildSystem, updateBodies, latLonToLocal, upgradePlanetModel } from './system.js';
 import { initShipFactory, buildShip, setShipModels } from './ships.js';
 import { loadCoreModels, loadSingleModel, REMAINING_PLANET_IDS, loadDecor } from './models.js';
@@ -84,6 +84,26 @@ export function createEngine(el) {
   const stopPlanetWatch = watch(
     () => [sup.state.planets, sup.loadedFromDb.value.planets],
     syncBodyVisibility,
+    { deep: true }
+  );
+
+  function syncSelectedShip() {
+    const curId = store.progress.selectedShip;
+    const live = sup.getShip(curId);
+    if (sup.loadedFromDb.value.ships && live?.is_active === false) {
+      const liveShips = sup.getShips();
+      const nextId = store.progress.owned.find((id) => liveShips[id]?.is_active !== false)
+        || SHIP_IDS.find((id) => liveShips[id]?.is_active !== false)
+        || 'astra';
+      if (nextId !== curId) {
+        store.progress.selectedShip = nextId;
+        if (sys) setShip(nextId);
+      }
+    }
+  }
+  const stopShipWatch = watch(
+    () => [sup.state.ships, sup.loadedFromDb.value.ships],
+    syncSelectedShip,
     { deep: true }
   );
 
@@ -227,8 +247,9 @@ export function createEngine(el) {
   const shipDef = () => {
     const id = store.progress.selectedShip;
     const fallback = SHIPS[id] || SHIPS.astra;
-    const live = useSupabaseContent().getShips?.()?.[id];
-    return live ? { ...fallback, ...live } : fallback;
+    const live = sup.getShip(id);
+    if (live && live.is_active !== false) return live;
+    return fallback;
   };
   const camOffset = (d) => new THREE.Vector3(0, d.camY, d.camZ);
 
@@ -339,9 +360,9 @@ export function createEngine(el) {
     const alt = nearest ? nearest.alt : 1e9;
     const limit = 8 + Math.max(0, alt) * 1.15;
     ship.limited = desired.length() > limit && alt < 400;
-    if (desired.length() > limit) desired.setLength(limit);
+    if (alt < 400 && desired.length() > limit) desired.setLength(limit);
     if (ship.braking || ship.brakeHold) { ship.vel.multiplyScalar(Math.exp(-dt * (ship.braking ? 3.4 : 2.2))); if (ship.vel.length() < .05) { ship.vel.set(0, 0, 0); ship.braking = false; } }
-    else ship.vel.lerp(desired, 1 - Math.exp(-dt * def.accel * (ship.vel.length() > limit ? 3 : 1)));
+    else ship.vel.lerp(desired, 1 - Math.exp(-dt * def.accel * (alt < 400 && ship.vel.length() > limit ? 3 : 1)));
     // Batas navigasi lembut (PRD R02): rem progresif komponen kecepatan keluar mulai 0,8 R
     const R = ship.pos.length();
     store.hud.boundary = R > RMAX * .8;
@@ -653,7 +674,7 @@ export function createEngine(el) {
     const h = store.hud;
     h.hdg = String(Math.round(heading) % 360).padStart(3, '0') + '°';
     h.pit = (pitch >= 0 ? '+' : '−') + String(Math.abs(Math.round(pitch))).padStart(2, '0') + '°';
-    h.speed = new Intl.NumberFormat('id-ID').format(Math.round(ship.speed * KM));
+    h.speed = fmtSpeedKm(ship.speed);
     h.thr = Math.round(ship.throttle * 100); h.braking = ship.braking || ship.brakeHold;
     h.boost = ship.boost > .3; h.limited = ship.limited;
 
@@ -1182,6 +1203,8 @@ export function createEngine(el) {
     syncDiscovered();
     inBelt = false; sessionActive = true; hazards?.reset();
     if (!target || !isBodyActive(target)) setTarget(pickInitialTargetId(), true);
+    syncSelectedShip();
+    sup.refreshShips?.();
     setShip(store.progress.selectedShip);
     store.mode = 'jelajah'; store.phase = 'playing'; store.autopilot = false; store.approach.show = false; store.backTo = null;
     saveGame();
@@ -1492,6 +1515,7 @@ export function createEngine(el) {
     get _debug() { return { cam: camera.position.toArray(), camQ: camera.quaternion.toArray(), ship: ship.pos.toArray(), earth: sys?.byId.bumi.pos.toArray(), exposure: renderer?.toneMappingExposure, fov: camera.fov, mode: worldMode() }; },
     dispose() {
       stopPlanetWatch?.();
+      stopShipWatch?.();
       hazards?.dispose();
       if (renderer) { renderer.setAnimationLoop(null); composer && composer.dispose(); renderer.dispose(); renderer.forceContextLoss(); }
       for (const [t, ev, fn, opt] of listeners) t.removeEventListener(ev, fn, opt);

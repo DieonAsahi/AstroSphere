@@ -3,12 +3,15 @@
 import { ref, computed, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
-import { KM } from '~/game/util.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
+import { KM, toKmPerSec, fmtSpeedKm } from '~/game/util.js';
 
 definePageMeta({
   layout: 'admin',
   middleware: ['admin-auth'],
 });
+
+const { refreshShips: syncPublicShips } = useSupabaseContent();
 
 const loading = ref(true);
 const refreshing = ref(false);
@@ -31,6 +34,8 @@ const formData = ref({
   harga_poin: 0,
   kecepatan_jelajah: 70,
   kecepatan_turbo: 4.5,
+  speed_km: toKmPerSec(70),
+  turbo_km: toKmPerSec(70 * 4.5),
   akselerasi: 1.5,
   kelincahan: 1.15,
   bar_speed: 62,
@@ -41,8 +46,61 @@ const formData = ref({
   is_active: true,
 });
 
-const previewCruiseKm = computed(() => Math.round((Number(formData.value.kecepatan_jelajah) || 70) * KM).toLocaleString('id-ID'));
-const previewBoostKm = computed(() => Math.round((Number(formData.value.kecepatan_jelajah) || 70) * (Number(formData.value.kecepatan_turbo) || 4.5) * KM).toLocaleString('id-ID'));
+function fmtEngineUnit(val) {
+  const n = Number(val);
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  if (Math.abs(n - Math.round(n)) < 0.005) return Math.round(n).toLocaleString('id-ID');
+  return n.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function fmtMultiplier(val) {
+  const n = Number(val);
+  if (!Number.isFinite(n) || n <= 0) return '1';
+  if (Math.abs(n - Math.round(n)) < 0.005) return Math.round(n).toLocaleString('id-ID');
+  return n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+}
+
+const previewCruiseKm = computed(() => fmtSpeedKm(Number(formData.value.kecepatan_jelajah) || 70));
+const previewBoostKm = computed(() => fmtSpeedKm((Number(formData.value.kecepatan_jelajah) || 70) * (Number(formData.value.kecepatan_turbo) || 4.5)));
+
+function onSpeedKmChange() {
+  const km = Number(formData.value.speed_km);
+  if (!Number.isFinite(km) || km <= 0) return;
+  const nearestInt = Math.round(km / KM);
+  const nextUnit = nearestInt >= 1 && toKmPerSec(nearestInt) === Math.round(km)
+    ? nearestInt
+    : Number((km / KM).toFixed(4));
+  formData.value.kecepatan_jelajah = nextUnit;
+  const curMul = Math.max(1, Number(formData.value.kecepatan_turbo) || 1);
+  formData.value.turbo_km = toKmPerSec(nextUnit * curMul);
+}
+
+function onTurboKmChange() {
+  const tKm = Number(formData.value.turbo_km);
+  const baseUnit = Number(formData.value.kecepatan_jelajah);
+  if (!Number.isFinite(tKm) || tKm <= 0 || !Number.isFinite(baseUnit) || baseUnit <= 0) return;
+  const rawMul = tKm / (baseUnit * KM);
+  const nearestTenth = Math.round(rawMul * 10) / 10;
+  const nextMul = nearestTenth >= 1 && toKmPerSec(baseUnit * nearestTenth) === Math.round(tKm)
+    ? nearestTenth
+    : Number(rawMul.toFixed(4));
+  formData.value.kecepatan_turbo = nextMul;
+}
+
+function onCruiseUnitChange() {
+  const unit = Number(formData.value.kecepatan_jelajah);
+  if (!Number.isFinite(unit) || unit <= 0) return;
+  formData.value.speed_km = toKmPerSec(unit);
+  const curMul = Math.max(1, Number(formData.value.kecepatan_turbo) || 1);
+  formData.value.turbo_km = toKmPerSec(unit * curMul);
+}
+
+function onBoostMulChange() {
+  const mul = Number(formData.value.kecepatan_turbo);
+  const unit = Number(formData.value.kecepatan_jelajah);
+  if (!Number.isFinite(mul) || mul <= 0 || !Number.isFinite(unit) || unit <= 0) return;
+  formData.value.turbo_km = toKmPerSec(unit * mul);
+}
 
 function parseBar(val, fallback) {
   const n = Number(val);
@@ -84,6 +142,8 @@ function openEditModal(ship) {
   formError.value = '';
   editingShip.value = ship;
   const sb = ship.statistik_bar && typeof ship.statistik_bar === 'object' ? ship.statistik_bar : {};
+  const cruiseUnit = Number(ship.kecepatan_jelajah ?? 70);
+  const boostMul = Number(ship.kecepatan_turbo ?? 4.5);
 
   formData.value = {
     ship_id: ship.ship_id,
@@ -92,8 +152,10 @@ function openEditModal(ship) {
     kelas_pesawat: ship.kelas_pesawat || '',
     panjang_meter: Number(ship.panjang_meter || 20),
     harga_poin: Number(ship.harga_poin ?? 0),
-    kecepatan_jelajah: Number(ship.kecepatan_jelajah ?? 70),
-    kecepatan_turbo: Number(ship.kecepatan_turbo ?? 4.5),
+    kecepatan_jelajah: cruiseUnit,
+    kecepatan_turbo: boostMul,
+    speed_km: toKmPerSec(cruiseUnit),
+    turbo_km: toKmPerSec(cruiseUnit * boostMul),
     akselerasi: Number(ship.akselerasi ?? 1.5),
     kelincahan: Number(ship.kelincahan ?? 1.15),
     bar_speed: parseBar(sb.speed ?? sb.Kecepatan, 70),
@@ -141,6 +203,7 @@ async function confirmToggleActive() {
     if (updErr) throw updErr;
     ship.is_active = nextState;
     confirmStatusTarget.value = null;
+    await syncPublicShips();
     showNotification('success', `Pesawat ${ship.nama} berhasil ${nextState ? 'diaktifkan kembali' : 'dinonaktifkan'}.`);
   } catch (err) {
     confirmStatusTarget.value = null;
@@ -177,12 +240,21 @@ async function handleSave() {
     return;
   }
   if (
+    isBlankNumber(formData.value.speed_km) ||
+    Number(formData.value.speed_km) <= 0 ||
     isBlankNumber(formData.value.kecepatan_jelajah) ||
-    Number(formData.value.kecepatan_jelajah) <= 0 ||
+    Number(formData.value.kecepatan_jelajah) <= 0
+  ) {
+    formError.value = 'Kecepatan Maksimal Biasa (km/s) dan unit mesin harus lebih besar dari 0.';
+    return;
+  }
+  if (
+    isBlankNumber(formData.value.turbo_km) ||
+    Number(formData.value.turbo_km) < Number(formData.value.speed_km) ||
     isBlankNumber(formData.value.kecepatan_turbo) ||
     Number(formData.value.kecepatan_turbo) < 1
   ) {
-    formError.value = 'Kecepatan jelajah (> 0) dan pengali turbo (>= 1) harus valid.';
+    formError.value = 'Kecepatan Maksimal Turbo (km/s) tidak boleh lebih kecil dari Kecepatan Maksimal Biasa (pengali minimal 1×).';
     return;
   }
   if (
@@ -236,6 +308,7 @@ async function handleSave() {
 
     if (saveErr) throw saveErr;
 
+    await syncPublicShips();
     showNotification('success', `Spesifikasi pesawat ${payload.nama} berhasil diperbarui.`);
     saving.value = false;
     closeModal();
@@ -366,8 +439,8 @@ onMounted(() => {
             </td>
             <td>
               <div class="perf-cell">
-                <span>{{ Math.round((Number(s.kecepatan_jelajah) || 70) * KM).toLocaleString('id-ID') }} km/s jelajah</span>
-                <small>Turbo ×{{ s.kecepatan_turbo }} ({{ Math.round((Number(s.kecepatan_jelajah) || 70) * (Number(s.kecepatan_turbo) || 4.5) * KM).toLocaleString('id-ID') }} km/s)</small>
+                <span>{{ fmtSpeedKm(Number(s.kecepatan_jelajah) || 70) }} km/s jelajah</span>
+                <small>Turbo ×{{ fmtMultiplier(s.kecepatan_turbo || 4.5) }} ({{ fmtSpeedKm((Number(s.kecepatan_jelajah) || 70) * (Number(s.kecepatan_turbo) || 4.5)) }} km/s)</small>
               </div>
             </td>
             <td style="text-align: center;">
@@ -447,17 +520,59 @@ onMounted(() => {
 
           <!-- BAGIAN 2: PERFORMA FISIKA 3D -->
           <div class="form-section">
-            <span class="fs-title">2. Parameter Fisika Penerbangan 3D (engine.js)</span>
+            <span class="fs-title">2. Parameter Fisika Penerbangan 3D (Langsung ke engine.js &amp; Hanggar)</span>
+            <div class="grid-2">
+              <label class="field">
+                <span>Kecepatan Maksimal Biasa (km/s) *</span>
+                <input
+                  v-model.number="formData.speed_km"
+                  type="number"
+                  step="1"
+                  min="1"
+                  required
+                  @input="onSpeedKmChange"
+                />
+                <small class="field-hint">
+                  {{ previewCruiseKm }} km/s · Setara {{ fmtEngineUnit(formData.kecepatan_jelajah) }} unit mesin
+                </small>
+              </label>
+              <label class="field">
+                <span>Kecepatan Maksimal Turbo (km/s) *</span>
+                <input
+                  v-model.number="formData.turbo_km"
+                  type="number"
+                  step="1"
+                  min="1"
+                  required
+                  @input="onTurboKmChange"
+                />
+                <small class="field-hint">
+                  {{ previewBoostKm }} km/s · Setara pengali {{ fmtMultiplier(formData.kecepatan_turbo) }}× di engine
+                </small>
+              </label>
+            </div>
             <div class="grid-2">
               <label class="field">
                 <span>Kecepatan Jelajah (Unit Mesin) *</span>
-                <input v-model.number="formData.kecepatan_jelajah" type="number" step="0.5" min="1" required />
-                <small class="field-hint">Tampil sebagai {{ previewCruiseKm }} km/s</small>
+                <input
+                  v-model.number="formData.kecepatan_jelajah"
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  required
+                  @input="onCruiseUnitChange"
+                />
               </label>
               <label class="field">
                 <span>Pengali Pendorong Turbo (×) *</span>
-                <input v-model.number="formData.kecepatan_turbo" type="number" step="0.1" min="1" required />
-                <small class="field-hint">Turbo maksimal {{ previewBoostKm }} km/s</small>
+                <input
+                  v-model.number="formData.kecepatan_turbo"
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  required
+                  @input="onBoostMulChange"
+                />
               </label>
             </div>
             <div class="grid-2">
@@ -501,7 +616,7 @@ onMounted(() => {
 
           <label class="checkbox-row">
             <input v-model="formData.is_active" type="checkbox" />
-            <span>Aktifkan pesawat ini (tersedia di Hanggar 3D siswa)</span>
+            <span>Aktifkan pesawat ini (tersedia di Hanggar 3D publik)</span>
           </label>
 
           <div class="modal-footer">
@@ -512,7 +627,7 @@ onMounted(() => {
           </div>
         </form>
 
-        <!-- PRATINJAU KARTU HANGGAR SISWA -->
+        <!-- PRATINJAU KARTU HANGGAR PUBLIK -->
         <div v-else class="modal-body preview-body scroll">
           <div class="pv-hangar-card">
             <div class="pv-hc-head">

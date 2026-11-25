@@ -8,7 +8,7 @@ import { QUIZ, POINTS_PER_QUESTION } from '~/data/quiz.js';
 import { PLANETS } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 
-const { getQuiz, loadAll, planets: livePlanets } = useSupabaseContent();
+const { getQuiz, loadAll, planets: livePlanets, getShips } = useSupabaseContent();
 
 onMounted(() => {
   loadAll();
@@ -28,7 +28,10 @@ const answered = computed(() => Q.stage === 'feedback');
 const correct = computed(() => Q.answers[Q.index] === qq.value.answer);
 const correctCount = computed(() => (set.value?.questions || []).filter((q, idx) => Q.answers[idx] === q.answer).length);
 const stars = (score) => (maxScore.value > 0 && questionCount.value > 0 ? Math.min(questionCount.value, Math.max(0, Math.round((score / maxScore.value) * questionCount.value))) : 0);
-const nextShip = computed(() => SHIP_IDS.map((id) => SHIPS[id]).find((s) => !store.progress.owned.includes(s.id)));
+const nextShip = computed(() => {
+  const liveShips = getShips();
+  return SHIP_IDS.map((id) => liveShips[id] || SHIPS[id]).find((s) => s && s.is_active !== false && !store.progress.owned.includes(s.id));
+});
 const shuffle = (n) => { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function pickPlanet(id) { Q.planet = id; game()?.click(); }
 // Kuis planet terbuka setelah planetnya ditemukan — supaya pemain menjelajah dulu.

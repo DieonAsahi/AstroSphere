@@ -334,47 +334,7 @@ export async function fetchAllPublicContent(force = false) {
 
     // 5. Petakan Pesawat
     if (resMap.ships && !resMap.ships.error && Array.isArray(resMap.ships.data)) {
-      const normalizeStat = (val, fallback) => {
-        const n = Number(val);
-        if (!Number.isFinite(n)) return fallback;
-        return n > 1 ? Math.min(1, Math.max(0, n / 100)) : Math.min(1, Math.max(0, n));
-      };
-      const sMap = {};
-      for (const row of resMap.ships.data) {
-        const localId = toLocalShipId(row.ship_id);
-        const localS = SHIPS[localId] || {};
-        const sb = row.statistik_bar && typeof row.statistik_bar === 'object' ? row.statistik_bar : {};
-        const ls = localS.stats || {};
-        const shipItem = {
-          ...localS,
-          ...row,
-          id: localId,
-          ship_id: row.ship_id,
-          name: row.nama || localS.name,
-          cls: row.kelas_pesawat || row.kategori || localS.cls || 'Pesawat Eksplorasi',
-          length: row.panjang_meter ? `${row.panjang_meter} m` : localS.length,
-          panjang_meter: Number(row.panjang_meter ?? 37),
-          price: Number(row.harga_poin ?? row.biaya_bintang ?? localS.price ?? 0),
-          speed: Number(row.kecepatan_jelajah ?? localS.speed ?? 70),
-          boost: Number(row.kecepatan_turbo ?? localS.boost ?? 4.5),
-          accel: Number(row.akselerasi ?? localS.accel ?? 1.5),
-          turn: Number(row.kelincahan ?? localS.turn ?? 1.15),
-          stats: {
-            Kecepatan: normalizeStat(sb.speed ?? sb.Kecepatan, ls.Kecepatan ?? 0.62),
-            Kelincahan: normalizeStat(sb.agility ?? sb.Kelincahan, ls.Kelincahan ?? 0.92),
-            Akselerasi: normalizeStat(sb.accel ?? sb.Akselerasi, ls.Akselerasi ?? 0.85),
-            'Daya boost': normalizeStat(sb.boost ?? sb['Daya boost'], ls['Daya boost'] ?? 0.7),
-          },
-          desc: row.deskripsi || localS.desc,
-          is_active: row.is_active !== false,
-        };
-        sMap[localId] = shipItem;
-        if (row.ship_id && row.ship_id !== localId) {
-          sMap[row.ship_id] = shipItem;
-        }
-      }
-      state.ships = sMap;
-      state.loadedFromDb.ships = true;
+      applyShipsRows(resMap.ships.data);
     } else if (resMap.ships && !state.loadedFromDb.ships) {
       fillShipsFallback();
     }
@@ -506,6 +466,70 @@ function fillQuestionsFallback() {
   state.questions = qMap;
 }
 
+function numOr(val, fallback) {
+  if (val === null || val === undefined || val === '') return fallback;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeStatBar(val, fallback) {
+  const n = Number(val);
+  if (val === null || val === undefined || val === '' || !Number.isFinite(n)) return fallback;
+  return n > 1 ? Math.min(1, Math.max(0, n / 100)) : Math.min(1, Math.max(0, n));
+}
+
+function applyShipsRows(rows) {
+  const sMap = {};
+  for (const row of rows || []) {
+    const localId = toLocalShipId(row.ship_id);
+    const localS = SHIPS[localId] || {};
+    const sb = row.statistik_bar && typeof row.statistik_bar === 'object' ? row.statistik_bar : {};
+    const ls = localS.stats || {};
+    const shipItem = {
+      ...localS,
+      ...row,
+      id: localId,
+      ship_id: row.ship_id,
+      name: row.nama || localS.name,
+      cls: row.kelas_pesawat || row.kategori || localS.cls || 'Pesawat Eksplorasi',
+      length: row.panjang_meter ? `${row.panjang_meter} m` : localS.length,
+      panjang_meter: numOr(row.panjang_meter, 37),
+      price: numOr(row.harga_poin ?? row.biaya_bintang, localS.price ?? 0),
+      speed: numOr(row.kecepatan_jelajah, localS.speed ?? 70),
+      boost: numOr(row.kecepatan_turbo, localS.boost ?? 4.5),
+      accel: numOr(row.akselerasi, localS.accel ?? 1.5),
+      turn: numOr(row.kelincahan, localS.turn ?? 1.15),
+      stats: {
+        Kecepatan: normalizeStatBar(sb.speed ?? sb.Kecepatan, ls.Kecepatan ?? 0.62),
+        Kelincahan: normalizeStatBar(sb.agility ?? sb.Kelincahan, ls.Kelincahan ?? 0.92),
+        Akselerasi: normalizeStatBar(sb.accel ?? sb.Akselerasi, ls.Akselerasi ?? 0.85),
+        'Daya boost': normalizeStatBar(sb.boost ?? sb['Daya boost'], ls['Daya boost'] ?? 0.7),
+      },
+      desc: row.deskripsi || localS.desc,
+      is_active: row.is_active !== false,
+    };
+    sMap[localId] = shipItem;
+    if (row.ship_id && row.ship_id !== localId) {
+      sMap[row.ship_id] = shipItem;
+    }
+  }
+  state.ships = sMap;
+  state.loadedFromDb.ships = true;
+}
+
+async function refreshShips() {
+  const client = getSupabaseClient();
+  if (!client) return state.ships;
+  try {
+    const { data, error: fetchErr } = await client.from('ships').select('*');
+    if (fetchErr || !Array.isArray(data)) return state.ships;
+    applyShipsRows(data);
+  } catch (err) {
+    console.warn('[AstroSphere Supabase] Gagal menyegarkan data pesawat:', err);
+  }
+  return state.ships;
+}
+
 function fillShipsFallback() {
   const sMap = {};
   for (const [k, v] of Object.entries(SHIPS)) {
@@ -562,6 +586,7 @@ export function useSupabaseContent() {
   return {
     state,
     fetchAllPublicContent,
+    refreshShips,
     loadAll: fetchAllPublicContent,
     fetchAll: fetchAllPublicContent,
     isLoaded: computed(() => state.loaded),
@@ -615,6 +640,18 @@ export function useSupabaseContent() {
         return state.questions[localId] || state.questions[id] || { topic: `Kuis ${localId}`, questions: [] };
       }
       return state.questions[localId] || state.questions[id] || QUIZ[localId] || QUIZ[id] || null;
+    },
+    getShip: (id) => {
+      if (!id) return null;
+      const localId = toLocalShipId(id);
+      const fallbackS = SHIPS[localId] || SHIPS[id] || {};
+      const liveMap = state.ships || {};
+      const liveS = liveMap[localId] || liveMap[id] || liveMap[toSupabaseShipId(localId)];
+      if (state.loadedFromDb.ships && (!liveS || liveS.is_active === false)) {
+        return { ...fallbackS, id: localId, is_active: false };
+      }
+      if (liveS) return liveS;
+      return SHIPS[localId] ? { ...fallbackS, id: localId, is_active: true } : null;
     },
     getShips: () => {
       const liveMap = state.ships || {};

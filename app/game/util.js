@@ -16,6 +16,8 @@ export const isTouchDevice = () => typeof window !== 'undefined' && (matchMedia(
 
 const nf0 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+export const toKmPerSec = (u) => Math.round(Math.max(0, Number(u) || 0) * KM);
+export const fmtSpeedKm = (u) => nf0.format(toKmPerSec(u));
 export const fmtInt = (n) => nf0.format(Math.round(n));
 export const fmtDist = (u) => { const km = Math.max(0, u) * KM; return km >= 1e6 ? nf1.format(km / 1e6) + ' jt km' : nf0.format(km) + ' km'; };
 export const fmtEta = (s) => { if (!isFinite(s) || s <= 0 || s > 5999) return '—'; const m = Math.floor(s / 60); return m + ':' + String(Math.floor(s % 60)).padStart(2, '0'); };

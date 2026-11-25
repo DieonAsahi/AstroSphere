@@ -5,9 +5,9 @@ import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, unlockShip, saveProgress, showToast } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
-import { KM } from '~/game/util.js';
+import { fmtSpeedKm } from '~/game/util.js';
 
-const { getShips, loadAll } = useSupabaseContent();
+const { getShips, loadAll, refreshShips } = useSupabaseContent();
 const shipsData = computed(() => getShips());
 const availableShipIds = computed(() => {
   const ids = SHIP_IDS.filter((id) => shipsData.value[id]?.is_active !== false);
@@ -18,8 +18,12 @@ const currentIndex = computed(() => {
   const idx = availableShipIds.value.indexOf(store.hangarPreview);
   return idx >= 0 ? idx : 0;
 });
-const cruiseSpeedKm = computed(() => Math.round((cur.value.speed || 70) * KM).toLocaleString('id-ID'));
-const boostSpeedKm = computed(() => Math.round((cur.value.speed || 70) * (cur.value.boost || 4.5) * KM).toLocaleString('id-ID'));
+const cruiseSpeedKm = computed(() => fmtSpeedKm(Number(cur.value.speed) > 0 ? Number(cur.value.speed) : 70));
+const boostSpeedKm = computed(() => {
+  const base = Number(cur.value.speed) > 0 ? Number(cur.value.speed) : 70;
+  const mul = Number(cur.value.boost) >= 1 ? Number(cur.value.boost) : 4.5;
+  return fmtSpeedKm(base * mul);
+});
 const shipOf = (id) => shipsData.value[id] || SHIPS[id];
 const owned = (id) => store.progress.owned.includes(id);
 
@@ -75,6 +79,7 @@ function onKeydown(e) {
 
 onMounted(() => {
   loadAll();
+  refreshShips();
   window.addEventListener('keydown', onKeydown);
 });
 
