@@ -237,14 +237,6 @@ onBeforeUnmount(() => {
 
       <!-- KONTEN UTAMA HALAMAN -->
       <div class="admin-main-wrap">
-        <header class="admin-topbar">
-          <div class="topbar-actions">
-            <NuxtLink to="/" class="btn-view-pub">
-              <UiIcon name="planet" :size="15" /> Buka Simulasi Publik
-            </NuxtLink>
-          </div>
-        </header>
-
         <div v-if="isOffline" class="admin-offline-banner" role="status">
           <UiIcon name="info" :size="16" />
           <span>{{ OFFLINE_ADMIN_NOTICE }}</span>
@@ -552,37 +544,8 @@ body:has(.admin-theme-root),
   min-height: 100%;
   background-color: var(--adm-bg);
 }
-.admin-topbar {
-  height: 60px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0 28px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.btn-view-pub {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background-color: #f1f5f9;
-  color: #334155;
-  text-decoration: none;
-  border: 1px solid #e2e8f0;
-}
-.btn-view-pub:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
-}
 .admin-content-area {
-  padding: 24px 28px 48px;
+  padding: 32px 28px 48px;
   flex: 1;
 }
 
@@ -719,6 +682,9 @@ body:has(.admin-theme-root),
     flex-direction: column;
     padding: 8px 4px;
     gap: 6px;
+  }
+  .admin-content-area {
+    padding: 20px 18px 36px;
   }
 }
 </style>
