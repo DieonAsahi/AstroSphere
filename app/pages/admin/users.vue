@@ -685,7 +685,7 @@ onMounted(() => {
 .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 170px; }
 .filter-field.search { flex: 1; min-width: 240px; }
 .filter-field label { font-size: 11.5px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-.adm-select, .adm-input { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #fff; }
+.adm-select, .adm-input { height: 38px; padding: 0 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #ffffff; color: #0f172a; }
 
 .table-wrap { overflow-x: auto; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
@@ -701,7 +701,7 @@ onMounted(() => {
 .u-name { display: block; font-size: 13.5px; font-weight: 600; color: #0f172a; }
 .u-handle { font-size: 12px; color: #64748b; }
 
-.astro-pill { font-family: monospace; font-size: 12px; font-weight: 500; background: #f1f5f9; color: #334155; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
+.astro-pill { font-family: inherit; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; background: #f1f5f9; color: #334155; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
 
 .method-cell { display: flex; flex-direction: column; gap: 3px; }
 .prov-badge { align-self: flex-start; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
@@ -722,8 +722,8 @@ onMounted(() => {
 .status-pill.ban { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 .ban-reason { font-size: 11px; color: #b91c1c; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.btn-row-act { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 12px; font-weight: 500; cursor: pointer; color: #334155; }
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+.btn-row-act { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 12px; font-weight: 500; cursor: pointer; color: #334155; white-space: nowrap; }
 .btn-row-act.detail:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
 .btn-row-act.warn { color: #b45309; border-color: #fde68a; background: #fffbeb; }
 .btn-row-act.warn:hover { background: #fef3c7; }
@@ -751,7 +751,7 @@ onMounted(() => {
 .detail-head-user { display: flex; align-items: center; gap: 12px; }
 .modal-title { margin: 0; font-size: 17px; font-weight: 600; color: #0f172a; }
 .modal-sub { margin: 2px 0 0 0; font-size: 12.5px; color: #64748b; }
-.astro-inline { font-family: monospace; color: #334155; }
+.astro-inline { font-family: inherit; font-variant-numeric: tabular-nums; color: #334155; }
 .btn-close-modal { border: none; background: none; color: #94a3b8; cursor: pointer; padding: 4px; }
 
 .modal-body { padding: 20px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
@@ -771,12 +771,12 @@ onMounted(() => {
 .dl-row:last-child { border-bottom: none; padding-bottom: 0; }
 .dl-row span { color: #64748b; }
 .dl-row b { color: #0f172a; font-weight: 500; text-align: right; }
-.dl-row code { font-size: 11.5px; color: #334155; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+.dl-row code { font-family: inherit; font-size: 12px; color: #334155; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
 .ship-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .ship-chip { font-size: 11.5px; font-weight: 500; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 999px; }
 
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #334155; font-weight: 500; }
-.field textarea { padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; resize: vertical; }
+.field textarea { padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background-color: #ffffff; color: #0f172a; resize: vertical; }
 
 .danger-header { display: flex; align-items: center; gap: 10px; }
 .danger-ic { width: 34px; height: 34px; border-radius: 8px; background: #fef2f2; color: #dc2626; display: grid; place-items: center; flex: none; }

@@ -573,15 +573,15 @@ onMounted(() => {
 .card-section { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; }
 .table-wrap { overflow-x: auto; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
-.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
 .adm-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .adm-table tbody tr:hover { background: #f8fafc; }
 
-.tier-badge { padding: 4px 10px; border-radius: 6px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; }
+.tier-badge { padding: 4px 10px; border-radius: 6px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .ship-cell b { display: block; color: #0f172a; font-size: 14.5px; font-weight: 600; }
 .ship-cell small { color: #64748b; font-size: 12px; }
 
-.price-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #fef3c7; color: #b45309; font-size: 12px; font-weight: 600; }
+.price-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #fef3c7; color: #b45309; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .price-pill.free { background: #f0fdf4; color: #16a34a; }
 
 .perf-cell span { display: block; color: #0f172a; font-size: 13px; font-weight: 500; }
@@ -600,6 +600,7 @@ onMounted(() => {
 .modal-header { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .modal-title { margin: 0; font-size: 17px; font-weight: 600; color: #0f172a; }
 .modal-sub { margin: 2px 0 0 0; font-size: 12px; color: #64748b; }
+.modal-sub code { font-family: inherit; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; color: #334155; }
 .modal-mode-tabs { display: flex; align-items: center; gap: 6px; }
 .modal-mode-tabs button { padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 12px; font-weight: 500; cursor: pointer; color: #475569; }
 .modal-mode-tabs button.on { background: #2563eb; color: #fff; border-color: #2563eb; }
@@ -610,13 +611,14 @@ onMounted(() => {
 .fs-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #2563eb; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
-.field input, .field textarea { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #fff; }
+.field input, .field textarea { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #fff; color: #0f172a; }
+.field input { min-height: 38px; height: 38px; padding: 0 12px; }
 .field-hint { font-size: 11.5px; color: #2563eb; font-weight: 500; }
 
 .bars-editor { display: flex; flex-direction: column; gap: 10px; }
 .bar-input-row { display: grid; grid-template-columns: 100px 1fr 72px; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; color: #334155; }
 .bar-input-row input[type="range"] { accent-color: #2563eb; }
-.num-input { padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; text-align: center; }
+.num-input { height: 36px; padding: 0 8px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; font-family: inherit; background: #fff; color: #0f172a; text-align: center; }
 
 .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer; }
 .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 12px; border-top: 1px solid #e2e8f0; }

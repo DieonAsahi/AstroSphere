@@ -1,5 +1,5 @@
 <script setup>
-// Halaman Pengelola Sejarah (/admin/history) — Filter Era Dinamis & Pratinjau PLY-03 / PLY-04
+// Halaman Pengelola Sejarah (/admin/history) — Filter Era Dinamis & Pratinjau Kartu / Detail
 import { ref, computed, watch, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
@@ -32,7 +32,7 @@ const itemsPerPage = 8;
 // Modal CRUD & Pratinjau
 const modalOpen = ref(false);
 const isEditing = ref(false);
-const modalViewMode = ref('EDIT'); // 'EDIT' | 'PLY03' | 'PLY04'
+const modalViewMode = ref('EDIT'); // 'EDIT' | 'CARD' | 'DETAIL'
 const deletingEvent = ref(null);
 const importModalOpen = ref(false);
 const importText = ref('');
@@ -271,11 +271,11 @@ async function handleSave() {
     return;
   }
   if (!formData.value.ringkasan_singkat?.trim()) {
-    formError.value = 'Ringkasan singkat (PLY-03) wajib diisi.';
+    formError.value = 'Ringkasan singkat wajib diisi.';
     return;
   }
   if (!formData.value.deskripsi?.trim()) {
-    formError.value = 'Uraian narasi lengkap (PLY-04) wajib diisi.';
+    formError.value = 'Uraian narasi lengkap wajib diisi.';
     return;
   }
 
@@ -650,8 +650,8 @@ onMounted(() => {
           </div>
           <div class="modal-mode-tabs">
             <button type="button" :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
-            <button type="button" :class="{ on: modalViewMode === 'PLY03' }" @click="modalViewMode = 'PLY03'">Pratinjau PLY-03 (Kartu)</button>
-            <button type="button" :class="{ on: modalViewMode === 'PLY04' }" @click="modalViewMode = 'PLY04'">Pratinjau PLY-04 (Detail)</button>
+            <button type="button" :class="{ on: modalViewMode === 'CARD' }" @click="modalViewMode = 'CARD'">Pratinjau Kartu</button>
+            <button type="button" :class="{ on: modalViewMode === 'DETAIL' }" @click="modalViewMode = 'DETAIL'">Pratinjau Detail</button>
             <button type="button" class="btn-close-modal" :disabled="saving || uploadingImage" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
           </div>
         </div>
@@ -712,12 +712,12 @@ onMounted(() => {
           </div>
 
           <label class="field">
-            <span>Ringkasan Singkat (PLY-03)</span>
+            <span>Ringkasan Singkat</span>
             <textarea v-model="formData.ringkasan_singkat" rows="2" placeholder="Cuplikan ringkas untuk kartu linimasa..." required />
           </label>
 
           <label class="field">
-            <span>Uraian Narasi Lengkap (PLY-04)</span>
+            <span>Uraian Narasi Lengkap</span>
             <textarea v-model="formData.deskripsi" rows="4" placeholder="Uraian mendalam sejarah, tujuan, temuan ilmiah..." required />
           </label>
 
@@ -754,46 +754,46 @@ onMounted(() => {
           </div>
         </form>
 
-        <!-- PRATINJAU LAYAR SISWA PLY-03 (KARTU LINIMASA) -->
-        <div v-else-if="modalViewMode === 'PLY03'" class="modal-body preview-body scroll">
-          <div class="preview-ply03-card">
-            <div class="ply03-header">
-              <span class="ply03-year">{{ formatYear(formData.tahun_kejadian) }}</span>
-              <span class="ply03-tag">{{ formData.kategori_poi }}</span>
+        <!-- PRATINJAU KARTU LINIMASA -->
+        <div v-else-if="modalViewMode === 'CARD'" class="modal-body preview-body scroll">
+          <div class="preview-history-card">
+            <div class="hc-header">
+              <span class="hc-year">{{ formatYear(formData.tahun_kejadian) }}</span>
+              <span class="hc-tag">{{ formData.kategori_poi }}</span>
             </div>
-            <div class="ply03-content">
-              <div v-if="formData.gambar_url && isSafeMediaUrl(formData.gambar_url)" class="ply03-thumb">
+            <div class="hc-content">
+              <div v-if="formData.gambar_url && isSafeMediaUrl(formData.gambar_url)" class="hc-thumb">
                 <img :src="formData.gambar_url" alt="Thumb" />
               </div>
               <div>
-                <b class="ply03-title">{{ formData.judul || 'Judul Peristiwa' }}</b>
-                <span class="ply03-actor">{{ formData.nama_wahana }}</span>
-                <p class="ply03-desc">{{ formData.ringkasan_singkat || 'Ringkasan singkat linimasa peristiwa...' }}</p>
+                <b class="hc-title">{{ formData.judul || 'Judul Peristiwa' }}</b>
+                <span class="hc-actor">{{ formData.nama_wahana }}</span>
+                <p class="hc-desc">{{ formData.ringkasan_singkat || 'Ringkasan singkat linimasa peristiwa...' }}</p>
               </div>
             </div>
-            <span class="ply03-cta">Buka Detail →</span>
+            <span class="hc-cta">Buka Detail →</span>
           </div>
         </div>
 
-        <!-- PRATINJAU LAYAR SISWA PLY-04 (DETAIL LENGKAP) -->
-        <div v-else-if="modalViewMode === 'PLY04'" class="modal-body preview-body scroll">
-          <div class="preview-ply04-detail">
-            <div v-if="formData.gambar_url && isSafeMediaUrl(formData.gambar_url)" class="ply04-media">
+        <!-- PRATINJAU DETAIL LENGKAP -->
+        <div v-else-if="modalViewMode === 'DETAIL'" class="modal-body preview-body scroll">
+          <div class="preview-history-detail">
+            <div v-if="formData.gambar_url && isSafeMediaUrl(formData.gambar_url)" class="hd-media">
               <img :src="formData.gambar_url" alt="Foto Besar" />
             </div>
 
-            <div class="ply04-meta-box">
+            <div class="hd-meta-box">
               <div class="meta-row"><span>Kategori</span><b>{{ formData.kategori_poi }}</b></div>
               <div class="meta-row"><span>Status / Era</span><b>{{ formData.era_label }}</b></div>
               <div class="meta-row"><span>Wahana / Tokoh</span><b>{{ formData.nama_wahana || '—' }}</b></div>
               <div class="meta-row"><span>Karakteristik Fisik</span><b>{{ formData.karakteristik_fisik || '—' }}</b></div>
             </div>
 
-            <h2 class="ply04-title">{{ formData.judul }}</h2>
-            <p class="ply04-lead">{{ formData.ringkasan_singkat }}</p>
-            <p class="ply04-desc">{{ formData.deskripsi }}</p>
+            <h2 class="hd-title">{{ formData.judul }}</h2>
+            <p class="hd-lead">{{ formData.ringkasan_singkat }}</p>
+            <p class="hd-desc">{{ formData.deskripsi }}</p>
 
-            <div class="ply04-ref">
+            <div class="hd-ref">
               <small>Sumber Referensi Terverifikasi:</small>
               <p>{{ formData.sumber_referensi || 'NASA / Arsip Astronomi' }}</p>
             </div>
@@ -913,11 +913,13 @@ onMounted(() => {
   min-width: 200px;
 }
 .adm-select, .adm-input {
-  padding: 8px 12px;
+  height: 38px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   background-color: #ffffff;
   color: #0f172a;
+  font-family: inherit;
   font-size: 13.5px;
 }
 
@@ -938,6 +940,7 @@ onMounted(() => {
   font-weight: 500;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 .adm-table td {
   padding: 12px 16px;
@@ -1085,10 +1088,17 @@ onMounted(() => {
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
 .field input, .field textarea, .field select {
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   font-size: 13.5px;
+  font-family: inherit;
   color: #0f172a;
+  background-color: #ffffff;
+}
+.field input, .field select {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
 }
 
 .upload-section {
@@ -1097,16 +1107,31 @@ onMounted(() => {
   gap: 6px;
 }
 .field-label { font-size: 12.5px; color: #334155; font-weight: 500; }
-.upload-row { display: flex; gap: 8px; }
-.input-url { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; }
+.upload-row { display: flex; gap: 8px; align-items: center; }
+.input-url {
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: #ffffff;
+  color: #0f172a;
+}
 .btn-upload-file {
-  padding: 8px 14px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
   background-color: #f1f5f9;
   border: 1px solid #cbd5e1;
   color: #334155;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
 }
 .sr-only { display: none; }
@@ -1131,9 +1156,9 @@ onMounted(() => {
 .btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 .btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 
-/* Pratinjau PLY-03 / PLY-04 */
+/* Pratinjau Kartu / Detail */
 .preview-body { background-color: #0b1021; color: #ffffff; border-radius: 0 0 14px 14px; }
-.preview-ply03-card {
+.preview-history-card {
   background-color: #121833;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -1142,21 +1167,21 @@ onMounted(() => {
   flex-direction: column;
   gap: 10px;
 }
-.ply03-header { display: flex; align-items: center; justify-content: space-between; }
-.ply03-year { font-size: 16px; font-weight: 600; color: #5ed1ff; }
-.ply03-tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: rgba(94, 209, 255, 0.15); color: #5ed1ff; }
-.ply03-content { display: flex; gap: 12px; align-items: flex-start; }
-.ply03-thumb { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex: none; }
-.ply03-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.ply03-title { font-size: 15px; color: #ffffff; display: block; }
-.ply03-actor { font-size: 12px; color: #5ed1ff; }
-.ply03-desc { margin: 4px 0 0; font-size: 13px; color: #a6b2de; }
-.ply03-cta { font-size: 12px; font-weight: 500; color: #5ed1ff; align-self: flex-end; }
+.hc-header { display: flex; align-items: center; justify-content: space-between; }
+.hc-year { font-size: 16px; font-weight: 600; color: #5ed1ff; }
+.hc-tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: rgba(94, 209, 255, 0.15); color: #5ed1ff; }
+.hc-content { display: flex; gap: 12px; align-items: flex-start; }
+.hc-thumb { width: 60px; height: 60px; border-radius: 6px; overflow: hidden; flex: none; }
+.hc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hc-title { font-size: 15px; color: #ffffff; display: block; }
+.hc-actor { font-size: 12px; color: #5ed1ff; }
+.hc-desc { margin: 4px 0 0; font-size: 13px; color: #a6b2de; }
+.hc-cta { font-size: 12px; font-weight: 500; color: #5ed1ff; align-self: flex-end; }
 
-.preview-ply04-detail { display: flex; flex-direction: column; gap: 12px; }
-.ply04-media { width: 100%; max-height: 200px; border-radius: 10px; overflow: hidden; }
-.ply04-media img { width: 100%; height: 100%; object-fit: cover; }
-.ply04-meta-box {
+.preview-history-detail { display: flex; flex-direction: column; gap: 12px; }
+.hd-media { width: 100%; max-height: 200px; border-radius: 10px; overflow: hidden; }
+.hd-media img { width: 100%; height: 100%; object-fit: cover; }
+.hd-meta-box {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   padding: 10px 14px;
@@ -1167,12 +1192,12 @@ onMounted(() => {
 .meta-row { display: flex; justify-content: space-between; font-size: 12.5px; }
 .meta-row span { color: #a6b2de; }
 .meta-row b { color: #ffffff; }
-.ply04-title { margin: 0; font-size: 18px; color: #ffffff; }
-.ply04-lead { margin: 0; font-size: 14px; color: #ffffff; font-weight: 500; }
-.ply04-desc { margin: 0; font-size: 13px; color: #a6b2de; line-height: 1.5; }
-.ply04-ref { padding: 8px 12px; border-left: 3px solid #5ed1ff; background: rgba(255, 255, 255, 0.04); font-size: 12px; }
+.hd-title { margin: 0; font-size: 18px; color: #ffffff; }
+.hd-lead { margin: 0; font-size: 14px; color: #ffffff; font-weight: 500; }
+.hd-desc { margin: 0; font-size: 13px; color: #a6b2de; line-height: 1.5; }
+.hd-ref { padding: 8px 12px; border-left: 3px solid #5ed1ff; background: rgba(255, 255, 255, 0.04); font-size: 12px; }
 
-.import-textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12px; }
+.import-textarea { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 13px; background-color: #ffffff; color: #0f172a; }
 .error-text { color: #dc2626; font-size: 13px; margin: 4px 0 0 0; }
 .status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
 .status-toggle-btn.on { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }

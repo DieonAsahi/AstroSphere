@@ -271,9 +271,11 @@ onBeforeUnmount(() => {
 
 <style>
 /* Reset khusus tata letak admin dalam mode terang (Light Mode) */
+:root:has(.admin-theme-root),
 html:has(.admin-theme-root),
 body:has(.admin-theme-root),
 #__nuxt:has(.admin-theme-root) {
+  color-scheme: light;
   background-color: #f8fafc;
   color: #0f172a;
   height: 100%;
@@ -300,6 +302,7 @@ body:has(.admin-theme-root),
   --adm-warning: #d97706;
   --adm-warning-light: #fffbeb;
 
+  color-scheme: light;
   position: fixed;
   inset: 0;
   width: 100%;
@@ -313,6 +316,109 @@ body:has(.admin-theme-root),
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* Penyeragaman input, select, textarea, dan elemen form admin dalam mode terang */
+.admin-theme-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.admin-theme-root select,
+.admin-theme-root textarea,
+.admin-theme-root .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.admin-theme-root .field select,
+.admin-theme-root .field textarea {
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  background-color: #ffffff;
+  background-image: none;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color-scheme: light;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.admin-theme-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.admin-theme-root select,
+.admin-theme-root .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.admin-theme-root .field select {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.admin-theme-root textarea,
+.admin-theme-root .field textarea {
+  min-height: 76px;
+  height: auto;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.admin-theme-root input::placeholder,
+.admin-theme-root textarea::placeholder,
+.admin-theme-root .field input::placeholder,
+.admin-theme-root .field textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+.admin-theme-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.admin-theme-root select:focus,
+.admin-theme-root textarea:focus,
+.admin-theme-root .field input:focus,
+.admin-theme-root .field select:focus,
+.admin-theme-root .field textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.admin-theme-root input[type="checkbox"],
+.admin-theme-root input[type="radio"] {
+  color-scheme: light;
+}
+
+.admin-theme-root button,
+.admin-theme-root input[type="button"],
+.admin-theme-root input[type="submit"],
+.admin-theme-root code {
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+}
+
+.admin-theme-root .table-wrap {
+  overflow-x: auto;
+}
+
+.admin-theme-root .adm-table th {
+  white-space: nowrap;
+}
+
+.admin-theme-root .adm-table td {
+  vertical-align: middle;
+}
+
+.admin-theme-root .row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.admin-theme-root .grid-2,
+.admin-theme-root .grid-3 {
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .admin-theme-root .grid-2,
+  .admin-theme-root .grid-3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Zero Leak Loader */

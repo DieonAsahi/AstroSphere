@@ -1,5 +1,5 @@
 <script setup>
-// Halaman Pengelola Planet (/admin/planets) — Kolom Bersih PLY-02 & Pratinjau Observasi
+// Halaman Pengelola Planet (/admin/planets) — Kolom Observasi & Pratinjau Halaman Planet
 import { ref, computed, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import { formatSupabaseError } from '~/utils/adminAuth.js';
@@ -215,7 +215,7 @@ onMounted(() => {
     <div class="page-head">
       <div>
         <h1 class="page-title">Manajemen Planet &amp; Katalog Observasi</h1>
-        <p class="page-desc">Kelola ringkasan materi, 6 kotak ilmiah observasi PLY-02, dan ketersediaan planet di simulasi publik.</p>
+        <p class="page-desc">Kelola ringkasan materi, 6 metrik ilmiah observasi, dan ketersediaan planet di simulasi publik.</p>
       </div>
       <button class="btn-refresh" :disabled="refreshing" @click="handleRefresh">
         <UiIcon name="ulang" :size="16" :class="{ 'spin-active': refreshing }" />
@@ -302,17 +302,17 @@ onMounted(() => {
       </table>
     </div>
 
-    <!-- MODAL EDIT & PRATINJAU OBSERVASI PLY-02 -->
+    <!-- MODAL EDIT & PRATINJAU HALAMAN PLANET -->
     <div v-if="editingPlanet" class="modal-backdrop" @click.self="closeModal">
       <div class="modal-card">
         <div class="modal-header">
           <div>
             <h3 class="modal-title">Ubah Materi: Planet {{ formData.nama }}</h3>
-            <p class="modal-sub">Konfigurasi kolom bersih PLY-02 (Tanpa parameter 3D/Navigasi).</p>
+            <p class="modal-sub">Konfigurasi ringkasan materi dan metrik observasi halaman planet.</p>
           </div>
           <div class="modal-mode-tabs">
             <button type="button" :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
-            <button type="button" :class="{ on: modalViewMode === 'PREVIEW' }" @click="modalViewMode = 'PREVIEW'">Pratinjau PLY-02</button>
+            <button type="button" :class="{ on: modalViewMode === 'PREVIEW' }" @click="modalViewMode = 'PREVIEW'">Pratinjau Halaman Planet</button>
             <button type="button" class="btn-close-modal" :disabled="saving" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
           </div>
         </div>
@@ -351,8 +351,8 @@ onMounted(() => {
               </label>
             </div>
             <label class="field">
-              <span>Uraian Materi Pembelajaran Edukasi (PLY-02)</span>
-              <textarea v-model="formData.deskripsi_materi" rows="3" placeholder="Ringkasan materi inti planet untuk dipelajari siswa..." />
+              <span>Uraian Materi Pembelajaran Edukasi</span>
+              <textarea v-model="formData.deskripsi_materi" rows="3" placeholder="Ringkasan materi inti planet untuk dipelajari pengguna..." />
             </label>
           </div>
 
@@ -371,9 +371,9 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- BAGIAN 3: 6 KOTAK DATA ILMIAH OBSERVASI (PLY-02) -->
+          <!-- BAGIAN 3: 6 METRIK DATA ILMIAH OBSERVASI -->
           <div class="form-section">
-            <span class="fs-title">3. 6 Kotak Data Ilmiah Observasi (PLY-02)</span>
+            <span class="fs-title">3. 6 Metrik Data Ilmiah Observasi</span>
             <div class="grid-2">
               <label class="field">
                 <span>1. Periode Rotasi</span>
@@ -445,9 +445,9 @@ onMounted(() => {
           </div>
         </form>
 
-        <!-- PRATINJAU LAYAR SISWA PLY-02 -->
+        <!-- PRATINJAU HALAMAN PLANET -->
         <div v-else class="modal-body preview-body scroll">
-          <div class="preview-card-ply02">
+          <div class="preview-card-planet">
             <div class="pv-header">
               <span class="pv-tag">Planet ke-{{ formData.urutan_planet }} dari Matahari</span>
               <h2 class="pv-name">Planet {{ formData.nama }}</h2>
@@ -569,6 +569,7 @@ onMounted(() => {
   font-weight: 500;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 .adm-table td {
   padding: 14px 16px;
@@ -750,15 +751,21 @@ onMounted(() => {
   color: #334155;
   font-weight: 500;
 }
-.field input, .field textarea {
+.field input, .field textarea, .field select {
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid #cbd5e1;
   font-size: 13.5px;
+  font-family: inherit;
   color: #0f172a;
   background-color: #ffffff;
 }
-.field input:focus, .field textarea:focus {
+.field input, .field select {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
+}
+.field input:focus, .field textarea:focus, .field select:focus {
   outline: none;
   border-color: #2563eb;
 }
@@ -795,12 +802,12 @@ onMounted(() => {
   background-color: #1d4ed8;
 }
 
-/* Pratinjau PLY-02 */
+/* Pratinjau Halaman Planet */
 .preview-body {
   background-color: #0b1021;
   border-radius: 0 0 14px 14px;
 }
-.preview-card-ply02 {
+.preview-card-planet {
   color: #ffffff;
   display: flex;
   flex-direction: column;

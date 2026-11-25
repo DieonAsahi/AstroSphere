@@ -809,11 +809,11 @@ onMounted(() => {
 .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
 .filter-field.search { flex: 1; min-width: 220px; }
 .filter-field label { font-size: 11.5px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-.adm-select, .adm-input { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #ffffff; }
+.adm-select, .adm-input { height: 38px; padding: 0 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #ffffff; color: #0f172a; }
 
 .table-wrap { overflow-x: auto; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
-.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
 .adm-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .adm-table tbody tr:hover { background: #f8fafc; }
 
@@ -824,11 +824,11 @@ onMounted(() => {
 .myth-cell p { margin: 3px 0; font-size: 12.5px; color: #64748b; line-height: 1.45; }
 .myth-cell small { font-size: 11.5px; color: #94a3b8; }
 
-.verdict-tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+.verdict-tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
 .verdict-tag.fact { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
 .verdict-tag.myth { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 
-.points-tag { font-size: 12px; font-weight: 600; color: #b45309; background: #fef3c7; padding: 3px 8px; border-radius: 6px; }
+.points-tag { font-size: 12px; font-weight: 600; color: #b45309; background: #fef3c7; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
 .status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
 .status-toggle-btn.on { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
 
@@ -864,7 +864,8 @@ onMounted(() => {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
-.field input, .field textarea, .field select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; }
+.field input, .field textarea, .field select { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background-color: #ffffff; color: #0f172a; }
+.field input, .field select { min-height: 38px; height: 38px; padding: 0 12px; }
 
 .truth-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .truth-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-size: 13px; font-weight: 500; color: #475569; cursor: pointer; }
@@ -915,6 +916,6 @@ onMounted(() => {
 .pv-fb-box small { font-size: 11.5px; color: #94a3b8; }
 
 .hint { margin: 0; font-size: 12.5px; color: #64748b; }
-.import-textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12px; }
+.import-textarea { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 13px; background-color: #ffffff; color: #0f172a; }
 .error-text { color: #dc2626; font-size: 13px; margin: 0; }
 </style>

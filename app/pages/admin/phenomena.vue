@@ -729,7 +729,7 @@ onMounted(() => {
 .dash-alert.error { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
 .btn-primary-action { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s; }
 .btn-primary-action:hover { background: #1d4ed8; }
-.btn-refresh { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-refresh { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #334155; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
 
 .filter-strip { display: flex; align-items: center; gap: 12px; background: #fff; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; overflow-x: auto; }
 .filter-label { font-size: 12.5px; font-weight: 500; color: #475569; white-space: nowrap; }
@@ -740,14 +740,14 @@ onMounted(() => {
 
 .table-wrap { padding: 0; overflow-x: auto; background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
-.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 500; color: #475569; border-bottom: 1px solid #e2e8f0; }
-.adm-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 500; color: #475569; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.adm-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
 .adm-table tbody tr:hover { background: #f8fafc; }
 
-.planet-badge { padding: 3px 8px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 500; text-transform: capitalize; }
+.planet-badge { padding: 3px 8px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 500; text-transform: capitalize; white-space: nowrap; }
 .pheno-title-cell b { display: block; color: #0f172a; font-size: 14px; }
 .pheno-title-cell small { color: #64748b; font-size: 12px; margin-top: 2px; display: block; }
-.anim-tag { font-size: 11.5px; background: #f1f5f9; padding: 3px 7px; border-radius: 4px; color: #334155; font-family: monospace; font-weight: 500; }
+.anim-tag { font-size: 11.5px; background: #f1f5f9; padding: 3px 8px; border-radius: 4px; color: #334155; font-family: inherit; font-weight: 500; white-space: nowrap; }
 .desc-clamp { margin: 0; font-size: 13px; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45; }
 
 .status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
@@ -771,7 +771,8 @@ onMounted(() => {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
-.field input, .field textarea, .field select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; }
+.field input, .field textarea, .field select { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background-color: #ffffff; color: #0f172a; }
+.field input, .field select { min-height: 38px; height: 38px; padding: 0 12px; }
 
 .earth-eclipse-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 8px; background: #f0f7ff; border: 1px solid #c7dfff; }
 .guess-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 8px; background: #ffffff; border: 1px solid #cbd5e1; margin-top: 4px; }

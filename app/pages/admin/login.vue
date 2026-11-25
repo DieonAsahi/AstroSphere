@@ -244,8 +244,18 @@ async function handleLogin() {
 </template>
 
 <style scoped>
+:global(:root:has(.admin-login-screen)),
+:global(html:has(.admin-login-screen)),
+:global(body:has(.admin-login-screen)) {
+  color-scheme: light;
+  background-color: #f1f5f9;
+}
+
 .admin-login-screen {
-  min-height: 100vh;
+  color-scheme: light;
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -366,13 +376,20 @@ async function handleLogin() {
 }
 .input-icon-wrap input {
   width: 100%;
-  padding: 10px 12px 10px 38px;
+  height: 40px;
+  padding: 0 38px 0 38px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   background-color: #ffffff;
   color: #0f172a;
-  font-size: 14px;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  font-size: 13.5px;
+  color-scheme: light;
   transition: all 0.15s;
+}
+.input-icon-wrap input::placeholder {
+  color: #94a3b8;
+  opacity: 1;
 }
 .input-icon-wrap input:focus {
   outline: none;

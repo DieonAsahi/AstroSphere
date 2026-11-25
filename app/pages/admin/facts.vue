@@ -761,12 +761,12 @@ onMounted(() => {
 .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 190px; }
 .filter-field.search { flex: 1; min-width: 220px; }
 .filter-field label { font-size: 11.5px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-.adm-select, .adm-input { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #ffffff; }
+.adm-select, .adm-input { height: 38px; padding: 0 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background: #ffffff; color: #0f172a; }
 
 /* Table */
 .table-wrap { overflow-x: auto; }
 .adm-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
-.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
+.adm-table th { background: #f8fafc; padding: 12px 16px; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
 .adm-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 .adm-table tbody tr:hover { background: #f8fafc; }
 
@@ -810,7 +810,8 @@ onMounted(() => {
 .modal-body { padding: 20px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
-.field input, .field textarea, .field select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; }
+.field input, .field textarea, .field select { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; background-color: #ffffff; color: #0f172a; }
+.field input, .field select { min-height: 38px; height: 38px; padding: 0 12px; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer; }
 
 .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
@@ -843,6 +844,6 @@ onMounted(() => {
 .pv-fc-foot { padding-top: 10px; border-top: 1px solid rgba(148, 174, 255, 0.14); font-size: 12px; color: #94a3b8; }
 
 .hint { margin: 0; font-size: 12.5px; color: #64748b; }
-.import-textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12px; }
+.import-textarea { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 13px; background-color: #ffffff; color: #0f172a; }
 .error-text { color: #dc2626; font-size: 13px; margin: 0; }
 </style>
