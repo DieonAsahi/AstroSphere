@@ -192,7 +192,7 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
             <div class="setting-confirm-dialog">
               <div class="confirm-dialog-header">
                 <div class="confirm-icon-box">
-                  <UiIcon name="pengaturan" :size="18" />
+                  <UiIcon name="atur" :size="18" />
                 </div>
                 <h3 class="confirm-title">{{ pendingSetting.title }}</h3>
               </div>

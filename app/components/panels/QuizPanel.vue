@@ -8,30 +8,32 @@ import { QUIZ, POINTS_PER_QUESTION } from '~/data/quiz.js';
 import { PLANETS } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 
-const { getQuiz, loadAll } = useSupabaseContent();
+const { getQuiz, loadAll, planets: livePlanets } = useSupabaseContent();
 
 onMounted(() => {
   loadAll();
 });
 
 const Q = store.quiz;
-const planet = computed(() => PLANETS.find((p) => p.id === Q.planet) || PLANETS[2]);
+const planetList = computed(() => (livePlanets.value?.length ? livePlanets.value : PLANETS));
+const planet = computed(() => planetList.value.find((p) => p.id === Q.planet) || PLANETS.find((p) => p.id === Q.planet) || planetList.value[0] || PLANETS[2]);
 const set = computed(() => getQuiz(Q.planet) || QUIZ[Q.planet]);
-const questionCount = computed(() => set.value?.questions?.length || 4);
-const maxScore = computed(() => questionCount.value * POINTS_PER_QUESTION);
+const questionCount = computed(() => set.value?.questions?.length ?? 0);
+const maxScore = computed(() => (set.value?.questions?.length ? set.value.questions.reduce((sum, q) => sum + (Number(q.points) || POINTS_PER_QUESTION), 0) : 0));
 const order = ref([]); // urutan acak indeks pilihan per soal
 const qq = computed(() => set.value?.questions?.[Q.index] || { text: '', options: [], answer: 0, explanation: '' });
 const opts = computed(() => (order.value[Q.index] || [0, 1, 2, 3]).map((i) => ({ i, text: qq.value.options?.[i] || '' })));
 const best = computed(() => store.progress.best[Q.planet] ?? 0);
 const answered = computed(() => Q.stage === 'feedback');
 const correct = computed(() => Q.answers[Q.index] === qq.value.answer);
-const stars = (score) => Math.round(score / POINTS_PER_QUESTION);
+const correctCount = computed(() => (set.value?.questions || []).filter((q, idx) => Q.answers[idx] === q.answer).length);
+const stars = (score) => (maxScore.value > 0 && questionCount.value > 0 ? Math.min(questionCount.value, Math.max(0, Math.round((score / maxScore.value) * questionCount.value))) : 0);
 const nextShip = computed(() => SHIP_IDS.map((id) => SHIPS[id]).find((s) => !store.progress.owned.includes(s.id)));
 const shuffle = (n) => { const a = [...Array(n).keys()]; for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 function pickPlanet(id) { Q.planet = id; game()?.click(); }
 // Kuis planet terbuka setelah planetnya ditemukan — supaya pemain menjelajah dulu.
 const open = computed(() => isFound(Q.planet));
-const nOpen = computed(() => PLANETS.filter((p) => isFound(p.id)).length);
+const nOpen = computed(() => planetList.value.filter((p) => isFound(p.id)).length);
 function flyThere() { game()?.flyTo(Q.planet); }
 function start() {
   if (!open.value || !set.value?.questions?.length) return;
@@ -144,7 +146,7 @@ const letters = ['A', 'B', 'C', 'D'];
         <!-- Grid 4x2 Kartu Selektor Planet Modern -->
         <div class="planet-selector-grid" role="tablist" aria-label="Pilih planet">
           <button
-            v-for="p in PLANETS"
+            v-for="p in planetList"
             :key="p.id"
             class="planet-card-btn"
             role="tab"
@@ -171,9 +173,13 @@ const letters = ['A', 'B', 'C', 'D'];
         </div>
 
         <div class="intro-actions">
-          <button v-if="open" class="btn-quiz-primary" @click="start">
+          <button v-if="open && questionCount > 0" class="btn-quiz-primary" @click="start">
             <UiIcon name="putar" :size="18" />
             <span>Mulai Kuis</span>
+          </button>
+          <button v-else-if="open && questionCount === 0" class="btn-quiz-primary" disabled>
+            <UiIcon name="info" :size="18" />
+            <span>Soal kuis belum tersedia</span>
           </button>
           <button v-else class="btn-quiz-star" @click="flyThere">
             <UiIcon name="target" :size="18" />
@@ -182,7 +188,7 @@ const letters = ['A', 'B', 'C', 'D'];
         </div>
 
         <p class="fine-note">
-          {{ nOpen }} dari {{ PLANETS.length }} planet terbuka · Jawaban salah tidak mengurangi bintang.
+          {{ nOpen }} dari {{ planetList.length }} planet terbuka · Jawaban salah tidak mengurangi bintang.
         </p>
       </div>
 
@@ -234,7 +240,7 @@ const letters = ['A', 'B', 'C', 'D'];
             <div class="fb-header">
               <span class="fb-verdict">
                 <UiIcon :name="correct ? 'cek' : 'silang'" :size="16" />
-                {{ correct ? `Benar! +${POINTS_PER_QUESTION} Bintang` : 'Belum tepat' }}
+                {{ correct ? `Benar! +${qq.points || POINTS_PER_QUESTION} Bintang` : 'Belum tepat' }}
               </span>
             </div>
             <p class="fb-explanation">{{ qq.explanation }}</p>
@@ -265,7 +271,7 @@ const letters = ['A', 'B', 'C', 'D'];
           {{ Q.score >= maxScore ? 'Luar Biasa, Sempurna!' : Q.score > 0 ? 'Kerja Sangat Bagus!' : 'Ayo Coba Lagi!' }}
         </h2>
         <p class="result-sub">
-          <b class="num text-sky">{{ Math.round(Q.score / POINTS_PER_QUESTION) }}</b> dari {{ questionCount }} jawaban benar ({{ Q.score }} poin)
+          <b class="num text-sky">{{ correctCount }}</b> dari {{ questionCount }} jawaban benar ({{ Q.score }} poin)
         </p>
 
         <div class="gain-card" :class="{ zero: !Q.reward }">

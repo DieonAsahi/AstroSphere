@@ -5,20 +5,24 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import {
-  verifyIsAdmin,
+  verifyAdminSession,
   readLastActivityTimestamp,
   recordAdminActivity,
   isAdminSessionIdleExpired,
   getIdleRemainingMs,
+  clearAdminSessionStorage,
   adminLogout,
   ADMIN_IDLE_WARNING_MS,
 } from '~/utils/adminAuth.js';
+import { useNetworkStatus, OFFLINE_ADMIN_NOTICE } from '~/utils/networkError.js';
 
 const router = useRouter();
 const route = useRoute();
+const { isOffline } = useNetworkStatus();
 
 const isVerifying = ref(true);
 const isAuthorized = ref(false);
+const isOfflineGate = ref(false);
 const adminEmail = ref('');
 
 // Idle Session State
@@ -29,9 +33,13 @@ let idleCheckTimer = null;
 const NAV_ITEMS = [
   { path: '/admin', label: 'Dasbor', icon: 'peta' },
   { path: '/admin/planets', label: 'Planet', icon: 'planet' },
-  { path: '/admin/history', label: 'Sejarah & POI', icon: 'sejarah' },
+  { path: '/admin/history', label: 'Sejarah', icon: 'sejarah' },
   { path: '/admin/phenomena', label: 'Fenomena', icon: 'fenomena' },
   { path: '/admin/quizzes', label: 'Kuis', icon: 'kuis' },
+  { path: '/admin/facts', label: 'Tahukah Kamu?', icon: 'jurnal' },
+  { path: '/admin/myths', label: 'Mitos atau Fakta', icon: 'cek' },
+  { path: '/admin/ships', label: 'Hanggar Pesawat', icon: 'hanggar' },
+  { path: '/admin/users', label: 'Pengguna', icon: 'pengguna' },
 ];
 
 function handleUserActivity() {
@@ -69,7 +77,29 @@ function checkIdleStatus() {
   }
 }
 
-onMounted(async () => {
+let listenersAttached = false;
+
+function attachActivityListeners() {
+  if (listenersAttached || typeof window === 'undefined') return;
+  listenersAttached = true;
+  window.addEventListener('mousemove', handleUserActivity, { passive: true });
+  window.addEventListener('keydown', handleUserActivity, { passive: true });
+  window.addEventListener('click', handleUserActivity, { passive: true });
+  window.addEventListener('scroll', handleUserActivity, { passive: true });
+}
+
+function reloadAdminPage(clearError) {
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+    return;
+  }
+  clearError?.();
+}
+
+async function verifyAndInitAdmin() {
+  isVerifying.value = true;
+  isOfflineGate.value = false;
+
   const client = getSupabaseClient();
   if (!client) {
     router.replace('/admin/login');
@@ -77,35 +107,39 @@ onMounted(async () => {
   }
 
   try {
-    const { data: { session } } = await client.auth.getSession();
-    if (!session || !session.user) {
-      router.replace('/admin/login');
+    const check = await verifyAdminSession();
+    if (check.status === 'offline') {
+      isAuthorized.value = false;
+      isOfflineGate.value = true;
+      isVerifying.value = false;
       return;
     }
 
-    const authorized = await verifyIsAdmin(session.user);
-    if (!authorized) {
+    if (check.status !== 'authorized') {
+      clearAdminSessionStorage();
       await client.auth.signOut().catch(() => {});
-      router.replace('/admin/login');
+      router.replace(check.status === 'unauthorized' ? '/admin/login?error=unauthorized' : '/admin/login');
       return;
     }
 
-    adminEmail.value = session.user.email || 'Admin';
+    adminEmail.value = check.user?.email || 'Admin';
     isAuthorized.value = true;
+    isOfflineGate.value = false;
     isVerifying.value = false;
     recordAdminActivity();
 
-    // Pasang listener aktivitas interaksi mouse & keyboard
-    window.addEventListener('mousemove', handleUserActivity, { passive: true });
-    window.addEventListener('keydown', handleUserActivity, { passive: true });
-    window.addEventListener('click', handleUserActivity, { passive: true });
-    window.addEventListener('scroll', handleUserActivity, { passive: true });
-
-    // Pemeriksaan berkala batas idle timeout setiap detik
-    idleCheckTimer = setInterval(checkIdleStatus, 1000);
-  } catch (err) {
+    attachActivityListeners();
+    if (!idleCheckTimer) {
+      idleCheckTimer = setInterval(checkIdleStatus, 1000);
+    }
+  } catch {
+    clearAdminSessionStorage();
     router.replace('/admin/login');
   }
+}
+
+onMounted(async () => {
+  await verifyAndInitAdmin();
 });
 
 onBeforeUnmount(() => {
@@ -125,6 +159,25 @@ onBeforeUnmount(() => {
     <div v-if="isVerifying" class="admin-gate-loader">
       <div class="spinner" />
       <p>Memverifikasi kredensial administrator…</p>
+    </div>
+
+    <!-- GERBANG OFFLINE ADMIN (SAAT KONEKSI TERPUTUS, SESI TETAP DIPERTAHANKAN) -->
+    <div v-else-if="isOfflineGate" class="admin-offline-gate" role="alert">
+      <div class="admin-offline-card">
+        <div class="offline-card-ic" aria-hidden="true">
+          <UiIcon name="info" :size="26" />
+        </div>
+        <h2>Koneksi Internet Terputus</h2>
+        <p>{{ OFFLINE_ADMIN_NOTICE }}</p>
+        <div class="boundary-btns">
+          <button type="button" class="btn-boundary-primary" @click="verifyAndInitAdmin">
+            Coba Hubungkan Ulang
+          </button>
+          <NuxtLink to="/" class="btn-boundary-secondary">
+            Kembali ke Beranda
+          </NuxtLink>
+        </div>
+      </div>
     </div>
 
     <!-- TAMPILAN RESMI PENGELOLA (HANYA MUNCUL JIKA TERAUTORISASI) -->
@@ -195,8 +248,32 @@ onBeforeUnmount(() => {
           </div>
         </header>
 
+        <div v-if="isOffline" class="admin-offline-banner" role="status">
+          <UiIcon name="info" :size="16" />
+          <span>{{ OFFLINE_ADMIN_NOTICE }}</span>
+        </div>
+
         <main class="admin-content-area">
-          <slot />
+          <NuxtErrorBoundary>
+            <slot />
+            <template #error="{ clearError }">
+              <div class="admin-boundary-card" role="alert">
+                <div class="boundary-ic" aria-hidden="true">
+                  <UiIcon name="info" :size="24" />
+                </div>
+                <h2>Saat ini halaman masih belum bisa diakses.</h2>
+                <p>Terjadi kendala saat menampilkan halaman konsol admin. Silakan muat ulang beberapa saat lagi.</p>
+                <div class="boundary-btns">
+                  <button type="button" class="btn-boundary-primary" @click="reloadAdminPage(clearError)">
+                    Muat Ulang
+                  </button>
+                  <button type="button" class="btn-boundary-secondary" @click="clearError">
+                    Coba Lanjutkan
+                  </button>
+                </div>
+              </div>
+            </template>
+          </NuxtErrorBoundary>
         </main>
       </div>
     </div>
@@ -486,6 +563,113 @@ onBeforeUnmount(() => {
 .admin-content-area {
   padding: 24px 28px 48px;
   flex: 1;
+}
+
+.admin-offline-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background-color: var(--adm-bg);
+}
+.admin-offline-card,
+.admin-boundary-card {
+  width: min(460px, 100%);
+  margin: 24px auto;
+  padding: 28px 24px;
+  border-radius: 14px;
+  background-color: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 28px -10px rgba(15, 23, 42, 0.12);
+}
+.offline-card-ic,
+.boundary-ic {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background-color: var(--adm-warning-light);
+  color: var(--adm-warning);
+  border: 1px solid #fde68a;
+}
+.boundary-ic {
+  background-color: var(--adm-danger-light);
+  color: var(--adm-danger);
+  border-color: #fecaca;
+}
+.admin-offline-card h2,
+.admin-boundary-card h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--adm-text);
+}
+.admin-offline-card p,
+.admin-boundary-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--adm-muted);
+}
+.boundary-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.btn-boundary-primary {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
+  background-color: var(--adm-primary);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-boundary-primary:hover {
+  background-color: var(--adm-primary-hover);
+}
+.btn-boundary-secondary {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid var(--adm-border-dark);
+  background-color: var(--adm-surface);
+  color: var(--adm-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.btn-boundary-secondary:hover {
+  background-color: #f1f5f9;
+}
+.admin-offline-banner {
+  margin: 16px 28px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: var(--adm-warning-light);
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 768px) {

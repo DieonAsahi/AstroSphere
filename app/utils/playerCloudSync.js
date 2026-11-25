@@ -1,5 +1,11 @@
 // Utilitas Sinkronisasi Progres Pemain ke Awan (Supabase) dengan Mode Tamu Lokal & Fallback Graceful.
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
+import {
+  isBrowserOffline,
+  isOfflineOrNetworkError,
+  OFFLINE_ACTION_NOTICE,
+  GENERIC_PUBLIC_ERROR,
+} from './networkError.js';
 
 // Domain sintetis untuk memetakan nama penjelajah ke format email Supabase Auth
 const SYNTHETIC_DOMAIN = 'player.astrosphere.app';
@@ -17,6 +23,19 @@ export const isValidUsername = (username) => {
 export const sanitizeUsername = (username) => {
   return String(username || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
 };
+
+export function formatBannedMessage(reason = '') {
+  const clean = String(reason || '').trim();
+  return clean
+    ? `Akun Anda sedang dinonaktifkan oleh administrator. Alasan: ${clean}`
+    : 'Akun Anda sedang dinonaktifkan oleh administrator.';
+}
+
+function isBannedAuthError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  const code = String(err?.code || '').toLowerCase();
+  return msg.includes('user is banned') || msg.includes('banned') || code === 'user_banned';
+}
 
 // Pembuat ASTRO-ID unik otomatis (8 digit acak + tahun berjalan)
 export function generateAstroId() {
@@ -126,6 +145,9 @@ export async function checkUsernameAvailability(username) {
   const client = getSupabaseClient();
   if (!client) {
     // Mode offline / fallback lokal
+    return { ok: true, available: true, offline: true, noClient: true };
+  }
+  if (isBrowserOffline()) {
     return { ok: true, available: true, offline: true };
   }
 
@@ -135,6 +157,9 @@ export async function checkUsernameAvailability(username) {
     return { ok: true, available: !!data };
   } catch (err) {
     console.warn('[AstroSphere] Gagal mengecek ketersediaan username via RPC:', err);
+    if (isOfflineOrNetworkError(err)) {
+      return { ok: true, available: true, offline: true };
+    }
     return { ok: true, available: true, warning: 'Gagal menghubungi server ketersediaan nama, melanjutkan pemeriksaan di pendaftaran.' };
   }
 }
@@ -151,11 +176,17 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
 
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, offline: true, err: 'Koneksi Supabase tidak aktif. Akun disimpan lokal di perangkat ini.' };
+    return { ok: false, offline: true, noClient: true, err: 'Koneksi Supabase tidak aktif. Akun disimpan lokal di perangkat ini.' };
+  }
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
   }
 
   // 1. Cek ketersediaan nama pengguna
   const avail = await checkUsernameAvailability(cleanUsername);
+  if (avail.offline) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+  }
   if (avail.ok && !avail.available) {
     return { ok: false, err: 'Nama pengguna ini sudah dipakai penjelajah lain. Coba nama lain atau masuk.' };
   }
@@ -176,10 +207,13 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
     });
 
     if (authErr) {
+      if (isOfflineOrNetworkError(authErr)) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
       if (authErr.message?.includes('User already registered') || authErr.message?.includes('already exists')) {
         return { ok: false, err: 'Nama pengguna ini sudah terdaftar. Silakan pilih Masuk.' };
       }
-      return { ok: false, err: authErr.message || 'Gagal mendaftar di server awan.' };
+      return { ok: false, err: 'Gagal mendaftar di server awan. Silakan coba lagi.' };
     }
 
     const user = authData.user;
@@ -238,7 +272,10 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
     };
   } catch (err) {
     console.error('[AstroSphere] Kesalahan saat mendaftar akun awan:', err);
-    return { ok: false, err: err.message || 'Terjadi kesalahan sistem saat mendaftar.' };
+    if (isOfflineOrNetworkError(err)) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: 'Terjadi kendala saat mendaftar akun. Silakan coba lagi.' };
   }
 }
 
@@ -254,7 +291,10 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
 
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, offline: true, err: 'Koneksi Supabase tidak aktif.' };
+    return { ok: false, offline: true, noClient: true, err: 'Koneksi Supabase tidak aktif.' };
+  }
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
   }
 
   const email = toSyntheticEmail(cleanUsername);
@@ -266,10 +306,16 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
     });
 
     if (authErr) {
+      if (isOfflineOrNetworkError(authErr)) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      if (isBannedAuthError(authErr)) {
+        return { ok: false, banned: true, err: formatBannedMessage() };
+      }
       if (authErr.message?.includes('Invalid login credentials')) {
         return { ok: false, err: 'Nama penjelajah atau kata sandi salah.', unknown: false };
       }
-      return { ok: false, err: authErr.message || 'Gagal masuk akun awan.' };
+      return { ok: false, err: 'Gagal masuk akun awan. Silakan coba lagi.' };
     }
 
     const user = authData.user;
@@ -286,6 +332,16 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
 
     if (pErr) {
       console.warn('[AstroSphere] Peringatan saat membaca player_progress:', pErr);
+    }
+
+    if (progressRow?.is_active === false) {
+      await client.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        banned: true,
+        bannedReason: progressRow.banned_reason || '',
+        err: formatBannedMessage(progressRow.banned_reason),
+      };
     }
 
     // Gabungkan dengan capaian lokal tamu saat ini agar bintang/planet baru tidak hilang
@@ -334,7 +390,10 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
     };
   } catch (err) {
     console.error('[AstroSphere] Kesalahan saat masuk akun awan:', err);
-    return { ok: false, err: err.message || 'Terjadi kesalahan sistem saat masuk.' };
+    if (isOfflineOrNetworkError(err)) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: 'Terjadi kendala saat masuk ke akun. Silakan coba lagi.' };
   }
 }
 
@@ -342,7 +401,10 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
 export async function signInWithGoogle() {
   const client = getSupabaseClient();
   if (!client) {
-    return { ok: false, err: 'Koneksi Supabase tidak aktif.' };
+    return { ok: false, offline: true, noClient: true, err: 'Layanan akun awan belum dikonfigurasi.' };
+  }
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
   }
   try {
     const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
@@ -356,7 +418,10 @@ export async function signInWithGoogle() {
     return { ok: true, data };
   } catch (err) {
     console.error('[AstroSphere] Gagal memulai Google OAuth:', err);
-    return { ok: false, err: err.message || 'Gagal terhubung ke Google.' };
+    if (isOfflineOrNetworkError(err)) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: 'Gagal terhubung ke layanan Google. Silakan coba lagi.' };
   }
 }
 
@@ -377,9 +442,17 @@ export function generateGoogleUsername(user) {
 export async function syncGooglePlayerSession(user, localStoreData) {
   if (!user) return { ok: false };
   const client = getSupabaseClient();
-  if (!client) return { ok: false, offline: true };
+  if (!client) return { ok: false, offline: true, noClient: true };
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+  }
 
   try {
+    if (user.banned_until && new Date(user.banned_until) > new Date()) {
+      await client.auth.signOut().catch(() => {});
+      return { ok: false, banned: true, err: formatBannedMessage() };
+    }
+
     // 1. Cek tabel public.player_progress untuk user_id tersebut
     const { data: progressRow, error: pErr } = await client
       .from('player_progress')
@@ -389,6 +462,20 @@ export async function syncGooglePlayerSession(user, localStoreData) {
 
     if (pErr) {
       console.warn('[AstroSphere] Peringatan saat mengambil player_progress untuk Google user:', pErr);
+      if (isOfflineOrNetworkError(pErr)) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      return { ok: false, err: GENERIC_PUBLIC_ERROR };
+    }
+
+    if (progressRow?.is_active === false) {
+      await client.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        banned: true,
+        bannedReason: progressRow.banned_reason || '',
+        err: formatBannedMessage(progressRow.banned_reason),
+      };
     }
 
     let username = progressRow?.username;
@@ -448,7 +535,10 @@ export async function syncGooglePlayerSession(user, localStoreData) {
     };
   } catch (err) {
     console.error('[AstroSphere] Gagal sinkronisasi sesi Google user:', err);
-    return { ok: false, err: err.message };
+    if (isOfflineOrNetworkError(err)) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: GENERIC_PUBLIC_ERROR };
   }
 }
 
@@ -470,7 +560,7 @@ let saveTimer = null;
 let isSaving = false;
 
 // Simpan Progres Awan dengan Jeda (Debounce 2 Detik)
-export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
+export function scheduleCloudSave(userId, payloadGetter, onSavedCallback, onRevokedCallback) {
   if (!userId) return;
   if (saveTimer) clearTimeout(saveTimer);
 
@@ -480,6 +570,18 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
 
     isSaving = true;
     try {
+      // Verifikasi ke server Auth terlebih dahulu agar status ban / hapus akun langsung terdeteksi
+      const { data: authCheck, error: authCheckErr } = await client.auth.getUser();
+      if (authCheckErr || !authCheck?.user) {
+        if (typeof onRevokedCallback === 'function') {
+          onRevokedCallback({
+            banned: isBannedAuthError(authCheckErr),
+            reason: isBannedAuthError(authCheckErr) ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
+          });
+        }
+        return;
+      }
+
       const payload = payloadGetter();
       if (!payload) return;
 
@@ -499,7 +601,25 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
 
       const { error } = await client.from('player_progress').update(updateData).eq('user_id', userId);
 
-      if (!error && typeof onSavedCallback === 'function') {
+      if (error) {
+        const { data: rowStatus } = await client
+          .from('player_progress')
+          .select('is_active, banned_reason')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!rowStatus || rowStatus.is_active === false) {
+          if (typeof onRevokedCallback === 'function') {
+            onRevokedCallback({
+              banned: rowStatus?.is_active === false,
+              reason: rowStatus?.is_active === false
+                ? formatBannedMessage(rowStatus.banned_reason)
+                : 'Akun Anda tidak ditemukan atau telah dihapus oleh administrator.',
+            });
+          }
+          return;
+        }
+      } else if (typeof onSavedCallback === 'function') {
         onSavedCallback();
       }
     } catch (err) {
@@ -512,11 +632,37 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback) {
 
 // Sinkronkan data pemain live dari Supabase (tarik data awan & gabungkan dengan data lokal)
 export async function syncPlayerCloudProgress(userId, localStoreData) {
-  if (!userId) return { ok: false, err: 'User ID tidak ada.' };
+  if (!userId) return { ok: false, err: 'Sesi pengguna tidak ditemukan.' };
   const client = getSupabaseClient();
-  if (!client) return { ok: false, offline: true };
+  if (!client) return { ok: false, offline: true, noClient: true };
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+  }
 
   try {
+    const { data: userCheck, error: userErr } = await client.auth.getUser();
+    if (userErr) {
+      if (isOfflineOrNetworkError(userErr) || isBrowserOffline()) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      await client.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        revoked: true,
+        banned: isBannedAuthError(userErr),
+        err: isBannedAuthError(userErr) ? formatBannedMessage() : 'Sesi akun telah berakhir atau akun dihapus.',
+      };
+    }
+    if (!userCheck?.user) {
+      await client.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        revoked: true,
+        banned: false,
+        err: 'Sesi akun telah berakhir atau akun dihapus.',
+      };
+    }
+
     const { data: progressRow, error: pErr } = await client
       .from('player_progress')
       .select('*')
@@ -525,11 +671,25 @@ export async function syncPlayerCloudProgress(userId, localStoreData) {
 
     if (pErr) {
       console.warn('[AstroSphere] Peringatan saat mengambil player_progress live:', pErr);
-      return { ok: false, err: pErr.message };
+      if (isOfflineOrNetworkError(pErr) || isBrowserOffline()) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      return { ok: false, err: GENERIC_PUBLIC_ERROR };
     }
 
     if (!progressRow) {
-      return { ok: false, notFound: true };
+      await client.auth.signOut().catch(() => {});
+      return { ok: false, notFound: true, revoked: true, err: 'Akun penjelajah tidak ditemukan atau telah dihapus.' };
+    }
+
+    if (progressRow.is_active === false) {
+      await client.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        banned: true,
+        revoked: true,
+        err: formatBannedMessage(progressRow.banned_reason),
+      };
     }
 
     // Gabungkan dengan data lokal saat ini agar capaian baru tidak tertimpa
@@ -558,15 +718,21 @@ export async function syncPlayerCloudProgress(userId, localStoreData) {
     };
   } catch (err) {
     console.error('[AstroSphere] Kesalahan sinkronisasi live pemain:', err);
-    return { ok: false, err: err.message };
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: GENERIC_PUBLIC_ERROR };
   }
 }
 
 // Reset bersih data progres pemain di Supabase (tetap mempertahankan akun)
 export async function resetPlayerCloudProgress(userId) {
-  if (!userId) return { ok: false };
+  if (!userId) return { ok: false, err: 'Sesi pengguna tidak ditemukan.' };
   const client = getSupabaseClient();
-  if (!client) return { ok: false, offline: true };
+  if (!client) return { ok: false, offline: true, noClient: true };
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+  }
 
   try {
     const cleanData = {
@@ -592,30 +758,45 @@ export async function resetPlayerCloudProgress(userId) {
     const { error } = await client.from('player_progress').update(cleanData).eq('user_id', userId);
     if (error) {
       console.warn('[AstroSphere] Gagal mereset player_progress di awan:', error);
-      return { ok: false, err: error.message };
+      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      return { ok: false, err: 'Gagal mereset progres di awan. Silakan coba lagi.' };
     }
     return { ok: true };
   } catch (err) {
     console.error('[AstroSphere] Error saat mereset progres awan:', err);
-    return { ok: false, err: err.message };
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: 'Gagal mereset progres di awan. Silakan coba lagi.' };
   }
 }
 
 // Hapus akun pemain secara permanen via RPC delete_my_account
 export async function deletePlayerAccountFromCloud() {
   const client = getSupabaseClient();
-  if (!client) return { ok: false, offline: true };
+  if (!client) return { ok: false, offline: true, noClient: true };
+  if (isBrowserOffline()) {
+    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+  }
 
   try {
     const { data, error } = await client.rpc('delete_my_account');
     if (error) {
       console.warn('[AstroSphere] Gagal memanggil delete_my_account:', error);
-      return { ok: false, err: error.message };
+      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+      }
+      return { ok: false, err: 'Gagal menghapus akun dari server. Silakan coba lagi.' };
     }
     await client.auth.signOut().catch(() => {});
     return { ok: true, data };
   } catch (err) {
     console.error('[AstroSphere] Error saat menghapus akun awan:', err);
-    return { ok: false, err: err.message };
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: 'Gagal menghapus akun dari server. Silakan coba lagi.' };
   }
 }

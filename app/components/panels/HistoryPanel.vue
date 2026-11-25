@@ -30,8 +30,8 @@ function onImageError(id) {
 
 const selectedEra = ref(store.sejarah.era || 'semua');
 
-// Ambil seluruh peristiwa untuk planet aktif secara reaktif dari Supabase composable
-const allEvents = computed(() => getHistory(body.value) || []);
+// Ambil seluruh peristiwa aktif untuk planet secara reaktif dari Supabase composable
+const allEvents = computed(() => (getHistory(body.value) || []).filter((e) => e.is_active !== false));
 const totalCount = computed(() => allEvents.value.length);
 
 // Ekstrak era unik dari data peristiwa planet secara dinamis (100% cocok dengan era_label di database)

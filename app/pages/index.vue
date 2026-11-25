@@ -4,11 +4,21 @@
 import { ref, computed, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import { store, setEngine, game } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
+import { useNetworkStatus, OFFLINE_PUBLIC_NOTICE } from '~/utils/networkError.js';
 
 const { loadAll } = useSupabaseContent();
+const { isOffline } = useNetworkStatus();
 onMounted(() => {
   loadAll();
 });
+
+function reloadApp(clearError) {
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+    return;
+  }
+  clearError?.();
+}
 
 const canvas = ref(null), markers = ref(null), arrow = ref(null), poi = ref(null), labLabels = ref(null), compass = ref(null);
 const crosshair = ref(null), vignette = ref(null), boostFx = ref(null);
@@ -41,7 +51,7 @@ watch(() => store.phase, async (p) => {
     }
   } catch (err) {
     console.error(err);
-    store.loading.error = 'Dunia 3D gagal dimuat. Periksa koneksi lalu coba lagi.';
+    store.loading.error = 'Saat ini halaman ruang angkasa 3D belum bisa diakses. Periksa koneksi lalu coba lagi.';
   }
 });
 
@@ -50,7 +60,8 @@ onBeforeUnmount(() => { game()?.dispose(); });
 
 <template>
   <div class="shell" :class="{ touch: store.touch }">
-    <canvas id="c" ref="canvas" tabindex="-1" aria-label="Ruang angkasa 3D AstroSphere" />
+    <NuxtErrorBoundary>
+      <canvas id="c" ref="canvas" tabindex="-1" aria-label="Ruang angkasa 3D AstroSphere" />
     <div id="vignette" ref="vignette" />
     <div id="boostFx" ref="boostFx" />
 
@@ -87,7 +98,7 @@ onBeforeUnmount(() => { game()?.dispose(); });
           <div class="loader-meta">
             <span class="pct num">{{ Math.round(store.loading.p * 100) }}%</span>
             <span v-if="store.startFromSave" class="tag star"><UiIcon name="putar" :size="12" />Melanjutkan Sesi</span>
-            <span v-else class="tag star"><UiIcon name="pesawat" :size="12" />Meluncur ke Angkasa</span>
+            <span v-else class="tag star"><UiIcon name="hanggar" :size="12" />Meluncur ke Angkasa</span>
           </div>
           <div v-if="store.loading.error" class="loader-err">
             <span>{{ store.loading.error }}</span>
@@ -118,10 +129,43 @@ onBeforeUnmount(() => { game()?.dispose(); });
       <Transition name="fade"><PanelsPauseMenu v-if="store.phase === 'paused'" /></Transition>
     </template>
 
-    <div class="notify" aria-live="polite">
-      <Transition name="rise"><div v-if="store.toast.show" class="toast" v-html="store.toast.html" /></Transition>
-    </div>
-    <PanelsModals />
+      <div v-if="isOffline" class="offline-banner-wrap" role="status" aria-live="polite">
+        <div class="offline-banner">
+          <span class="offline-dot" aria-hidden="true" />
+          <span>{{ OFFLINE_PUBLIC_NOTICE }}</span>
+        </div>
+      </div>
+      <div class="notify" aria-live="polite">
+        <Transition name="rise">
+          <div v-if="store.toast.show" class="toast">
+            <template v-for="(seg, idx) in store.toast.parts" :key="idx">
+              <b v-if="seg.bold">{{ seg.text }}</b>
+              <template v-else>{{ seg.text }}</template>
+            </template>
+          </div>
+        </Transition>
+      </div>
+      <PanelsModals />
+      <template #error="{ clearError }">
+        <div class="boundary-fallback" role="alert">
+          <div class="boundary-card">
+            <div class="boundary-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <h2>Saat ini halaman masih belum bisa diakses.</h2>
+            <p>Terjadi kendala saat menampilkan tampilan AstroSphere. Silakan muat ulang halaman beberapa saat lagi.</p>
+            <div class="boundary-actions">
+              <button type="button" class="btn go" @click="reloadApp(clearError)">Muat Ulang</button>
+              <button type="button" class="btn line" @click="clearError">Coba Lanjutkan</button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </NuxtErrorBoundary>
   </div>
 </template>
 
@@ -132,7 +176,16 @@ onBeforeUnmount(() => { game()?.dispose(); });
 .notify{position:fixed;inset:0;pointer-events:none;z-index:45}
 .toast{position:absolute;left:50%;bottom:calc(120px + var(--safe-b));transform:translateX(-50%);padding:10px 18px;border-radius:999px;background:var(--surface-a);border:1px solid var(--line);
   font-size:14.5px;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;box-shadow:var(--shadow)}
-.toast :deep(b){font-family:var(--display);font-weight:500}
+.toast b{font-family:var(--display);font-weight:500}
+.offline-banner-wrap{position:fixed;top:calc(14px + var(--safe-t));left:50%;transform:translateX(-50%);z-index:48;pointer-events:none;max-width:calc(100vw - 24px)}
+.offline-banner{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:rgba(15,23,42,.88);border:1px solid rgba(251,191,36,.38);color:#fde68a;font-size:12.5px;font-weight:500;backdrop-filter:blur(10px);box-shadow:var(--shadow);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.offline-dot{width:8px;height:8px;border-radius:50%;background:#fbbf24;flex-shrink:0}
+.boundary-fallback{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(6,10,26,.92);backdrop-filter:blur(14px)}
+.boundary-card{width:min(440px,100%);padding:28px 24px;border-radius:18px;background:var(--surface-a);border:1px solid var(--line);box-shadow:var(--shadow-lg);text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.boundary-icon{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.3);color:#fda4af}
+.boundary-card h2{margin:0;font-family:var(--display);font-size:18px;font-weight:600;color:var(--text)}
+.boundary-card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.boundary-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px}
 .touch .toast{bottom:auto;top:calc(var(--top) + 172px + var(--safe-t));white-space:normal;text-align:center}
 .touch .compass{top:calc(var(--top) + 4px + var(--safe-t))}
 

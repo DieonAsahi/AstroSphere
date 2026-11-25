@@ -1,10 +1,15 @@
 // Utilitas Unggah & Pengelolaan Aset Pengelola (Admin Storage)
 // Mengunggah gambar POI & foto sejarah ke bucket Supabase Storage 'astrosphere-assets'.
 import { getSupabaseClient } from './supabaseClient.js';
+import {
+  isBrowserOffline,
+  isOfflineOrNetworkError,
+  OFFLINE_ACTION_NOTICE,
+} from './networkError.js';
 
 export const ASSET_BUCKET = 'astrosphere-assets';
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export async function uploadAdminAsset(file, folder = 'history') {
   if (!file) {
@@ -23,6 +28,9 @@ export async function uploadAdminAsset(file, folder = 'history') {
   if (!client) {
     return { ok: false, error: 'Klien Supabase tidak tersedia.' };
   }
+  if (isBrowserOffline()) {
+    return { ok: false, error: OFFLINE_ACTION_NOTICE };
+  }
 
   try {
     const ext = file.name.split('.').pop() || 'webp';
@@ -37,14 +45,23 @@ export async function uploadAdminAsset(file, folder = 'history') {
       });
 
     if (error) {
-      // Jika bucket belum dibuat, berikan petunjuk yang jelas
-      if (error.message?.includes('Bucket not found')) {
+      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+        return { ok: false, error: OFFLINE_ACTION_NOTICE };
+      }
+      const lower = String(error.message || '').toLowerCase();
+      if (lower.includes('bucket not found')) {
         return {
           ok: false,
-          error: `Bucket '${ASSET_BUCKET}' belum dibuat di Supabase Storage. Harap buat bucket publik '${ASSET_BUCKET}'.`,
+          error: 'Penyimpanan aset belum tersedia di server. Hubungi administrator sistem.',
         };
       }
-      return { ok: false, error: error.message || 'Gagal mengunggah berkas ke Storage.' };
+      if (lower.includes('maximum allowed size') || lower.includes('payload too large') || lower.includes('size')) {
+        return { ok: false, error: 'Ukuran berkas melebihi batas maksimal 5 MB.' };
+      }
+      if (lower.includes('mime') || lower.includes('invalid type')) {
+        return { ok: false, error: 'Format berkas tidak didukung. Harap unggah gambar JPG, PNG, atau WebP.' };
+      }
+      return { ok: false, error: 'Gagal mengunggah berkas ke Storage. Silakan coba lagi.' };
     }
 
     const { data: publicUrlData } = client.storage
@@ -57,6 +74,9 @@ export async function uploadAdminAsset(file, folder = 'history') {
       path: filePath,
     };
   } catch (err) {
-    return { ok: false, error: err.message || 'Terjadi kesalahan saat mengunggah aset.' };
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, error: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, error: 'Terjadi kendala saat mengunggah aset. Silakan coba lagi.' };
   }
 }

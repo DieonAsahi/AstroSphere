@@ -1,7 +1,7 @@
 // Middleware Proteksi Rute Pengelola (Zero-Leak Route Guard)
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import {
-  verifyIsAdmin,
+  verifyAdminSession,
   isAdminSessionIdleExpired,
   readLastActivityTimestamp,
   clearAdminSessionStorage,
@@ -25,18 +25,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
       return navigateTo('/admin/login');
     }
 
-    try {
-      const { data: { session } } = await client.auth.getSession();
-      if (!session || !session.user) {
-        return navigateTo('/admin/login');
-      }
+    const check = await verifyAdminSession();
+    if (check.status === 'authorized' || check.status === 'offline') {
+      // Saat offline tetapi memiliki sesi lokal, biarkan admin.vue menampilkan layar offline ramah tanpa mencabut sesi
+      return;
+    }
 
-      const isAdmin = await verifyIsAdmin(session.user);
-      if (!isAdmin) {
-        return navigateTo('/admin/login?error=unauthorized');
-      }
-    } catch {
+    clearAdminSessionStorage();
+    await client.auth.signOut().catch(() => {});
+    if (check.status === 'unauthorized') {
       return navigateTo('/admin/login?error=unauthorized');
     }
+    return navigateTo('/admin/login');
   }
 });

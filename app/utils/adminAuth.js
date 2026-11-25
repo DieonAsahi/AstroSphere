@@ -1,6 +1,12 @@
 // Modul Keamanan & Autentikasi Pengelola (Admin Auth) AstroSphere
 // Menerapkan fail-closed verification, anti-SQLi input validation, rate limiting, dan idle timeout 5 menit.
 import { getSupabaseClient } from './supabaseClient.js';
+import {
+  isBrowserOffline,
+  isOfflineOrNetworkError,
+  OFFLINE_ADMIN_NOTICE,
+  GENERIC_ADMIN_ERROR,
+} from './networkError.js';
 
 export const ADMIN_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 300.000 ms (5 menit)
 export const ADMIN_IDLE_WARNING_MS = 30 * 1000;      // 30 detik terakhir
@@ -9,8 +15,8 @@ export const ADMIN_LOGIN_ATTEMPTS_KEY = 'astrosphere_admin_login_attempts';
 export const MAX_LOGIN_ATTEMPTS = 5;
 export const LOGIN_COOLDOWN_MS = 30 * 1000;          // 30 detik cooldown
 
-const EMAIL_FORMAT_REGEX = /^[a-z0-9.!#$%&*+/=?^_{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i;
-const SQLI_OR_FORBIDDEN_CHARS_REGEX = /['"`\\;]|--|\*\/|\/\*|\b(?:or|and)\s+\d+\s*=\s*\d+|\bunion\s+select\b/i;
+const EMAIL_FORMAT_REGEX = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i;
+const FORBIDDEN_EMAIL_CHARS_REGEX = /["`\\;<>]|\*\/|\/\*/;
 
 function hasControlChars(value) {
   if (typeof value !== 'string') return false;
@@ -36,7 +42,7 @@ export function validateAdminLoginInput(rawEmail, rawPassword) {
   if (
     email.length > 254 ||
     hasControlChars(rawEmail) ||
-    SQLI_OR_FORBIDDEN_CHARS_REGEX.test(email) ||
+    FORBIDDEN_EMAIL_CHARS_REGEX.test(email) ||
     !EMAIL_FORMAT_REGEX.test(email)
   ) {
     return {
@@ -135,7 +141,7 @@ export function getIdleRemainingMs(
   return Math.max(0, timeoutMs - Math.max(0, now - lastActivityAt));
 }
 
-export function readLoginRateLimit(storage = getSafeStorage('local')) {
+export function readLoginRateLimit(storage = getSafeStorage('local'), now = Date.now()) {
   if (!storage) return { failedCount: 0, lockedUntil: 0 };
   try {
     const raw = storage.getItem(ADMIN_LOGIN_ATTEMPTS_KEY);
@@ -143,6 +149,13 @@ export function readLoginRateLimit(storage = getSafeStorage('local')) {
     const parsed = JSON.parse(raw);
     const failedCount = Number.isFinite(parsed.failedCount) ? parsed.failedCount : 0;
     const lockedUntil = Number.isFinite(parsed.lockedUntil) ? parsed.lockedUntil : 0;
+
+    // Reset otomatis bila masa cooldown telah berakhir agar user kembali mendapat jatah percobaan baru
+    if (lockedUntil > 0 && lockedUntil <= now) {
+      storage.removeItem(ADMIN_LOGIN_ATTEMPTS_KEY);
+      return { failedCount: 0, lockedUntil: 0 };
+    }
+
     return { failedCount, lockedUntil };
   } catch {
     return { failedCount: 0, lockedUntil: 0 };
@@ -152,7 +165,7 @@ export function readLoginRateLimit(storage = getSafeStorage('local')) {
 export function recordLoginFailure(storage = getSafeStorage('local'), now = Date.now()) {
   if (!storage) return { failedCount: 1, lockedUntil: 0 };
   try {
-    const current = readLoginRateLimit(storage);
+    const current = readLoginRateLimit(storage, now);
     const newCount = current.failedCount + 1;
     let lockedUntil = current.lockedUntil;
     if (newCount >= MAX_LOGIN_ATTEMPTS) {
@@ -172,57 +185,52 @@ export function resetLoginRateLimit(storage = getSafeStorage('local')) {
   } catch {}
 }
 
-/**
- * Pemeriksaan hak akses Admin (Fail-Closed):
- * Memastikan sesi Supabase Auth aktif dan user terdaftar di tabel public.admin_users
- */
-export async function verifyIsAdmin(user) {
-  const client = getSupabaseClient();
-  if (!client || !user || !user.id) return false;
-
-  const normalizedEmail = (user.email || '').trim().toLowerCase();
-  // Akun pemain biasa menggunakan domain sintetis @player.astrosphere.app — fail-closed seketika
-  if (normalizedEmail.endsWith('@player.astrosphere.app')) {
-    return false;
+async function checkAdminRoleRows(client, verifiedUser) {
+  const normalizedEmail = (verifiedUser?.email || '').trim().toLowerCase();
+  if (!verifiedUser?.id || normalizedEmail.endsWith('@player.astrosphere.app')) {
+    return { status: 'unauthorized' };
   }
 
-  try {
-    const { data: { session }, error: sessionError } = await client.auth.getSession();
-    if (sessionError || !session || !session.access_token || session.user?.id !== user.id) {
-      return false;
-    }
-    if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
-      return false;
-    }
-  } catch {
-    return false;
-  }
-
-  // Cek via RPC jika tersedia
   try {
     const { data: rpcAdmin, error: rpcError } = await client.rpc('is_admin');
-    if (!rpcError && rpcAdmin === true) return true;
-  } catch {}
+    if (rpcError && (isOfflineOrNetworkError(rpcError) || isBrowserOffline())) {
+      return { status: 'offline' };
+    }
+    if (!rpcError && rpcAdmin === true) {
+      return { status: 'authorized' };
+    }
+  } catch (err) {
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { status: 'offline' };
+    }
+  }
 
-  // Cek tabel public.admin_users berdasarkan user_id
   try {
     const { data: byUserId, error: byIdError } = await client
       .from('admin_users')
       .select('email')
-      .eq('user_id', user.id)
+      .eq('user_id', verifiedUser.id)
       .maybeSingle();
 
-    if (!byIdError && byUserId) return true;
-  } catch {
-    return false;
+    if (byIdError) {
+      if (isOfflineOrNetworkError(byIdError) || isBrowserOffline()) {
+        return { status: 'offline' };
+      }
+      return { status: 'unauthorized' };
+    }
+    if (byUserId) return { status: 'authorized' };
+  } catch (err) {
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { status: 'offline' };
+    }
+    return { status: 'unauthorized' };
   }
 
-  // Cek tabel public.admin_users berdasarkan email terverifikasi
   if (
     normalizedEmail &&
     !hasControlChars(normalizedEmail) &&
     EMAIL_FORMAT_REGEX.test(normalizedEmail) &&
-    !SQLI_OR_FORBIDDEN_CHARS_REGEX.test(normalizedEmail)
+    !FORBIDDEN_EMAIL_CHARS_REGEX.test(normalizedEmail)
   ) {
     try {
       const { data: byEmail, error: byEmailError } = await client
@@ -231,13 +239,136 @@ export async function verifyIsAdmin(user) {
         .eq('email', normalizedEmail)
         .maybeSingle();
 
-      if (!byEmailError && byEmail) return true;
-    } catch {
-      return false;
+      if (byEmailError) {
+        if (isOfflineOrNetworkError(byEmailError) || isBrowserOffline()) {
+          return { status: 'offline' };
+        }
+        return { status: 'unauthorized' };
+      }
+      if (byEmail) return { status: 'authorized' };
+    } catch (err) {
+      if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+        return { status: 'offline' };
+      }
+      return { status: 'unauthorized' };
     }
   }
 
-  return false;
+  return { status: 'unauthorized' };
+}
+
+/**
+ * Verifikasi sesi Admin dengan pembedaan kondisi 'offline' vs 'unauthenticated' / 'unauthorized'
+ */
+export async function verifyAdminSession() {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { status: 'unauthenticated', user: null, reason: 'no_client' };
+  }
+
+  let session = null;
+  try {
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+    if (sessionError) {
+      if (isOfflineOrNetworkError(sessionError) || isBrowserOffline()) {
+        return { status: 'offline', user: null, reason: OFFLINE_ADMIN_NOTICE };
+      }
+      return { status: 'unauthenticated', user: null, reason: 'session_error' };
+    }
+    session = sessionData?.session || null;
+  } catch (err) {
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { status: 'offline', user: null, reason: OFFLINE_ADMIN_NOTICE };
+    }
+    return { status: 'unauthenticated', user: null, reason: 'session_error' };
+  }
+
+  if (!session || !session.access_token || !session.user) {
+    return { status: 'unauthenticated', user: null, reason: 'no_session' };
+  }
+  if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
+    return { status: 'unauthenticated', user: null, reason: 'expired' };
+  }
+
+  const preNormalizedEmail = (session.user.email || '').trim().toLowerCase();
+  if (preNormalizedEmail.endsWith('@player.astrosphere.app')) {
+    return { status: 'unauthorized', user: session.user, reason: 'player_account' };
+  }
+
+  // Saat browser offline dan terdapat sesi non-player lokal, pertahankan sesi tanpa redirect error
+  if (isBrowserOffline()) {
+    return { status: 'offline', user: session.user, reason: OFFLINE_ADMIN_NOTICE };
+  }
+
+  try {
+    const { data: userData, error: userError } = await client.auth.getUser();
+    if (userError) {
+      if (isOfflineOrNetworkError(userError) || isBrowserOffline()) {
+        return { status: 'offline', user: session.user, reason: OFFLINE_ADMIN_NOTICE };
+      }
+      return { status: 'unauthenticated', user: null, reason: 'invalid_user' };
+    }
+    const authUser = userData?.user;
+    if (!authUser || authUser.id !== session.user.id) {
+      return { status: 'unauthenticated', user: null, reason: 'invalid_user' };
+    }
+
+    const roleRes = await checkAdminRoleRows(client, authUser);
+    if (roleRes.status === 'offline') {
+      return { status: 'offline', user: authUser, reason: OFFLINE_ADMIN_NOTICE };
+    }
+    if (roleRes.status !== 'authorized') {
+      return { status: 'unauthorized', user: authUser, reason: 'not_admin' };
+    }
+    return { status: 'authorized', user: authUser };
+  } catch (err) {
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { status: 'offline', user: session.user, reason: OFFLINE_ADMIN_NOTICE };
+    }
+    return { status: 'unauthenticated', user: null, reason: 'verify_failed' };
+  }
+}
+
+/**
+ * Pemeriksaan hak akses Admin (Fail-Closed + Verifikasi Server-Side getUser()):
+ * Memastikan sesi Supabase Auth valid di server dan user terdaftar di public.admin_users
+ */
+export async function verifyIsAdmin(user) {
+  const client = getSupabaseClient();
+  if (!client || !user || !user.id) return false;
+
+  const preNormalizedEmail = (user.email || '').trim().toLowerCase();
+  if (preNormalizedEmail.endsWith('@player.astrosphere.app')) {
+    return false;
+  }
+
+  let verifiedUser = user;
+  try {
+    const [{ data: { session }, error: sessionError }, { data: { user: authUser }, error: userError }] = await Promise.all([
+      client.auth.getSession(),
+      client.auth.getUser(),
+    ]);
+    if (
+      sessionError ||
+      userError ||
+      !session ||
+      !session.access_token ||
+      !authUser ||
+      authUser.id !== user.id ||
+      session.user?.id !== user.id
+    ) {
+      return false;
+    }
+    if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
+      return false;
+    }
+    verifiedUser = authUser;
+  } catch {
+    return false;
+  }
+
+  const roleRes = await checkAdminRoleRows(client, verifiedUser);
+  return roleRes.status === 'authorized';
 }
 
 /**
@@ -268,6 +399,14 @@ export async function adminLogin(emailInput, passwordInput) {
     };
   }
 
+  if (isBrowserOffline()) {
+    return {
+      ok: false,
+      offline: true,
+      error: OFFLINE_ADMIN_NOTICE,
+    };
+  }
+
   try {
     const { data, error } = await client.auth.signInWithPassword({
       email: validation.email,
@@ -275,13 +414,19 @@ export async function adminLogin(emailInput, passwordInput) {
     });
 
     if (error || !data.user) {
+      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+        return { ok: false, offline: true, error: mapAdminAuthError(error) };
+      }
       recordLoginFailure();
-      return { ok: false, error: 'Email atau kata sandi salah.' };
+      return { ok: false, error: mapAdminAuthError(error) };
     }
 
     // Verifikasi apakah akun terdaftar sebagai admin
     const isAuthorized = await verifyIsAdmin(data.user);
     if (!isAuthorized) {
+      if (isBrowserOffline()) {
+        return { ok: false, offline: true, error: OFFLINE_ADMIN_NOTICE };
+      }
       await client.auth.signOut();
       recordLoginFailure();
       return {
@@ -294,6 +439,9 @@ export async function adminLogin(emailInput, passwordInput) {
     recordAdminActivity();
     return { ok: true, user: data.user };
   } catch (err) {
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, offline: true, error: mapAdminAuthError(err) };
+    }
     recordLoginFailure();
     return { ok: false, error: mapAdminAuthError(err) };
   }
@@ -313,18 +461,21 @@ export async function adminLogout() {
 }
 
 export function mapAdminAuthError(err) {
+  if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+    return OFFLINE_ADMIN_NOTICE;
+  }
   const raw = typeof err === 'string' ? err : err?.message ? String(err.message) : '';
   const lower = raw.toLowerCase();
-  if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('timeout')) {
-    return 'Tidak dapat terhubung ke server autentikasi Supabase. Periksa koneksi internet Anda.';
-  }
   if (lower.includes('rate limit') || lower.includes('too many requests')) {
     return 'Terlalu banyak percobaan login. Harap tunggu beberapa saat sebelum mencoba kembali.';
   }
   return 'Email atau kata sandi salah.';
 }
 
-export function formatSupabaseError(err, fallback = 'Terjadi kesalahan sistem database.') {
+export function formatSupabaseError(err, fallback = GENERIC_ADMIN_ERROR) {
+  if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+    return OFFLINE_ADMIN_NOTICE;
+  }
   if (err && typeof err === 'object') {
     const msg = typeof err.message === 'string' ? err.message : '';
     const code = typeof err.code === 'string' ? err.code : '';
@@ -332,15 +483,51 @@ export function formatSupabaseError(err, fallback = 'Terjadi kesalahan sistem da
     const comb = `${msg} ${details}`.toLowerCase();
 
     if (code === '42501' || comb.includes('row-level security') || comb.includes('permission denied')) {
-      return 'Akses ditolak oleh kebijakan keamanan database (RLS). Pastikan Anda masuk sebagai Admin yang sah.';
+      return 'Akses ditolak oleh kebijakan keamanan database. Pastikan Anda masuk sebagai Admin yang sah.';
     }
     if (code === '23505' || comb.includes('duplicate key')) {
-      return `Data duplikat terdeteksi oleh database (${msg || code}).`;
+      if (comb.includes('urutan_planet')) {
+        return 'Urutan planet (1–8) sudah digunakan oleh planet lain. Gunakan nomor urutan yang belum terpakai.';
+      }
+      if (comb.includes('slug')) {
+        return 'Slug unik sudah digunakan pernyataan lain. Ubah atau kosongkan kolom slug.';
+      }
+      return 'Data dengan nilai unik tersebut sudah terdaftar di sistem.';
     }
     if (code === '23503' || comb.includes('foreign key')) {
-      return `Referensi planet/data tidak valid di database (${details || msg || code}).`;
+      return 'Referensi data terkait tidak valid atau sudah dihapus.';
     }
-    if (msg) return `${fallback}: ${msg}`;
   }
   return fallback;
+}
+
+const CSV_FORMULA_PREFIX_REGEX = /^[=+\-@\t\r]/;
+
+/**
+ * Membersihkan sel CSV dari potensi formula injection (=, +, -, @, tab, CR)
+ */
+export function sanitizeCsvCell(value) {
+  const raw = String(value ?? '');
+  const safeText = CSV_FORMULA_PREFIX_REGEX.test(raw) ? `'${raw}` : raw;
+  return `"${safeText.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Mengunduh berkas CSV aman dengan sanitasi formula injection per sel
+ */
+export function downloadSafeCsv(filename, headers, rows) {
+  if (typeof document === 'undefined') return;
+  const csvLines = [
+    headers.map((h) => sanitizeCsvCell(h)).join(','),
+    ...rows.map((cols) => cols.map((cell) => sanitizeCsvCell(cell)).join(',')),
+  ].join('\n');
+  const blob = new Blob([`\uFEFF${csvLines}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute('href', url);
+  dlAnchor.setAttribute('download', filename);
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

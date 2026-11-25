@@ -33,7 +33,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
       <div class="opts" role="group" :aria-label="q.q">
         <button v-for="(o, i) in q.opts" :key="i" class="opt" @click="emit('pick', i)"><span class="lt">{{ LT[i] }}</span><span>{{ o }}</span></button>
       </div>
-      <p class="hint"><UiIcon name="bintang" :size="14" />Tebakan benar +{{ PREDICT_REWARD }} bintang</p>
+      <p class="hint"><UiIcon name="bintang" :size="14" />Tebakan benar +{{ q?.points || PREDICT_REWARD }} bintang</p>
     </template>
     <template v-else>
       <div class="mine"><small>Tebakanmu</small><b>{{ q.opts[picked] }}</b></div>

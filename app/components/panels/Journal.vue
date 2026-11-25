@@ -4,18 +4,21 @@
 // Membuka kartu pertama kali memberi bonus bintang.
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, openCard } from '~/composables/useGame.js';
+import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { SUN, PLANETS, MOONS, BELT, COLOR_OF } from '~/data/solarSystem.js';
 import { FACTS, CARD_REWARD } from '~/data/learning.js';
 
 const emit = defineEmits(['close']);
+const { planets: livePlanets, getFacts, loadAll } = useSupabaseContent();
 
-const bodies = [SUN, ...PLANETS, ...MOONS, BELT];
+const activePlanetIds = computed(() => new Set((livePlanets.value || []).map((p) => p.id)));
+const bodies = computed(() => [SUN, ...PLANETS.filter((p) => activePlanetIds.value.has(p.id)), ...MOONS, BELT]);
 const found = (id) => store.discovered.includes(id) || !!store.progress.cards[id];
-const fresh = (id) => found(id) && !!FACTS[id] && !store.progress.cards[id];
-const nFound = computed(() => bodies.filter((b) => found(b.id)).length);
-const nRead = computed(() => bodies.filter((b) => store.progress.cards[b.id]).length);
-const sel = computed(() => bodies.find((b) => b.id === store.journalId) || null);
-const cards = computed(() => (sel.value && FACTS[sel.value.id]) || []);
+const fresh = (id) => found(id) && getFacts(id).length > 0 && !store.progress.cards[id];
+const nFound = computed(() => bodies.value.filter((b) => found(b.id)).length);
+const nRead = computed(() => bodies.value.filter((b) => store.progress.cards[b.id]).length);
+const sel = computed(() => bodies.value.find((b) => b.id === store.journalId) || null);
+const cards = computed(() => (sel.value ? getFacts(sel.value.id) : []));
 const k = ref(0), reward = ref(0);
 
 const PLANET_ORDERS = {
@@ -87,7 +90,10 @@ function up(e) {
 }
 function cancel() { sx = null; }
 
-onMounted(() => window.addEventListener('keydown', onKey));
+onMounted(() => {
+  loadAll();
+  window.addEventListener('keydown', onKey);
+});
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 </script>
 

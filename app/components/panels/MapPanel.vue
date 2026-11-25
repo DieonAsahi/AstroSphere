@@ -12,8 +12,9 @@ const sel = ref(store.hud.target.id && store.hud.target.id !== 'matahari' ? stor
 const hover = ref(null);
 const live = ref({}); // jarak & perkiraan waktu per planet (diperbarui 4×/detik)
 
-const { getPlanet } = useSupabaseContent();
-const selP = computed(() => PLANETS.find((p) => p.id === sel.value) || PLANETS[3]);
+const { getPlanet, planets: livePlanets } = useSupabaseContent();
+const planetList = computed(() => (livePlanets.value?.length ? livePlanets.value : PLANETS));
+const selP = computed(() => planetList.value.find((p) => p.id === sel.value) || planetList.value[0] || PLANETS[3]);
 const planetDesc = computed(() => {
   const sp = getPlanet(sel.value);
   return sp?.deskripsi_materi || selP.value?.desc || '';
@@ -265,7 +266,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
     </header>
 
     <nav class="list" aria-label="Daftar planet">
-      <button v-for="p in PLANETS" :key="p.id" class="li" :class="{ on: p.id === sel }" @click="sel = p.id">
+      <button v-for="p in planetList" :key="p.id" class="li" :class="{ on: p.id === sel }" @click="sel = p.id">
         <span class="planet-dot" :style="{ '--c': p.color, '--s': '28px' }" />
         <span class="n"><b>{{ p.name }}</b><small>{{ live[p.id] ? fmtDist(live[p.id].d) : '' }}</small></span>
         <UiIcon v-if="store.hud.target.id === p.id" name="target" :size="16" class="tg" />
@@ -293,7 +294,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 
     <aside class="det card flat">
       <div class="hscroll chips">
-        <button v-for="p in PLANETS" :key="p.id" class="chip" :class="{ on: p.id === sel }" @click="sel = p.id">
+        <button v-for="p in planetList" :key="p.id" class="chip" :class="{ on: p.id === sel }" @click="sel = p.id">
           <span class="dot" :style="{ background: p.color }" />{{ p.name }}
         </button>
       </div>

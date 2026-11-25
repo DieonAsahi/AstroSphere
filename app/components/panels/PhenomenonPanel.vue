@@ -11,7 +11,13 @@ const phenoData = computed(() => getPhenomenon('bumi'));
 
 const L = () => game()?.lab;
 const key = computed(() => 'gerhana-' + store.lab.type);
-const pq = computed(() => PREDICT[key.value]);
+const pq = computed(() => {
+  const td = phenoData.value?.tebak_dulu;
+  const custom = td && typeof td === 'object' ? td[key.value] : null;
+  if (custom && custom.q) return custom;
+  if (td && typeof td === 'object' && td.q) return td;
+  return PREDICT[key.value];
+});
 const pick = ref(null), revealed = ref(false), skipped = ref(false), result = ref({ ok: false, reward: 0 });
 const asking = computed(() => !store.progress.predict[key.value] && pick.value == null && !skipped.value);
 
@@ -41,7 +47,7 @@ function skip() {
 
 watch(() => store.lab.status, (s) => {
   if (pick.value == null || revealed.value || s !== 'total') return;
-  result.value = recordPrediction(key.value, pick.value);
+  result.value = recordPrediction(key.value, pick.value, pq.value);
   revealed.value = true;
   if (result.value.ok) game()?.correct(); else game()?.wrong();
 });
@@ -167,7 +173,7 @@ const f3 = (v) => (+v).toFixed(3);
           <figcaption><b>{{ status[0] }}</b><small>{{ status[1] }}</small></figcaption>
         </figure>
 
-        <UiPredictCard v-if="pick != null" :q="pq" :picked="pick" :revealed="revealed" :ok="result.ok" :reward="result.reward" :why="pq.why" wait="Tunggu sampai gerhana total…" />
+        <UiPredictCard v-if="pick != null" :q="pq" :picked="pick" :revealed="revealed" :ok="result.ok" :reward="result.reward" :why="pq?.why || why[1]" wait="Tunggu sampai gerhana total…" />
         <div v-else class="why">
           <h3>{{ why[0] }}</h3>
           <p>{{ why[1] }}</p>
@@ -181,7 +187,7 @@ const f3 = (v) => (+v).toFixed(3);
         </div>
         <UiToggle v-model="store.lab.labels" label="Label" />
         <UiToggle v-model="store.lab.volume" label="Tampilkan bayangan" />
-        <p class="fine">Materi disinkronkan dengan data edukasi Supabase &amp; katalog AstroSphere.</p>
+        <p class="fine">Sumber: {{ phenoData?.sumber_referensi || 'NASA' }} · Materi disinkronkan dengan data edukasi Supabase &amp; katalog AstroSphere.</p>
       </div>
 
       <div v-if="asking" class="sfoot">

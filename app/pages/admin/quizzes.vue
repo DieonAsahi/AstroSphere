@@ -1,8 +1,8 @@
 <script setup>
 // Halaman Pengelola Bank Soal Kuis (/admin/quizzes) — CRUD, Pratinjau Kuis Siswa, & Ekspor/Impor
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
-import { formatSupabaseError } from '~/utils/adminAuth.js';
+import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
 
 definePageMeta({
   layout: 'admin',
@@ -12,7 +12,9 @@ definePageMeta({
 const loading = ref(true);
 const refreshing = ref(false);
 const saving = ref(false);
+const togglingId = ref('');
 const error = ref('');
+const formError = ref('');
 const notification = ref(null);
 
 const questions = ref([]);
@@ -52,6 +54,7 @@ const DEFAULT_QUESTION = {
   kunci_jawaban: 0,
   bobot_poin: 50,
   pembahasan_edukatif: '',
+  is_active: true,
 };
 
 const formData = ref({ ...DEFAULT_QUESTION });
@@ -101,13 +104,27 @@ const filteredQuestions = computed(() => {
   });
 });
 
+const ALLOWED_PLANET_IDS = new Set(PLANET_OPTIONS.map((p) => p.id));
+
 const totalPages = computed(() => Math.ceil(filteredQuestions.value.length / itemsPerPage) || 1);
 const paginatedQuestions = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
+  const safePage = Math.min(Math.max(1, currentPage.value), totalPages.value);
+  const start = (safePage - 1) * itemsPerPage;
   return filteredQuestions.value.slice(start, start + itemsPerPage);
 });
 
+watch([selectedPlanet, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (tp) => {
+  if (currentPage.value > tp) {
+    currentPage.value = tp;
+  }
+});
+
 function openCreateModal() {
+  formError.value = '';
   isEditing.value = false;
   formData.value = { ...DEFAULT_QUESTION, opsi: ['', '', '', ''] };
   modalViewMode.value = 'EDIT';
@@ -115,6 +132,7 @@ function openCreateModal() {
 }
 
 function openEditModal(q) {
+  formError.value = '';
   isEditing.value = true;
   let cleanOptions = ['', '', '', ''];
   if (Array.isArray(q.opsi)) {
@@ -137,16 +155,82 @@ function openEditModal(q) {
     kunci_jawaban: cleanAnswer,
     bobot_poin: Number(q.bobot_poin || q.poin_hadiah || 50),
     pembahasan_edukatif: q.pembahasan_edukatif || q.penjelasan_pembahasan || '',
+    is_active: q.is_active !== false,
   };
   modalViewMode.value = 'EDIT';
   modalOpen.value = true;
 }
 
+async function toggleActive(q) {
+  if (togglingId.value === q.question_id) return;
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  const nextState = !(q.is_active !== false);
+  q.is_active = nextState;
+  togglingId.value = q.question_id;
+
+  try {
+    const { error: updErr } = await client
+      .from('questions')
+      .update({ is_active: nextState })
+      .eq('question_id', q.question_id);
+
+    if (updErr) throw updErr;
+    showNotification('success', `Status soal kuis berhasil diubah menjadi ${nextState ? 'Aktif' : 'Nonaktif'}.`);
+  } catch (err) {
+    q.is_active = !nextState;
+    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif soal.'));
+  } finally {
+    togglingId.value = '';
+  }
+}
+
 function closeModal() {
+  if (saving.value) return;
   modalOpen.value = false;
+  formError.value = '';
+}
+
+function closeImportModal() {
+  if (saving.value) return;
+  importModalOpen.value = false;
 }
 
 async function handleSave() {
+  formError.value = '';
+  if (!ALLOWED_PLANET_IDS.has(formData.value.planet_id)) {
+    formError.value = 'Target planet tidak valid.';
+    return;
+  }
+  const soalTrimmed = (formData.value.soal || '').trim();
+  if (!soalTrimmed) {
+    formError.value = 'Teks pertanyaan soal wajib diisi.';
+    return;
+  }
+  const cleanOpsi = Array.isArray(formData.value.opsi)
+    ? formData.value.opsi.slice(0, 4).map((o) => String(o ?? '').trim())
+    : [];
+  if (cleanOpsi.length !== 4 || cleanOpsi.some((o) => !o)) {
+    formError.value = 'Keempat opsi jawaban (A, B, C, D) wajib diisi lengkap.';
+    return;
+  }
+  const ansIdx = Number(formData.value.kunci_jawaban);
+  if (!Number.isInteger(ansIdx) || ansIdx < 0 || ansIdx > 3) {
+    formError.value = 'Kunci jawaban harus dipilih antara Opsi A (0) hingga D (3).';
+    return;
+  }
+  const pts = Number(formData.value.bobot_poin);
+  if (!Number.isFinite(pts) || pts < 1) {
+    formError.value = 'Bobot poin hadiah minimal bernilai 1.';
+    return;
+  }
+  const explanationTrimmed = (formData.value.pembahasan_edukatif || '').trim();
+  if (!explanationTrimmed) {
+    formError.value = 'Pembahasan ilmiah & edukatif wajib diisi.';
+    return;
+  }
+
   const client = getSupabaseClient();
   if (!client) return;
 
@@ -154,11 +238,12 @@ async function handleSave() {
   try {
     const payload = {
       planet_id: formData.value.planet_id,
-      soal: formData.value.soal,
-      opsi: formData.value.opsi,
-      kunci_jawaban: Number(formData.value.kunci_jawaban),
-      bobot_poin: Number(formData.value.bobot_poin),
-      pembahasan_edukatif: formData.value.pembahasan_edukatif,
+      soal: soalTrimmed,
+      opsi: cleanOpsi,
+      kunci_jawaban: ansIdx,
+      bobot_poin: Math.round(pts),
+      pembahasan_edukatif: explanationTrimmed,
+      is_active: formData.value.is_active !== false,
     };
 
     if (isEditing.value && formData.value.question_id) {
@@ -176,10 +261,11 @@ async function handleSave() {
       showNotification('success', 'Soal kuis baru berhasil ditambahkan.');
     }
 
+    saving.value = false;
     closeModal();
     await loadQuestions();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menyimpan soal kuis.'));
+    formError.value = formatSupabaseError(err, 'Gagal menyimpan soal kuis.');
   } finally {
     saving.value = false;
   }
@@ -219,27 +305,24 @@ function exportJson() {
 
 function exportCsv() {
   if (!filteredQuestions.value.length) return;
-  const headers = ['question_id', 'planet_id', 'soal', 'opsi_a', 'opsi_b', 'opsi_c', 'opsi_d', 'kunci_jawaban', 'bobot_poin', 'pembahasan_edukatif'];
+  const headers = ['question_id', 'planet_id', 'soal', 'opsi_a', 'opsi_b', 'opsi_c', 'opsi_d', 'kunci_jawaban', 'bobot_poin', 'pembahasan_edukatif', 'is_active'];
   const rows = filteredQuestions.value.map((q) => {
     const opts = Array.isArray(q.opsi) ? q.opsi : [];
     return [
       q.question_id,
       q.planet_id,
-      `"${String(q.soal || '').replace(/"/g, '""')}"`,
-      `"${String(opts[0] || '').replace(/"/g, '""')}"`,
-      `"${String(opts[1] || '').replace(/"/g, '""')}"`,
-      `"${String(opts[2] || '').replace(/"/g, '""')}"`,
-      `"${String(opts[3] || '').replace(/"/g, '""')}"`,
+      q.soal || '',
+      opts[0] || '',
+      opts[1] || '',
+      opts[2] || '',
+      opts[3] || '',
       q.kunci_jawaban,
       q.bobot_poin || 50,
-      `"${String(q.pembahasan_edukatif || '').replace(/"/g, '""')}"`,
-    ].join(',');
+      q.pembahasan_edukatif || '',
+      q.is_active !== false ? 'true' : 'false',
+    ];
   });
-  const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\n'));
-  const dlAnchor = document.createElement('a');
-  dlAnchor.setAttribute('href', csvContent);
-  dlAnchor.setAttribute('download', `quiz_questions_${Date.now()}.csv`);
-  dlAnchor.click();
+  downloadSafeCsv(`quiz_questions_${Date.now()}.csv`, headers, rows);
 }
 
 async function handleImportSubmit() {
@@ -251,25 +334,85 @@ async function handleImportSubmit() {
 
   try {
     const parsed = JSON.parse(importText.value);
-    if (!Array.isArray(parsed)) {
-      importError.value = 'Format JSON harus berupa array objek soal.';
+    if (!Array.isArray(parsed) || !parsed.length) {
+      importError.value = 'Format JSON harus berupa array objek soal yang tidak kosong.';
       return;
+    }
+
+    const cleanRows = [];
+    for (let i = 0; i < parsed.length; i++) {
+      const row = parsed[i];
+      if (!row || typeof row !== 'object') {
+        importError.value = `Baris ${i + 1}: entri harus berupa objek JSON.`;
+        return;
+      }
+
+      const planetId = String(row.planet_id || '').toLowerCase().trim();
+      if (!ALLOWED_PLANET_IDS.has(planetId)) {
+        importError.value = `Baris ${i + 1}: planet_id "${row.planet_id}" tidak valid.`;
+        return;
+      }
+
+      const soalText = String(row.soal ?? '').trim();
+      if (!soalText) {
+        importError.value = `Baris ${i + 1}: teks pertanyaan (soal) wajib diisi.`;
+        return;
+      }
+
+      const rawOpts = Array.isArray(row.opsi)
+        ? row.opsi
+        : [row.opsi_a, row.opsi_b, row.opsi_c, row.opsi_d];
+      if (!Array.isArray(rawOpts) || rawOpts.length < 4) {
+        importError.value = `Baris ${i + 1}: wajib memiliki 4 pilihan jawaban (array opsi atau opsi_a..opsi_d).`;
+        return;
+      }
+      const cleanOpts = rawOpts.slice(0, 4).map((o) => String(o ?? '').trim());
+      if (cleanOpts.some((o) => !o)) {
+        importError.value = `Baris ${i + 1}: keempat pilihan jawaban (A–D) wajib diisi non-kosong.`;
+        return;
+      }
+
+      const rawAns = row.kunci_jawaban;
+      const ans = rawAns !== undefined && rawAns !== null && String(rawAns).trim() !== ''
+        ? Number(rawAns)
+        : NaN;
+      if (!Number.isInteger(ans) || ans < 0 || ans > 3) {
+        importError.value = `Baris ${i + 1}: kunci_jawaban "${rawAns}" harus berupa integer 0–3.`;
+        return;
+      }
+
+      const rawPts = row.bobot_poin;
+      const pts = rawPts !== undefined && rawPts !== null && String(rawPts).trim() !== ''
+        ? Number(rawPts)
+        : 50;
+      if (!Number.isFinite(pts) || pts < 1) {
+        importError.value = `Baris ${i + 1}: bobot_poin "${rawPts}" harus berupa angka minimal 1.`;
+        return;
+      }
+
+      const isActiveRaw = row.is_active;
+      const isActive = isActiveRaw === undefined || isActiveRaw === null
+        ? true
+        : (typeof isActiveRaw === 'string'
+          ? !['false', '0', 'no', 'nonaktif'].includes(isActiveRaw.trim().toLowerCase())
+          : Boolean(isActiveRaw));
+
+      cleanRows.push({
+        planet_id: planetId,
+        soal: soalText,
+        opsi: cleanOpts,
+        kunci_jawaban: ans,
+        bobot_poin: Math.round(pts),
+        pembahasan_edukatif: String(row.pembahasan_edukatif ?? '').trim(),
+        is_active: isActive,
+      });
     }
 
     const client = getSupabaseClient();
     if (!client) return;
 
     saving.value = true;
-    const cleanRows = parsed.map((row) => ({
-      planet_id: row.planet_id || 'earth',
-      soal: row.soal || 'Pertanyaan Baru',
-      opsi: Array.isArray(row.opsi) ? row.opsi.slice(0, 4) : [row.opsi_a || 'A', row.opsi_b || 'B', row.opsi_c || 'C', row.opsi_d || 'D'],
-      kunci_jawaban: Number(row.kunci_jawaban || 0),
-      bobot_poin: Number(row.bobot_poin || 50),
-      pembahasan_edukatif: row.pembahasan_edukatif || '',
-    }));
-
-    const { error: insErr } = await client.from('questions').upsert(cleanRows);
+    const { error: insErr } = await client.from('questions').insert(cleanRows);
     if (insErr) throw insErr;
 
     showNotification('success', `Berhasil mengimpor ${cleanRows.length} soal kuis.`);
@@ -277,7 +420,7 @@ async function handleImportSubmit() {
     importText.value = '';
     await loadQuestions();
   } catch (err) {
-    importError.value = err.message || 'Gagal memproses data impor.';
+    importError.value = formatSupabaseError(err, 'Gagal memproses data impor.');
   } finally {
     saving.value = false;
   }
@@ -324,6 +467,11 @@ onMounted(() => {
       <span>{{ notification.msg }}</span>
     </div>
 
+    <div v-if="error" class="dash-alert error" role="alert">
+      <UiIcon name="silang" :size="18" />
+      <span>{{ error }}</span>
+    </div>
+
     <!-- FILTERS -->
     <div class="card-section filters-bar">
       <div class="filter-field">
@@ -360,6 +508,7 @@ onMounted(() => {
             <th>Kunci Jawaban</th>
             <th style="width: 110px;">Bobot Poin</th>
             <th>Pembahasan Edukatif</th>
+            <th style="width: 96px; text-align: center;">Status</th>
             <th style="width: 110px; text-align: right;">Aksi</th>
           </tr>
         </thead>
@@ -381,6 +530,18 @@ onMounted(() => {
             </td>
             <td>
               <p class="desc-clamp">{{ q.pembahasan_edukatif || '—' }}</p>
+            </td>
+            <td style="text-align: center;">
+              <button
+                type="button"
+                class="status-toggle-btn"
+                :class="{ on: q.is_active !== false }"
+                :disabled="togglingId === q.question_id"
+                :title="q.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
+                @click="toggleActive(q)"
+              >
+                {{ togglingId === q.question_id ? '…' : (q.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+              </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
@@ -415,14 +576,18 @@ onMounted(() => {
             <p class="modal-sub">Pertanyaan evaluasi ilmiah astronomi</p>
           </div>
           <div class="modal-mode-tabs">
-            <button :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
-            <button :class="{ on: modalViewMode === 'PREVIEW' }" @click="modalViewMode = 'PREVIEW'">Pratinjau Kuis Siswa</button>
-            <button class="btn-close-modal" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
+            <button type="button" :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
+            <button type="button" :class="{ on: modalViewMode === 'PREVIEW' }" @click="modalViewMode = 'PREVIEW'">Pratinjau Kuis Siswa</button>
+            <button type="button" class="btn-close-modal" :disabled="saving" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
           </div>
         </div>
 
         <!-- FORMULIR INPUT SOAL -->
         <form v-if="modalViewMode === 'EDIT'" class="modal-body scroll" @submit.prevent="handleSave">
+          <div v-if="formError" class="dash-alert error" role="alert">
+            <UiIcon name="silang" :size="16" />
+            <span>{{ formError }}</span>
+          </div>
           <div class="grid-2">
             <label class="field">
               <span>Target Planet</span>
@@ -470,8 +635,13 @@ onMounted(() => {
             <textarea v-model="formData.pembahasan_edukatif" rows="3" placeholder="Penjelasan mengapa jawaban tersebut benar untuk dibaca siswa setelah menjawab..." required />
           </label>
 
+          <label class="checkbox-row">
+            <input v-model="formData.is_active" type="checkbox" />
+            <span>Aktifkan soal ini (muncul di Kuis Planet siswa)</span>
+          </label>
+
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" @click="closeModal">Batal</button>
+            <button type="button" class="btn-cancel" :disabled="saving" @click="closeModal">Batal</button>
             <button type="submit" class="btn-save" :disabled="saving">
               {{ saving ? 'Menyimpan…' : (isEditing ? 'Simpan Perubahan' : 'Buat Soal Baru') }}
             </button>
@@ -507,13 +677,13 @@ onMounted(() => {
     </div>
 
     <!-- MODAL KONFIRMASI HAPUS -->
-    <div v-if="deletingQuestion" class="modal-backdrop" @click.self="deletingQuestion = null">
+    <div v-if="deletingQuestion" class="modal-backdrop" @click.self="!saving && (deletingQuestion = null)">
       <div class="modal-card small">
         <h3 class="modal-title">Hapus Soal Kuis?</h3>
         <p class="modal-desc">Apakah Anda yakin ingin menghapus pertanyaan ini dari bank soal <b>{{ deletingQuestion.planet_id }}</b>?</p>
         <p class="q-snippet">"{{ deletingQuestion.soal }}"</p>
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" @click="deletingQuestion = null">Batal</button>
+          <button type="button" class="btn-cancel" :disabled="saving" @click="deletingQuestion = null">Batal</button>
           <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
             {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
           </button>
@@ -522,11 +692,11 @@ onMounted(() => {
     </div>
 
     <!-- MODAL IMPOR MASSAL JSON -->
-    <div v-if="importModalOpen" class="modal-backdrop" @click.self="importModalOpen = false">
+    <div v-if="importModalOpen" class="modal-backdrop" @click.self="closeImportModal">
       <div class="modal-card">
         <div class="modal-header">
           <h3 class="modal-title">Impor Massal Soal Kuis (JSON)</h3>
-          <button class="btn-close-modal" @click="importModalOpen = false"><UiIcon name="tutup" :size="18" /></button>
+          <button type="button" class="btn-close-modal" :disabled="saving" @click="closeImportModal"><UiIcon name="tutup" :size="18" /></button>
         </div>
         <div class="modal-body">
           <p class="hint">Tempelkan array objek JSON dengan format: planet_id, soal, opsi (array 4 pilihan), kunci_jawaban (0-3), bobot_poin, pembahasan_edukatif.</p>
@@ -534,7 +704,7 @@ onMounted(() => {
           <p v-if="importError" class="error-text">{{ importError }}</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" @click="importModalOpen = false">Batal</button>
+          <button type="button" class="btn-cancel" :disabled="saving" @click="closeImportModal">Batal</button>
           <button type="button" class="btn-save" :disabled="saving" @click="handleImportSubmit">
             {{ saving ? 'Mengimpor…' : 'Proses Impor' }}
           </button>
@@ -555,6 +725,9 @@ onMounted(() => {
 .btn-head.primary { background: #2563eb; color: #fff; }
 .btn-head.line { background: #fff; border-color: #cbd5e1; color: #334155; }
 .btn-head.ghost { background: #f1f5f9; color: #475569; }
+.dash-alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 500; border: 1px solid transparent; }
+.dash-alert.success { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+.dash-alert.error { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
 
 .filters-bar { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
 .filter-field { display: flex; flex-direction: column; gap: 6px; }
@@ -644,4 +817,7 @@ onMounted(() => {
 
 .import-textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12px; }
 .error-text { color: #dc2626; font-size: 13px; margin: 4px 0 0 0; }
+.status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
+.status-toggle-btn.on { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer; }
 </style>

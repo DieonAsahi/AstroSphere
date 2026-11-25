@@ -21,6 +21,14 @@ const stats = ref({
   phenomenaTotal: 0,
   phenomenaActive: 0,
   questions: 0,
+  factsTotal: 0,
+  factsActive: 0,
+  mythsTotal: 0,
+  mythsActive: 0,
+  shipsTotal: 0,
+  shipsActive: 0,
+  usersTotal: 0,
+  usersActive: 0,
 });
 
 const activeTotalQuizPoints = ref(0);
@@ -76,28 +84,42 @@ async function loadDashboardData() {
 
   error.value = '';
   try {
-    const [planetsRes, historyRes, phenoRes, questionsRes, shipsRes] = await Promise.all([
+    const [planetsRes, historyRes, phenoRes, questionsRes, shipsRes, factsRes, mythsRes, usersRes] = await Promise.all([
       client.from('planets').select('planet_id, nama, is_active, updated_at').order('urutan_planet'),
-      client.from('history_events').select('event_id, planet_id, judul, created_at'),
+      client.from('history_events').select('event_id, planet_id, judul, is_active, created_at'),
       client.from('phenomena').select('phenomenon_id, is_active'),
-      client.from('questions').select('question_id, planet_id, soal, bobot_poin, created_at'),
-      client.from('ships').select('ship_id, nama, harga_poin'),
+      client.from('questions').select('question_id, planet_id, soal, bobot_poin, is_active, created_at'),
+      client.from('ships').select('ship_id, nama, harga_poin, is_active'),
+      client.from('facts').select('fact_id, body_id, judul, is_active, created_at'),
+      client.from('myths').select('myth_id, benda_langit, pernyataan, is_active, created_at'),
+      client.rpc('admin_list_players').then(
+        (res) => res,
+        (err) => ({ data: [], error: err || new Error('Gagal memanggil admin_list_players') })
+      ),
     ]);
 
     if (planetsRes.error) throw planetsRes.error;
     if (historyRes.error) throw historyRes.error;
     if (phenoRes.error) throw phenoRes.error;
     if (questionsRes.error) throw questionsRes.error;
+    if (shipsRes.error) throw shipsRes.error;
+    if (factsRes.error) throw factsRes.error;
+    if (mythsRes.error) throw mythsRes.error;
+    if (usersRes?.error) throw usersRes.error;
 
     const planets = planetsRes.data || [];
     const history = historyRes.data || [];
     const phenomena = phenoRes.data || [];
     const questions = questionsRes.data || [];
     const ships = shipsRes.data || [];
+    const factsList = factsRes.data || [];
+    const mythsList = mythsRes.data || [];
+    const usersList = Array.isArray(usersRes?.data) ? usersRes.data : [];
 
-    // 1. Hitung total target harga hanggar dari DB
-    const totalShipsCost = ships.reduce((sum, s) => sum + (Number(s.harga_poin) || 0), 0);
-    if (totalShipsCost > 0) {
+    // 1. Hitung total target harga hanggar dari armada aktif di DB
+    const activeShips = ships.filter((s) => s.is_active !== false);
+    const totalShipsCost = activeShips.reduce((sum, s) => sum + (Number(s.harga_poin) || 0), 0);
+    if (ships.length > 0) {
       targetHangarPoints.value = totalShipsCost;
     }
 
@@ -111,10 +133,12 @@ async function loadDashboardData() {
     const quizCountMap = new Map();
 
     for (const h of history) {
+      if (h.is_active === false) continue;
       historyCountMap.set(h.planet_id, (historyCountMap.get(h.planet_id) || 0) + 1);
     }
 
     for (const q of questions) {
+      if (q.is_active === false) continue;
       quizCountMap.set(q.planet_id, (quizCountMap.get(q.planet_id) || 0) + 1);
       if (activePlanetIds.has(q.planet_id)) {
         quizPointsSum += Number(q.bobot_poin) || 50;
@@ -139,14 +163,22 @@ async function loadDashboardData() {
     }
     incompletePlanets.value = incomplete;
 
-    // 5. Susun metrik ringkasan
+    // 5. Susun metrik ringkasan (item aktif)
     stats.value = {
       planetsTotal: planets.length,
       planetsActive: activePlanets.length,
-      historyEvents: history.length,
+      historyEvents: history.filter((h) => h.is_active !== false).length,
       phenomenaTotal: phenomena.length,
       phenomenaActive: phenomena.filter((ph) => ph.is_active !== false).length,
-      questions: questions.length,
+      questions: questions.filter((q) => q.is_active !== false).length,
+      factsTotal: factsList.length,
+      factsActive: factsList.filter((f) => f.is_active !== false).length,
+      mythsTotal: mythsList.length,
+      mythsActive: mythsList.filter((m) => m.is_active !== false).length,
+      shipsTotal: ships.length,
+      shipsActive: activeShips.length,
+      usersTotal: usersList.length,
+      usersActive: usersList.filter((u) => u.is_active !== false).length,
     };
 
     // 6. Susun 5 pembaruan materi terakhir
@@ -184,6 +216,30 @@ async function loadDashboardData() {
           planetId: q.planet_id,
           timestamp: q.created_at,
           href: '/admin/quizzes',
+        });
+      }
+    }
+    for (const f of factsList) {
+      if (f.created_at) {
+        updates.push({
+          id: `f-${f.fact_id}`,
+          module: 'Fakta',
+          title: f.judul,
+          planetId: f.body_id,
+          timestamp: f.created_at,
+          href: '/admin/facts',
+        });
+      }
+    }
+    for (const m of mythsList) {
+      if (m.created_at) {
+        updates.push({
+          id: `m-${m.myth_id}`,
+          module: 'Mitos',
+          title: m.pernyataan,
+          planetId: m.benda_langit,
+          timestamp: m.created_at,
+          href: '/admin/myths',
         });
       }
     }
@@ -253,7 +309,7 @@ onMounted(() => {
 
       <div class="metric-card">
         <div class="mc-head">
-          <span class="mc-label">Sejarah &amp; POI</span>
+          <span class="mc-label">Sejarah</span>
           <div class="mc-icon history"><UiIcon name="sejarah" :size="20" /></div>
         </div>
         <div class="mc-val">{{ stats.historyEvents }} <small>Catatan</small></div>
@@ -276,6 +332,42 @@ onMounted(() => {
         </div>
         <div class="mc-val">{{ stats.questions }} <small>Pertanyaan</small></div>
         <NuxtLink to="/admin/quizzes" class="mc-link">Kelola Soal →</NuxtLink>
+      </div>
+
+      <div class="metric-card">
+        <div class="mc-head">
+          <span class="mc-label">Tahukah Kamu?</span>
+          <div class="mc-icon facts"><UiIcon name="jurnal" :size="20" /></div>
+        </div>
+        <div class="mc-val">{{ stats.factsActive }} <small>/ {{ stats.factsTotal }} Aktif</small></div>
+        <NuxtLink to="/admin/facts" class="mc-link">Kelola Kartu Fakta →</NuxtLink>
+      </div>
+
+      <div class="metric-card">
+        <div class="mc-head">
+          <span class="mc-label">Mitos atau Fakta</span>
+          <div class="mc-icon myths"><UiIcon name="cek" :size="20" /></div>
+        </div>
+        <div class="mc-val">{{ stats.mythsActive }} <small>/ {{ stats.mythsTotal }} Aktif</small></div>
+        <NuxtLink to="/admin/myths" class="mc-link">Kelola Pernyataan →</NuxtLink>
+      </div>
+
+      <div class="metric-card">
+        <div class="mc-head">
+          <span class="mc-label">Hanggar Pesawat</span>
+          <div class="mc-icon ships"><UiIcon name="hanggar" :size="20" /></div>
+        </div>
+        <div class="mc-val">{{ stats.shipsActive }} <small>/ {{ stats.shipsTotal }} Aktif</small></div>
+        <NuxtLink to="/admin/ships" class="mc-link">Kelola Armada →</NuxtLink>
+      </div>
+
+      <div class="metric-card">
+        <div class="mc-head">
+          <span class="mc-label">Pengguna Terdaftar</span>
+          <div class="mc-icon users"><UiIcon name="pengguna" :size="20" /></div>
+        </div>
+        <div class="mc-val">{{ stats.usersActive }} <small>/ {{ stats.usersTotal }} Aktif</small></div>
+        <NuxtLink to="/admin/users" class="mc-link">Kelola Pengguna →</NuxtLink>
       </div>
     </div>
 
@@ -331,7 +423,7 @@ onMounted(() => {
       <div class="incomplete-grid">
         <div v-for="p in incompletePlanets" :key="p.planet_id" class="inc-planet-item">
           <b>Planet {{ p.nama }}</b>
-          <span>{{ p.historyCount === 0 ? 'Belum ada Sejarah/POI' : `${p.historyCount} Sejarah` }}</span>
+          <span>{{ p.historyCount === 0 ? 'Belum ada Sejarah' : `${p.historyCount} Sejarah` }}</span>
           <span>{{ p.questionCount === 0 ? 'Belum ada Soal Kuis' : `${p.questionCount} Soal` }}</span>
         </div>
       </div>
@@ -468,6 +560,10 @@ onMounted(() => {
 .mc-icon.history { background-color: #f0fdf4; color: #16a34a; }
 .mc-icon.pheno { background-color: #fffbeb; color: #d97706; }
 .mc-icon.quiz { background-color: #f5f3ff; color: #7c3aed; }
+.mc-icon.facts { background-color: #ecfeff; color: #0891b2; }
+.mc-icon.myths { background-color: #fef2f2; color: #e11d48; }
+.mc-icon.ships { background-color: #eef2ff; color: #4f46e5; }
+.mc-icon.users { background-color: #f0f9ff; color: #0284c7; }
 
 .mc-val {
   font-size: 26px;

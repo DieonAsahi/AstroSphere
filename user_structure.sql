@@ -21,12 +21,22 @@ CREATE TABLE IF NOT EXISTS public.player_progress (
   progress_data JSONB NOT NULL DEFAULT '{}'::jsonb,
   game_state JSONB NOT NULL DEFAULT '{}'::jsonb,
   settings_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  banned_at TIMESTAMPTZ,
+  banned_reason TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Migrasi idempotent penambahan kolom astro_id jika tabel sudah ada sebelumnya
+-- Migrasi idempotent penambahan kolom astro_id & status akun jika tabel sudah ada sebelumnya
 ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS astro_id TEXT UNIQUE;
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS banned_reason TEXT NOT NULL DEFAULT '';
+
+-- Indeks status aktif pengguna
+CREATE INDEX IF NOT EXISTS idx_player_progress_active
+  ON public.player_progress (is_active);
 
 -- Indeks pencarian cepat username (case-insensitive)
 CREATE INDEX IF NOT EXISTS idx_player_progress_username_lower 
@@ -123,6 +133,23 @@ BEGIN
     RAISE EXCEPTION 'Ukuran preferensi pemain (settings_data) melebihi batas aman 16 KB.';
   END IF;
 
+  -- 5. Cegah pemain menonaktifkan/mengaktifkan/memodifikasi status blokir diri sendiri lewat REST API
+  IF TG_OP = 'INSERT' AND NEW.is_active = false THEN
+    IF NOT COALESCE(public.is_admin(), false) THEN
+      RAISE EXCEPTION 'Status akun dan blokir hanya dapat diubah oleh administrator.';
+    END IF;
+  END IF;
+
+  IF TG_OP = 'UPDATE' AND (
+    NEW.is_active IS DISTINCT FROM OLD.is_active
+    OR NEW.banned_at IS DISTINCT FROM OLD.banned_at
+    OR NEW.banned_reason IS DISTINCT FROM OLD.banned_reason
+  ) THEN
+    IF NOT COALESCE(public.is_admin(), false) THEN
+      RAISE EXCEPTION 'Status akun dan blokir hanya dapat diubah oleh administrator.';
+    END IF;
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -138,24 +165,24 @@ CREATE TRIGGER trg_player_progress_tamper
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.player_progress ENABLE ROW LEVEL SECURITY;
 
--- Pengguna terautentikasi HANYA bisa membaca baris miliknya sendiri
+-- Pengguna terautentikasi HANYA bisa membaca baris miliknya sendiri (termasuk status is_active)
 DROP POLICY IF EXISTS "player_select_own" ON public.player_progress;
 CREATE POLICY "player_select_own" ON public.player_progress
   FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
 
--- Pengguna terautentikasi HANYA bisa menyisipkan baris untuk dirinya sendiri
+-- Pengguna terautentikasi HANYA bisa menyisipkan baris aktif untuk dirinya sendiri
 DROP POLICY IF EXISTS "player_insert_own" ON public.player_progress;
 CREATE POLICY "player_insert_own" ON public.player_progress
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id AND is_active = true);
 
--- Pengguna terautentikasi HANYA bisa memperbarui baris miliknya sendiri
+-- Pengguna terautentikasi HANYA bisa memperbarui baris miliknya selama akun aktif
 DROP POLICY IF EXISTS "player_update_own" ON public.player_progress;
 CREATE POLICY "player_update_own" ON public.player_progress
   FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING (auth.uid() = user_id AND is_active = true)
+  WITH CHECK (auth.uid() = user_id AND is_active = true);
 
 -- Larang penghapusan baris progres langsung dari REST API klien
 DROP POLICY IF EXISTS "player_delete_own" ON public.player_progress;
@@ -233,6 +260,203 @@ REVOKE ALL ON FUNCTION public.delete_my_account() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_my_account() TO authenticated;
 
 -- ----------------------------------------------------------------------------
--- 6. REFRESH SCHEMA CACHE POSTGREST
+-- 6. FUNGSI RPC ADMIN: MANAJEMEN PENGGUNA TERPROTEKSI public.is_admin()
+-- ----------------------------------------------------------------------------
+
+-- 6.1 Daftar Seluruh Akun Pemain (Gabungan player_progress & metadata aman auth.users)
+CREATE OR REPLACE FUNCTION public.admin_list_players()
+RETURNS TABLE (
+  user_id UUID,
+  username TEXT,
+  astro_id TEXT,
+  display_name TEXT,
+  email TEXT,
+  auth_provider TEXT,
+  last_sign_in_at TIMESTAMPTZ,
+  banned_until TIMESTAMPTZ,
+  points INT,
+  earned INT,
+  selected_ship TEXT,
+  owned_ships JSONB,
+  is_active BOOLEAN,
+  banned_at TIMESTAMPTZ,
+  banned_reason TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public, auth
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Forbidden: hanya administrator.';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    pp.user_id,
+    pp.username,
+    COALESCE(pp.astro_id, '')::TEXT AS astro_id,
+    pp.display_name,
+    COALESCE(u.email, '')::TEXT AS email,
+    CASE
+      WHEN COALESCE(u.raw_app_meta_data->>'provider', '') = 'google'
+        OR EXISTS (SELECT 1 FROM auth.identities ai WHERE ai.user_id = pp.user_id AND ai.provider = 'google')
+        OR (u.email IS NOT NULL AND u.email NOT LIKE '%@player.astrosphere.app')
+      THEN 'google'
+      ELSE 'username'
+    END::TEXT AS auth_provider,
+    u.last_sign_in_at,
+    u.banned_until,
+    pp.points,
+    pp.earned,
+    pp.selected_ship,
+    pp.owned_ships,
+    pp.is_active,
+    pp.banned_at,
+    pp.banned_reason,
+    pp.created_at,
+    pp.updated_at
+  FROM public.player_progress pp
+  LEFT JOIN auth.users u ON u.id = pp.user_id
+  ORDER BY pp.created_at DESC;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_list_players() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_list_players() TO authenticated;
+
+-- 6.2 Ubah Status Aktif / Nonaktif (Ban / Unban + Pencabutan Sesi Aktif)
+CREATE OR REPLACE FUNCTION public.admin_set_player_status(
+  p_user_id UUID,
+  p_is_active BOOLEAN,
+  p_reason TEXT DEFAULT ''
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_target_email TEXT;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Forbidden: hanya administrator.';
+  END IF;
+
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'ID pengguna wajib diisi.';
+  END IF;
+
+  IF p_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: administrator tidak dapat mengubah status akunnya sendiri.';
+  END IF;
+
+  SELECT lower(trim(u.email)) INTO v_target_email
+  FROM auth.users u
+  WHERE u.id = p_user_id;
+
+  IF EXISTS (
+    SELECT 1 FROM public.admin_users au
+    WHERE au.user_id = p_user_id
+       OR (v_target_email IS NOT NULL AND lower(trim(au.email)) = v_target_email)
+  ) THEN
+    RAISE EXCEPTION 'Forbidden: akun administrator tidak dapat dinonaktifkan melalui manajemen pemain.';
+  END IF;
+
+  IF p_is_active = false THEN
+    UPDATE public.player_progress
+    SET is_active = false,
+        banned_at = NOW(),
+        banned_reason = COALESCE(p_reason, ''),
+        updated_at = NOW()
+    WHERE user_id = p_user_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Pengguna tidak ditemukan.';
+    END IF;
+
+    UPDATE auth.users
+    SET banned_until = '2999-12-31 23:59:59+00'::timestamptz,
+        updated_at = NOW()
+    WHERE id = p_user_id;
+
+    DELETE FROM auth.refresh_tokens WHERE user_id::text = p_user_id::text;
+    DELETE FROM auth.sessions WHERE user_id = p_user_id;
+  ELSE
+    UPDATE public.player_progress
+    SET is_active = true,
+        banned_at = NULL,
+        banned_reason = '',
+        updated_at = NOW()
+    WHERE user_id = p_user_id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Pengguna tidak ditemukan.';
+    END IF;
+
+    UPDATE auth.users
+    SET banned_until = NULL,
+        updated_at = NOW()
+    WHERE id = p_user_id;
+  END IF;
+
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_set_player_status(UUID, BOOLEAN, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_player_status(UUID, BOOLEAN, TEXT) TO authenticated;
+
+-- 6.3 Hapus Permanen Akun Pemain & Seluruh Sesi / Progres
+CREATE OR REPLACE FUNCTION public.admin_delete_player(p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_target_email TEXT;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Forbidden: hanya administrator.';
+  END IF;
+
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'ID pengguna wajib diisi.';
+  END IF;
+
+  IF p_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: administrator tidak dapat menghapus akunnya sendiri.';
+  END IF;
+
+  SELECT lower(trim(u.email)) INTO v_target_email
+  FROM auth.users u
+  WHERE u.id = p_user_id;
+
+  IF EXISTS (
+    SELECT 1 FROM public.admin_users au
+    WHERE au.user_id = p_user_id
+       OR (v_target_email IS NOT NULL AND lower(trim(au.email)) = v_target_email)
+  ) THEN
+    RAISE EXCEPTION 'Forbidden: akun administrator tidak dapat dihapus melalui manajemen pemain.';
+  END IF;
+
+  DELETE FROM auth.refresh_tokens WHERE user_id::text = p_user_id::text;
+  DELETE FROM auth.sessions WHERE user_id = p_user_id;
+  DELETE FROM public.player_progress WHERE user_id = p_user_id;
+  DELETE FROM auth.users WHERE id = p_user_id;
+
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.admin_delete_player(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_delete_player(UUID) TO authenticated;
+
+-- ----------------------------------------------------------------------------
+-- 7. REFRESH SCHEMA CACHE POSTGREST
 -- ----------------------------------------------------------------------------
 NOTIFY pgrst, 'reload schema';

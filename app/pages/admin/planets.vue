@@ -12,7 +12,9 @@ definePageMeta({
 const loading = ref(true);
 const refreshing = ref(false);
 const saving = ref(false);
+const togglingId = ref('');
 const error = ref('');
+const formError = ref('');
 const notification = ref(null);
 
 const planets = ref([]);
@@ -38,6 +40,7 @@ const EMPTY_FORM = {
   judul_rotasi: 'Arah Rotasi Searah (Prograd)',
   deskripsi_rotasi: '',
   deskripsi_materi: '',
+  sumber_referensi: 'NASA Planetary Fact Sheet',
   is_active: true,
 };
 
@@ -74,11 +77,13 @@ async function handleRefresh() {
 }
 
 async function toggleActive(planet) {
+  if (togglingId.value === planet.planet_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
   const nextState = !planet.is_active;
   planet.is_active = nextState;
+  togglingId.value = planet.planet_id;
 
   try {
     const { error: updErr } = await client
@@ -91,10 +96,13 @@ async function toggleActive(planet) {
   } catch (err) {
     planet.is_active = !nextState; // Kembalikan jika gagal
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif.'));
+  } finally {
+    togglingId.value = '';
   }
 }
 
 function openEditModal(planet) {
+  formError.value = '';
   editingPlanet.value = planet;
   formData.value = {
     planet_id: planet.planet_id,
@@ -115,39 +123,59 @@ function openEditModal(planet) {
     judul_rotasi: planet.judul_rotasi || '',
     deskripsi_rotasi: planet.deskripsi_rotasi || '',
     deskripsi_materi: planet.deskripsi_materi || '',
+    sumber_referensi: planet.sumber_referensi || 'NASA Planetary Fact Sheet',
     is_active: planet.is_active !== false,
   };
   modalViewMode.value = 'EDIT';
 }
 
 function closeModal() {
+  if (saving.value) return;
   editingPlanet.value = null;
+  formError.value = '';
 }
 
 async function handleSave() {
+  formError.value = '';
+  if (!formData.value.nama?.trim()) {
+    formError.value = 'Nama planet wajib diisi.';
+    return;
+  }
+  const orderVal = Number(formData.value.urutan_planet);
+  if (!Number.isInteger(orderVal) || orderVal < 1 || orderVal > 8) {
+    formError.value = 'Urutan planet harus berupa bilangan bulat antara 1 hingga 8.';
+    return;
+  }
+  const diameterVal = Number(formData.value.diameter_km);
+  if (!Number.isFinite(diameterVal) || diameterVal <= 0) {
+    formError.value = 'Diameter planet harus berupa angka lebih besar dari 0 km.';
+    return;
+  }
+
   const client = getSupabaseClient();
   if (!client || !editingPlanet.value) return;
 
   saving.value = true;
   try {
     const payload = {
-      urutan_planet: Number(formData.value.urutan_planet),
-      nama: formData.value.nama,
+      urutan_planet: orderVal,
+      nama: formData.value.nama.trim(),
       kategori_planet: formData.value.kategori_planet,
-      diameter_km: Number(formData.value.diameter_km),
-      perbandingan_bumi: formData.value.perbandingan_bumi,
-      periode_rotasi: formData.value.periode_rotasi,
-      subteks_rotasi: formData.value.subteks_rotasi,
-      periode_orbit: formData.value.periode_orbit,
-      subteks_orbit: formData.value.subteks_orbit,
-      kemiringan_sumbu: formData.value.kemiringan_sumbu,
-      suhu_rata_c: formData.value.suhu_rata_c,
-      rentang_suhu: formData.value.rentang_suhu,
-      usia_planet: formData.value.usia_planet,
-      subteks_usia: formData.value.subteks_usia,
-      judul_rotasi: formData.value.judul_rotasi,
-      deskripsi_rotasi: formData.value.deskripsi_rotasi,
-      deskripsi_materi: formData.value.deskripsi_materi,
+      diameter_km: diameterVal,
+      perbandingan_bumi: (formData.value.perbandingan_bumi || '').trim(),
+      periode_rotasi: (formData.value.periode_rotasi || '').trim(),
+      subteks_rotasi: (formData.value.subteks_rotasi || '').trim(),
+      periode_orbit: (formData.value.periode_orbit || '').trim(),
+      subteks_orbit: (formData.value.subteks_orbit || '').trim(),
+      kemiringan_sumbu: (formData.value.kemiringan_sumbu || '').trim(),
+      suhu_rata_c: (formData.value.suhu_rata_c || '').trim(),
+      rentang_suhu: (formData.value.rentang_suhu || '').trim(),
+      usia_planet: (formData.value.usia_planet || '').trim(),
+      subteks_usia: (formData.value.subteks_usia || '').trim(),
+      judul_rotasi: (formData.value.judul_rotasi || '').trim(),
+      deskripsi_rotasi: (formData.value.deskripsi_rotasi || '').trim(),
+      deskripsi_materi: (formData.value.deskripsi_materi || '').trim(),
+      sumber_referensi: formData.value.sumber_referensi?.trim() || 'NASA Planetary Fact Sheet',
       is_active: formData.value.is_active,
       updated_at: new Date().toISOString(),
     };
@@ -159,11 +187,12 @@ async function handleSave() {
 
     if (saveErr) throw saveErr;
 
-    showNotification('success', `Data Planet ${formData.value.nama} berhasil diperbarui.`);
+    showNotification('success', `Data Planet ${payload.nama} berhasil diperbarui.`);
+    saving.value = false;
     closeModal();
     await loadPlanets();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menyimpan perubahan planet.'));
+    formError.value = formatSupabaseError(err, 'Gagal menyimpan perubahan planet.');
   } finally {
     saving.value = false;
   }
@@ -200,11 +229,20 @@ onMounted(() => {
       <span>{{ notification.msg }}</span>
     </div>
 
+    <div v-if="error" class="dash-alert error" role="alert">
+      <UiIcon name="silang" :size="18" />
+      <span>{{ error }}</span>
+    </div>
+
     <!-- TABEL 8 PLANET UTAMA -->
     <div class="card-section table-wrap">
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
         <p>Memuat data planet dari Supabase…</p>
+      </div>
+
+      <div v-else-if="!planets.length" class="empty-state">
+        <p>Belum ada data planet yang dimuat.</p>
       </div>
 
       <table v-else class="adm-table">
@@ -247,10 +285,11 @@ onMounted(() => {
                 type="button"
                 class="status-toggle-btn"
                 :class="{ on: p.is_active !== false }"
+                :disabled="togglingId === p.planet_id"
                 :title="p.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
                 @click="toggleActive(p)"
               >
-                {{ p.is_active !== false ? 'Aktif' : 'Nonaktif' }}
+                {{ togglingId === p.planet_id ? '…' : (p.is_active !== false ? 'Aktif' : 'Nonaktif') }}
               </button>
             </td>
             <td style="text-align: right;">
@@ -272,14 +311,18 @@ onMounted(() => {
             <p class="modal-sub">Konfigurasi kolom bersih PLY-02 (Tanpa parameter 3D/Navigasi).</p>
           </div>
           <div class="modal-mode-tabs">
-            <button :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
-            <button :class="{ on: modalViewMode === 'PREVIEW' }" @click="modalViewMode = 'PREVIEW'">Pratinjau PLY-02</button>
-            <button class="btn-close-modal" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
+            <button type="button" :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
+            <button type="button" :class="{ on: modalViewMode === 'PREVIEW' }" @click="modalViewMode = 'PREVIEW'">Pratinjau PLY-02</button>
+            <button type="button" class="btn-close-modal" :disabled="saving" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
           </div>
         </div>
 
         <!-- FORMULIR INPUT -->
         <form v-if="modalViewMode === 'EDIT'" class="modal-body scroll" @submit.prevent="handleSave">
+          <div v-if="formError" class="dash-alert error" role="alert">
+            <UiIcon name="silang" :size="16" />
+            <span>{{ formError }}</span>
+          </div>
           <!-- BAGIAN 1: IDENTITAS & MATERI -->
           <div class="form-section">
             <span class="fs-title">1. Identitas &amp; Deskripsi Materi</span>
@@ -291,6 +334,20 @@ onMounted(() => {
               <label class="field">
                 <span>Urutan Planet dari Matahari (1-8)</span>
                 <input v-model.number="formData.urutan_planet" required type="number" min="1" max="8" />
+              </label>
+            </div>
+            <div class="grid-2">
+              <label class="field">
+                <span>Kategori Planet</span>
+                <select v-model="formData.kategori_planet">
+                  <option value="TERRESTRIAL">Terestrial / Batuan (TERRESTRIAL)</option>
+                  <option value="GAS_GIANT">Raksasa Gas (GAS_GIANT)</option>
+                  <option value="ICE_GIANT">Raksasa Es (ICE_GIANT)</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Sumber Referensi Ilmiah</span>
+                <input v-model="formData.sumber_referensi" type="text" placeholder="misal: NASA Planetary Fact Sheet" />
               </label>
             </div>
             <label class="field">
@@ -381,7 +438,7 @@ onMounted(() => {
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" @click="closeModal">Batal</button>
+            <button type="button" class="btn-cancel" :disabled="saving" @click="closeModal">Batal</button>
             <button type="submit" class="btn-save" :disabled="saving">
               {{ saving ? 'Menyimpan…' : 'Simpan Perubahan Planet' }}
             </button>
@@ -434,7 +491,7 @@ onMounted(() => {
             <!-- KOTAK ROTASI -->
             <div class="pv-rot-box">
               <b>{{ formData.judul_rotasi }}</b>
-              <p>{{ formData.deskripsi_rotasi }}</p>
+              <p>{{ formData.deskripsi_rotasi }}<span v-if="formData.sumber_referensi"> — {{ formData.sumber_referensi }}</span></p>
             </div>
           </div>
         </div>

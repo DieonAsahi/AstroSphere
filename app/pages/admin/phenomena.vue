@@ -12,12 +12,15 @@ definePageMeta({
 const loading = ref(true);
 const refreshing = ref(false);
 const saving = ref(false);
+const togglingId = ref('');
 const error = ref('');
+const formError = ref('');
 const notification = ref(null);
 
 const phenomena = ref([]);
 const selectedPlanet = ref('all');
 const editingPheno = ref(null);
+const deletingPheno = ref(null);
 const isCreating = ref(false);
 
 const PLANET_OPTIONS = [
@@ -39,6 +42,21 @@ const ANIMATION_TYPES = [
   { id: 'CUSTOM_ALIGNMENT', label: 'Penyelarasan Orbit Kustom (Custom Alignment)' },
 ];
 
+const VISUAL_VIEW_OPTIONS = [
+  { id: 'top', label: 'Atas (Top-Down)' },
+  { id: 'sun', label: 'Arah Matahari (Sun)' },
+  { id: 'wide', label: 'Sudut Lebar (Wide)' },
+];
+
+const VISUAL_SHOW_OPTIONS = [
+  { id: 'pin', label: 'Pin Lokasi Ekuator' },
+  { id: 'season', label: 'Siklus Musim (Season)' },
+  { id: 'spins', label: 'Penghitung Rotasi (Spins)' },
+  { id: 'years', label: 'Siklus Tahun (Years)' },
+];
+
+const createDefaultGuess = () => ({ q: '', opts: ['', '', ''], a: 0, why: '', points: 10 });
+
 const DEFAULT_FORM = {
   phenomenon_id: '',
   planet_id: 'earth',
@@ -46,12 +64,21 @@ const DEFAULT_FORM = {
   tombol_aksi_label: 'Putar Simulasi Fenomena',
   tipe_animasi: 'CUSTOM_ALIGNMENT',
   deskripsi_edukatif: '',
+  sumber_referensi: 'NASA',
+  judul_matahari: 'Kenapa bisa pas menutup?',
   penjelasan_matahari: '',
+  judul_bulan: 'Kenapa Bulan jadi merah?',
   penjelasan_bulan: '',
+  visual_mul: 400,
+  visual_view: 'top',
+  visual_show: 'pin',
+  tebak_single: createDefaultGuess(),
+  tebak_solar: createDefaultGuess(),
+  tebak_lunar: createDefaultGuess(),
   is_active: true,
 };
 
-const formData = ref({ ...DEFAULT_FORM });
+const formData = ref({ ...DEFAULT_FORM, tebak_single: createDefaultGuess(), tebak_solar: createDefaultGuess(), tebak_lunar: createDefaultGuess() });
 
 async function loadPhenomena() {
   const client = getSupabaseClient();
@@ -89,11 +116,13 @@ const filteredPhenomena = computed(() => {
 });
 
 async function toggleActive(item) {
+  if (togglingId.value === item.phenomenon_id) return;
   const client = getSupabaseClient();
   if (!client) return;
 
   const nextState = !item.is_active;
   item.is_active = nextState;
+  togglingId.value = item.phenomenon_id;
 
   try {
     const { error: updErr } = await client
@@ -106,21 +135,67 @@ async function toggleActive(item) {
   } catch (err) {
     item.is_active = !nextState;
     showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif.'));
+  } finally {
+    togglingId.value = '';
   }
 }
 
+function parseGuessObject(raw) {
+  if (!raw || typeof raw !== 'object') return createDefaultGuess();
+  const opts = Array.isArray(raw.opts) ? [raw.opts[0] || '', raw.opts[1] || '', raw.opts[2] || ''] : ['', '', ''];
+  return {
+    q: raw.q || '',
+    opts,
+    a: Number.isInteger(raw.a) ? raw.a : 0,
+    why: raw.why || '',
+    points: Number(raw.points) > 0 ? Number(raw.points) : 10,
+  };
+}
+
+function buildGuessPayload(g) {
+  if (!g || !g.q?.trim()) return null;
+  return {
+    q: g.q.trim(),
+    opts: [(g.opts?.[0] || '').trim(), (g.opts?.[1] || '').trim(), (g.opts?.[2] || '').trim()],
+    a: Number(g.a) || 0,
+    why: g.why?.trim() || '',
+    points: Number(g.points) > 0 ? Number(g.points) : 10,
+  };
+}
+
+function validateGuessBlock(g, label) {
+  if (!g || !g.q?.trim()) return '';
+  const opts = [g.opts?.[0]?.trim(), g.opts?.[1]?.trim(), g.opts?.[2]?.trim()];
+  if (opts.some((opt) => !opt)) {
+    return `${label}: jika pertanyaan diisi, ketiga opsi jawaban (A, B, C) wajib diisi.`;
+  }
+  const ansIdx = Number(g.a);
+  if (!Number.isInteger(ansIdx) || ansIdx < 0 || ansIdx > 2) {
+    return `${label}: pilihan jawaban benar harus Opsi A, B, atau C.`;
+  }
+  return '';
+}
+
 function openCreateModal() {
+  formError.value = '';
   isCreating.value = true;
   editingPheno.value = { phenomenon_id: null };
   formData.value = {
     ...DEFAULT_FORM,
     planet_id: selectedPlanet.value !== 'all' ? selectedPlanet.value : 'mercury',
+    tebak_single: createDefaultGuess(),
+    tebak_solar: createDefaultGuess(),
+    tebak_lunar: createDefaultGuess(),
   };
 }
 
 function openEditModal(item) {
+  formError.value = '';
   isCreating.value = false;
   editingPheno.value = item;
+  const kv = item.konfigurasi_visual && typeof item.konfigurasi_visual === 'object' ? item.konfigurasi_visual : {};
+  const td = item.tebak_dulu && typeof item.tebak_dulu === 'object' ? item.tebak_dulu : {};
+
   formData.value = {
     phenomenon_id: item.phenomenon_id,
     planet_id: item.planet_id,
@@ -128,56 +203,159 @@ function openEditModal(item) {
     tombol_aksi_label: item.tombol_aksi_label || 'Putar Simulasi Fenomena',
     tipe_animasi: item.tipe_animasi || 'CUSTOM_ALIGNMENT',
     deskripsi_edukatif: item.deskripsi_edukatif || '',
-    penjelasan_matahari: item.penjelasan_matahari || item.konfigurasi_visual?.penjelasan_matahari || '',
-    penjelasan_bulan: item.penjelasan_bulan || item.konfigurasi_visual?.penjelasan_bulan || '',
+    sumber_referensi: item.sumber_referensi || kv.sumber_referensi || 'NASA',
+    judul_matahari: kv.judul_matahari || 'Kenapa bisa pas menutup?',
+    penjelasan_matahari: item.penjelasan_matahari || kv.penjelasan_matahari || '',
+    judul_bulan: kv.judul_bulan || 'Kenapa Bulan jadi merah?',
+    penjelasan_bulan: item.penjelasan_bulan || kv.penjelasan_bulan || '',
+    visual_mul: Number(kv.mul || 400),
+    visual_view: kv.view || 'top',
+    visual_show: kv.show || 'pin',
+    tebak_single: item.planet_id !== 'earth' ? parseGuessObject(td.q ? td : null) : createDefaultGuess(),
+    tebak_solar: item.planet_id === 'earth' ? parseGuessObject(td['gerhana-matahari']) : createDefaultGuess(),
+    tebak_lunar: item.planet_id === 'earth' ? parseGuessObject(td['gerhana-bulan']) : createDefaultGuess(),
     is_active: item.is_active !== false,
   };
 }
 
 function closeModal() {
+  if (saving.value) return;
   editingPheno.value = null;
   isCreating.value = false;
+  formError.value = '';
 }
 
 async function handleSave() {
+  formError.value = '';
+  if (!PLANET_OPTIONS.some((p) => p.id === formData.value.planet_id)) {
+    formError.value = 'Target planet tidak valid.';
+    return;
+  }
+  if (!ANIMATION_TYPES.some((t) => t.id === formData.value.tipe_animasi)) {
+    formError.value = 'Tipe animasi simulasi tidak valid.';
+    return;
+  }
+  if (!formData.value.judul?.trim()) {
+    formError.value = 'Judul fenomena wajib diisi.';
+    return;
+  }
+  if (!formData.value.tombol_aksi_label?.trim()) {
+    formError.value = 'Label tombol aksi wajib diisi.';
+    return;
+  }
+  if (!formData.value.deskripsi_edukatif?.trim()) {
+    formError.value = 'Deskripsi edukatif wajib diisi.';
+    return;
+  }
+
+  if (formData.value.planet_id === 'earth') {
+    const solarErr = validateGuessBlock(formData.value.tebak_solar, 'Tebak Dulu (Gerhana Matahari)');
+    if (solarErr) {
+      formError.value = solarErr;
+      return;
+    }
+    const lunarErr = validateGuessBlock(formData.value.tebak_lunar, 'Tebak Dulu (Gerhana Bulan)');
+    if (lunarErr) {
+      formError.value = lunarErr;
+      return;
+    }
+  } else {
+    const singleErr = validateGuessBlock(formData.value.tebak_single, 'Tebak Dulu');
+    if (singleErr) {
+      formError.value = singleErr;
+      return;
+    }
+  }
+
   const client = getSupabaseClient();
   if (!client || !editingPheno.value) return;
 
   saving.value = true;
   try {
-    const visualConfig = editingPheno.value?.konfigurasi_visual || {};
-    visualConfig.penjelasan_matahari = formData.value.penjelasan_matahari;
-    visualConfig.penjelasan_bulan = formData.value.penjelasan_bulan;
+    const existingKv = editingPheno.value?.konfigurasi_visual && typeof editingPheno.value.konfigurasi_visual === 'object'
+      ? { ...editingPheno.value.konfigurasi_visual }
+      : {};
+
+    if (formData.value.planet_id === 'earth') {
+      existingKv.lab = true;
+      existingKv.judul_matahari = formData.value.judul_matahari?.trim() || 'Kenapa bisa pas menutup?';
+      existingKv.judul_bulan = formData.value.judul_bulan?.trim() || 'Kenapa Bulan jadi merah?';
+      existingKv.penjelasan_matahari = (formData.value.penjelasan_matahari || '').trim();
+      existingKv.penjelasan_bulan = (formData.value.penjelasan_bulan || '').trim();
+    } else {
+      existingKv.mul = Number(formData.value.visual_mul) || 400;
+      existingKv.view = formData.value.visual_view || 'top';
+      existingKv.show = formData.value.visual_show || 'pin';
+    }
+
+    let tebakPayload = null;
+    if (formData.value.planet_id === 'earth') {
+      const s = buildGuessPayload(formData.value.tebak_solar);
+      const l = buildGuessPayload(formData.value.tebak_lunar);
+      if (s || l) {
+        tebakPayload = {};
+        if (s) tebakPayload['gerhana-matahari'] = s;
+        if (l) tebakPayload['gerhana-bulan'] = l;
+      }
+    } else {
+      tebakPayload = buildGuessPayload(formData.value.tebak_single);
+    }
 
     const payload = {
       planet_id: formData.value.planet_id,
-      judul: formData.value.judul,
-      tombol_aksi_label: formData.value.tombol_aksi_label,
+      judul: formData.value.judul.trim(),
+      tombol_aksi_label: formData.value.tombol_aksi_label.trim(),
       tipe_animasi: formData.value.tipe_animasi,
-      deskripsi_edukatif: formData.value.deskripsi_edukatif,
-      penjelasan_matahari: formData.value.penjelasan_matahari,
-      penjelasan_bulan: formData.value.penjelasan_bulan,
-      konfigurasi_visual: visualConfig,
+      deskripsi_edukatif: formData.value.deskripsi_edukatif.trim(),
+      penjelasan_matahari: (formData.value.penjelasan_matahari || '').trim(),
+      penjelasan_bulan: (formData.value.penjelasan_bulan || '').trim(),
+      sumber_referensi: formData.value.sumber_referensi?.trim() || 'NASA',
+      tebak_dulu: tebakPayload,
+      konfigurasi_visual: existingKv,
       is_active: formData.value.is_active,
     };
 
     if (isCreating.value) {
       const { error: insErr } = await client.from('phenomena').insert(payload);
       if (insErr) throw insErr;
-      showNotification('success', `Fenomena baru "${formData.value.judul}" berhasil ditambahkan.`);
+      showNotification('success', `Fenomena baru "${payload.judul}" berhasil ditambahkan.`);
     } else {
       const { error: saveErr } = await client
         .from('phenomena')
         .update(payload)
         .eq('phenomenon_id', editingPheno.value.phenomenon_id);
       if (saveErr) throw saveErr;
-      showNotification('success', `Fenomena "${formData.value.judul}" berhasil disimpan.`);
+      showNotification('success', `Fenomena "${payload.judul}" berhasil disimpan.`);
     }
 
+    saving.value = false;
     closeModal();
     await loadPhenomena();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menyimpan perubahan fenomena.'));
+    formError.value = formatSupabaseError(err, 'Gagal menyimpan perubahan fenomena.');
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleDelete() {
+  if (!deletingPheno.value) return;
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  saving.value = true;
+  try {
+    const { error: delErr } = await client
+      .from('phenomena')
+      .delete()
+      .eq('phenomenon_id', deletingPheno.value.phenomenon_id);
+
+    if (delErr) throw delErr;
+    showNotification('success', `Fenomena "${deletingPheno.value.judul}" berhasil dihapus.`);
+    deletingPheno.value = null;
+    await loadPhenomena();
+  } catch (err) {
+    showNotification('error', formatSupabaseError(err, 'Gagal menghapus fenomena.'));
   } finally {
     saving.value = false;
   }
@@ -204,7 +382,7 @@ onMounted(() => {
       </div>
       <div class="head-actions">
         <button class="btn-primary-action" @click="openCreateModal">
-          <UiIcon name="tambah" :size="16" />
+          <UiIcon name="plus" :size="16" />
           <span>Tambah Fenomena</span>
         </button>
         <button class="btn-refresh" :disabled="refreshing" @click="handleRefresh">
@@ -218,6 +396,11 @@ onMounted(() => {
     <div v-if="notification" class="dash-alert" :class="notification.type" role="status">
       <UiIcon :name="notification.type === 'success' ? 'cek' : 'silang'" :size="18" />
       <span>{{ notification.msg }}</span>
+    </div>
+
+    <div v-if="error" class="dash-alert error" role="alert">
+      <UiIcon name="silang" :size="18" />
+      <span>{{ error }}</span>
     </div>
 
     <!-- FILTER PER PLANET -->
@@ -263,7 +446,7 @@ onMounted(() => {
             <th>Tipe Animasi</th>
             <th>Deskripsi Edukatif</th>
             <th style="width: 100px; text-align: center;">Status</th>
-            <th style="width: 100px; text-align: right;">Aksi</th>
+            <th style="width: 130px; text-align: right;">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -288,16 +471,22 @@ onMounted(() => {
                 type="button"
                 class="status-toggle-btn"
                 :class="{ on: item.is_active !== false }"
+                :disabled="togglingId === item.phenomenon_id"
                 :title="item.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
                 @click="toggleActive(item)"
               >
-                {{ item.is_active !== false ? 'Aktif' : 'Nonaktif' }}
+                {{ togglingId === item.phenomenon_id ? '…' : (item.is_active !== false ? 'Aktif' : 'Nonaktif') }}
               </button>
             </td>
             <td style="text-align: right;">
-              <button type="button" class="btn-edit" @click="openEditModal(item)">
-                <UiIcon name="atur" :size="15" /> Ubah
-              </button>
+              <div class="row-actions">
+                <button type="button" class="btn-action edit" title="Ubah" @click="openEditModal(item)">
+                  <UiIcon name="atur" :size="14" />
+                </button>
+                <button type="button" class="btn-action del" title="Hapus" @click="deletingPheno = item">
+                  <UiIcon name="silang" :size="14" />
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -312,10 +501,14 @@ onMounted(() => {
             <h3 class="modal-title">{{ isCreating ? 'Tambah Fenomena Baru' : `Ubah Fenomena: ${formData.judul}` }}</h3>
             <p class="modal-sub">Target Planet: {{ formData.planet_id.toUpperCase() }}</p>
           </div>
-          <button class="btn-close-modal" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
+          <button type="button" class="btn-close-modal" :disabled="saving" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
         </div>
 
         <form class="modal-body scroll" @submit.prevent="handleSave">
+          <div v-if="formError" class="dash-alert error" role="alert">
+            <UiIcon name="silang" :size="16" />
+            <span>{{ formError }}</span>
+          </div>
           <div class="grid-2">
             <label class="field">
               <span>Target Planet</span>
@@ -346,17 +539,149 @@ onMounted(() => {
             <textarea v-model="formData.deskripsi_edukatif" rows="3" placeholder="Uraian ringkas fenomena yang dibaca siswa saat observasi planet..." required />
           </label>
 
-          <!-- KHUSUS PLANET BUMI: PENJELASAN LABORATORIUM GERHANA -->
+          <label class="field">
+            <span>Sumber Referensi Ilmiah</span>
+            <input v-model="formData.sumber_referensi" type="text" placeholder="misal: NASA / NASA JPL" />
+          </label>
+
+          <!-- KHUSUS PLANET BUMI: PENJELASAN LABORATORIUM GERHANA & TEBAK DULU -->
           <div v-if="formData.planet_id === 'earth'" class="earth-eclipse-box">
-            <span class="fs-title"><UiIcon name="matahari" :size="14" /> Penjelasan Edukatif Laboratorium Gerhana (Bumi)</span>
+            <span class="fs-title"><UiIcon name="matahari" :size="14" /> Penjelasan Laboratorium Gerhana (Bumi)</span>
             <p class="fs-sub">Teks ini langsung tercermin di kartu penjelasan interaktif saat siswa mengamati Gerhana Matahari atau Gerhana Bulan.</p>
-            <div class="field">
-              <span>Penjelasan Gerhana Matahari ("Kenapa bisa pas menutup?")</span>
-              <textarea v-model="formData.penjelasan_matahari" rows="2" placeholder="Matahari sekitar 400 kali lebih lebar dari Bulan, tapi juga sekitar 400 kali lebih jauh..." />
+            <label class="field">
+              <span>Judul Kartu Gerhana Matahari</span>
+              <input v-model="formData.judul_matahari" type="text" placeholder="Kenapa bisa pas menutup?" />
+            </label>
+            <label class="field">
+              <span>Penjelasan Gerhana Matahari</span>
+              <textarea v-model="formData.penjelasan_matahari" rows="2" placeholder="Matahari sekitar 400 kali lebih lebar dari Bulan..." />
+            </label>
+            <label class="field">
+              <span>Judul Kartu Gerhana Bulan</span>
+              <input v-model="formData.judul_bulan" type="text" placeholder="Kenapa Bulan jadi merah?" />
+            </label>
+            <label class="field">
+              <span>Penjelasan Gerhana Bulan</span>
+              <textarea v-model="formData.penjelasan_bulan" rows="2" placeholder="Cahaya Matahari menembus atmosfer Bumi..." />
+            </label>
+
+            <div class="guess-box">
+              <span class="fs-title">Tebak Dulu: Gerhana Matahari</span>
+              <label class="field">
+                <span>Pertanyaan</span>
+                <input v-model="formData.tebak_solar.q" type="text" placeholder="Pertanyaan tebak dulu gerhana matahari..." />
+              </label>
+              <div class="grid-3">
+                <label v-for="i in 3" :key="'s' + i" class="field">
+                  <span>Opsi {{ ['A', 'B', 'C'][i - 1] }}</span>
+                  <input v-model="formData.tebak_solar.opts[i - 1]" type="text" />
+                </label>
+              </div>
+              <div class="grid-2">
+                <label class="field">
+                  <span>Jawaban Benar</span>
+                  <select v-model.number="formData.tebak_solar.a">
+                    <option :value="0">Opsi A</option>
+                    <option :value="1">Opsi B</option>
+                    <option :value="2">Opsi C</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Hadiah Bintang</span>
+                  <input v-model.number="formData.tebak_solar.points" type="number" min="1" max="100" />
+                </label>
+              </div>
+              <label class="field">
+                <span>Penjelasan Jawaban</span>
+                <textarea v-model="formData.tebak_solar.why" rows="2" />
+              </label>
             </div>
-            <div class="field">
-              <span>Penjelasan Gerhana Bulan ("Kenapa Bulan jadi merah?")</span>
-              <textarea v-model="formData.penjelasan_bulan" rows="2" placeholder="Cahaya Matahari menembus atmosfer Bumi. Biru dihamburkan, merah dibelokkan sampai ke Bulan..." />
+
+            <div class="guess-box">
+              <span class="fs-title">Tebak Dulu: Gerhana Bulan</span>
+              <label class="field">
+                <span>Pertanyaan</span>
+                <input v-model="formData.tebak_lunar.q" type="text" placeholder="Pertanyaan tebak dulu gerhana bulan..." />
+              </label>
+              <div class="grid-3">
+                <label v-for="i in 3" :key="'l' + i" class="field">
+                  <span>Opsi {{ ['A', 'B', 'C'][i - 1] }}</span>
+                  <input v-model="formData.tebak_lunar.opts[i - 1]" type="text" />
+                </label>
+              </div>
+              <div class="grid-2">
+                <label class="field">
+                  <span>Jawaban Benar</span>
+                  <select v-model.number="formData.tebak_lunar.a">
+                    <option :value="0">Opsi A</option>
+                    <option :value="1">Opsi B</option>
+                    <option :value="2">Opsi C</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Hadiah Bintang</span>
+                  <input v-model.number="formData.tebak_lunar.points" type="number" min="1" max="100" />
+                </label>
+              </div>
+              <label class="field">
+                <span>Penjelasan Jawaban</span>
+                <textarea v-model="formData.tebak_lunar.why" rows="2" />
+              </label>
+            </div>
+          </div>
+
+          <!-- PLANET LAIN: PARAMETER VISUAL SIMULASI 3D & TEBAK DULU -->
+          <div v-else class="earth-eclipse-box">
+            <span class="fs-title"><UiIcon name="fenomena" :size="14" /> Konfigurasi Visual Simulasi 3D</span>
+            <div class="grid-3">
+              <label class="field">
+                <span>Pengali Waktu (mul)</span>
+                <input v-model.number="formData.visual_mul" type="number" min="1" />
+              </label>
+              <label class="field">
+                <span>Sudut Kamera (view)</span>
+                <select v-model="formData.visual_view">
+                  <option v-for="v in VISUAL_VIEW_OPTIONS" :key="v.id" :value="v.id">{{ v.label }}</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Fokus Indikator (show)</span>
+                <select v-model="formData.visual_show">
+                  <option v-for="s in VISUAL_SHOW_OPTIONS" :key="s.id" :value="s.id">{{ s.label }}</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="guess-box">
+              <span class="fs-title">Pertanyaan Tebak Dulu (Opsional)</span>
+              <label class="field">
+                <span>Pertanyaan</span>
+                <input v-model="formData.tebak_single.q" type="text" placeholder="Kosongkan jika tanpa tebak dulu..." />
+              </label>
+              <div class="grid-3">
+                <label v-for="i in 3" :key="'p' + i" class="field">
+                  <span>Opsi {{ ['A', 'B', 'C'][i - 1] }}</span>
+                  <input v-model="formData.tebak_single.opts[i - 1]" type="text" />
+                </label>
+              </div>
+              <div class="grid-2">
+                <label class="field">
+                  <span>Jawaban Benar</span>
+                  <select v-model.number="formData.tebak_single.a">
+                    <option :value="0">Opsi A</option>
+                    <option :value="1">Opsi B</option>
+                    <option :value="2">Opsi C</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Hadiah Bintang</span>
+                  <input v-model.number="formData.tebak_single.points" type="number" min="1" max="100" />
+                </label>
+              </div>
+              <label class="field">
+                <span>Penjelasan Jawaban</span>
+                <textarea v-model="formData.tebak_single.why" rows="2" />
+              </label>
             </div>
           </div>
 
@@ -367,12 +692,26 @@ onMounted(() => {
           </label>
 
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" @click="closeModal">Batal</button>
+            <button type="button" class="btn-cancel" :disabled="saving" @click="closeModal">Batal</button>
             <button type="submit" class="btn-save" :disabled="saving">
               {{ saving ? 'Menyimpan…' : (isCreating ? 'Tambah Fenomena' : 'Simpan Perubahan') }}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- MODAL KONFIRMASI HAPUS -->
+    <div v-if="deletingPheno" class="modal-backdrop" @click.self="!saving && (deletingPheno = null)">
+      <div class="modal-card small">
+        <h3 class="modal-title">Hapus Fenomena?</h3>
+        <p class="modal-desc">Apakah Anda yakin ingin menghapus fenomena <b>"{{ deletingPheno.judul }}"</b>? Tindakan ini tidak dapat dibatalkan.</p>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" :disabled="saving" @click="deletingPheno = null">Batal</button>
+          <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
+            {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -385,6 +724,9 @@ onMounted(() => {
 .page-desc { margin: 4px 0 0 0; font-size: 13.5px; color: #64748b; }
 
 .head-actions { display: flex; align-items: center; gap: 10px; }
+.dash-alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 500; border: 1px solid transparent; }
+.dash-alert.success { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+.dash-alert.error { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
 .btn-primary-action { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s; }
 .btn-primary-action:hover { background: #1d4ed8; }
 .btn-refresh { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
@@ -418,22 +760,32 @@ onMounted(() => {
 
 /* Modal */
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal-card { width: 100%; max-width: 680px; max-height: 90vh; background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+.modal-card { width: 100%; max-width: 720px; max-height: 90vh; background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+.modal-card.small { max-width: 440px; padding: 24px; gap: 12px; }
+.modal-desc { margin: 0; font-size: 13.5px; color: #475569; line-height: 1.5; }
 .modal-header { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
 .modal-title { margin: 0; font-size: 17px; font-weight: 600; color: #0f172a; }
 .modal-sub { margin: 2px 0 0 0; font-size: 12px; color: #64748b; }
 .btn-close-modal { border: none; background: none; color: #94a3b8; cursor: pointer; }
 .modal-body { padding: 20px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: #334155; font-weight: 500; }
 .field input, .field textarea, .field select { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13.5px; font-family: inherit; }
 
 .earth-eclipse-box { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 8px; background: #f0f7ff; border: 1px solid #c7dfff; }
+.guess-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 8px; background: #ffffff; border: 1px solid #cbd5e1; margin-top: 4px; }
 .fs-title { font-size: 12.5px; font-weight: 600; color: #1d4ed8; display: inline-flex; align-items: center; gap: 6px; }
 .fs-sub { margin: 0; font-size: 12px; color: #64748b; line-height: 1.4; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer; }
 
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.btn-action { width: 30px; height: 30px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; display: grid; place-items: center; cursor: pointer; color: #64748b; }
+.btn-action.edit:hover { background: #eff6ff; color: #2563eb; }
+.btn-action.del:hover { background: #fef2f2; color: #dc2626; }
+
 .modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
 .btn-cancel { padding: 8px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 13px; cursor: pointer; }
 .btn-save { padding: 8px 18px; border-radius: 6px; border: none; background: #2563eb; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+.btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 </style>

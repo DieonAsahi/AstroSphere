@@ -5,13 +5,14 @@ import { useRouter, useRoute } from 'vue-router';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import {
   adminLogin,
-  verifyIsAdmin,
+  verifyAdminSession,
   readLastActivityTimestamp,
   isAdminSessionIdleExpired,
   clearAdminSessionStorage,
   readLoginRateLimit,
   LOGIN_COOLDOWN_MS,
 } from '~/utils/adminAuth.js';
+import { useNetworkStatus, OFFLINE_ADMIN_NOTICE } from '~/utils/networkError.js';
 
 definePageMeta({
   layout: false,
@@ -19,6 +20,7 @@ definePageMeta({
 
 const router = useRouter();
 const route = useRoute();
+const { isOffline } = useNetworkStatus();
 
 const email = ref('');
 const password = ref('');
@@ -31,6 +33,13 @@ const cooldownSeconds = ref(0);
 
 let cooldownTimer = null;
 
+function stopCooldownTimer() {
+  if (cooldownTimer) {
+    clearInterval(cooldownTimer);
+    cooldownTimer = null;
+  }
+}
+
 function updateCooldown() {
   const rl = readLoginRateLimit();
   const now = Date.now();
@@ -41,16 +50,20 @@ function updateCooldown() {
   }
 }
 
-onMounted(async () => {
+function startCooldownTimer() {
   updateCooldown();
-  if (cooldownSeconds.value > 0) {
+  if (cooldownSeconds.value > 0 && !cooldownTimer) {
     cooldownTimer = setInterval(() => {
       updateCooldown();
-      if (cooldownSeconds.value <= 0 && cooldownTimer) {
-        clearInterval(cooldownTimer);
+      if (cooldownSeconds.value <= 0) {
+        stopCooldownTimer();
       }
     }, 1000);
   }
+}
+
+onMounted(async () => {
+  startCooldownTimer();
 
   if (route.query.reason === 'idle_timeout') {
     infoMessage.value = 'Sesi Anda telah berakhir otomatis karena tidak ada aktivitas selama 5 menit. Silakan masuk kembali.';
@@ -58,7 +71,7 @@ onMounted(async () => {
     errorMessage.value = 'Akses ditolak: Akun Anda tidak memiliki hak akses Administrator AstroSphere.';
   }
 
-  // Cek sesi aktif yang sah
+  // Cek sesi aktif yang sah di server (getUser)
   const client = getSupabaseClient();
   if (client) {
     try {
@@ -67,13 +80,20 @@ onMounted(async () => {
         clearAdminSessionStorage();
         await client.auth.signOut().catch(() => {});
       } else {
-        const { data: { session } } = await client.auth.getSession();
-        if (session?.user) {
-          const isAdmin = await verifyIsAdmin(session.user);
-          if (isAdmin) {
-            router.replace('/admin');
-            return;
-          }
+        const check = await verifyAdminSession();
+        if (check.status === 'authorized') {
+          router.replace('/admin');
+          return;
+        }
+        if (check.status === 'offline') {
+          // Pertahankan sesi lokal saat perangkat sedang offline tanpa menghapus penyimpanan admin
+          checkingSession.value = false;
+          return;
+        }
+        if (check.status === 'unauthorized') {
+          clearAdminSessionStorage();
+          await client.auth.signOut().catch(() => {});
+        } else if (check.reason === 'expired' || check.reason === 'invalid_user') {
           clearAdminSessionStorage();
           await client.auth.signOut().catch(() => {});
         }
@@ -84,7 +104,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  if (cooldownTimer) clearInterval(cooldownTimer);
+  stopCooldownTimer();
 });
 
 async function handleLogin() {
@@ -103,22 +123,13 @@ async function handleLogin() {
 
   if (!res.ok) {
     errorMessage.value = res.error || 'Email atau kata sandi salah.';
-    updateCooldown();
-    if (cooldownSeconds.value > 0 && !cooldownTimer) {
-      cooldownTimer = setInterval(() => {
-        updateCooldown();
-        if (cooldownSeconds.value <= 0 && cooldownTimer) clearInterval(cooldownTimer);
-      }, 1000);
-    }
+    startCooldownTimer();
     return;
   }
 
+  stopCooldownTimer();
   router.push('/admin');
 }
-
-onBeforeUnmount(() => {
-  if (cooldownTimer) clearInterval(cooldownTimer);
-});
 </script>
 
 <template>
@@ -138,6 +149,12 @@ onBeforeUnmount(() => {
           </div>
           <h1 class="card-title">Konsol Pengelola</h1>
           <p class="card-sub">AstroSphere Content Management System</p>
+        </div>
+
+        <!-- Notifikasi Offline -->
+        <div v-if="isOffline" class="alert-box warning" role="status">
+          <UiIcon name="info" :size="18" />
+          <span>{{ OFFLINE_ADMIN_NOTICE }}</span>
         </div>
 
         <!-- Notifikasi Timeout / Info -->
@@ -398,6 +415,12 @@ onBeforeUnmount(() => {
 .btn-submit-login:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.alert-box.warning {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
 }
 
 .card-footer {

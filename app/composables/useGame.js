@@ -5,7 +5,8 @@ import { SHIPS } from '../data/ships.js';
 import { QUIZ, POINTS_PER_QUESTION, QUIZ_VERSION } from '../data/quiz.js';
 import { NAME_OF } from '../data/solarSystem.js';
 import { sanitizeKeys } from '../data/keymap.js';
-import { PREDICT, PREDICT_REWARD, MYTH_IDS, MYTH_REWARD, FACTS, CARD_REWARD } from '../data/learning.js';
+import { PREDICT, PREDICT_REWARD, MYTH_REWARD, FACTS, CARD_REWARD } from '../data/learning.js';
+import { useSupabaseContent } from './useSupabaseContent.js';
 import { EVENTS, EVENT_REWARD } from '../data/events.js';
 import { MISSIONS, MISSION_REWARD } from '../data/missions.js';
 import {
@@ -20,8 +21,15 @@ import {
   syncPlayerCloudProgress,
   resetPlayerCloudProgress,
   deletePlayerAccountFromCloud,
+  formatBannedMessage,
 } from '../utils/playerCloudSync.js';
 import { getSupabaseClient } from '../utils/supabaseClient.js';
+import {
+  isBrowserOffline,
+  isOfflineOrNetworkError,
+  OFFLINE_ACTION_NOTICE,
+  GENERIC_PUBLIC_ERROR,
+} from '../utils/networkError.js';
 
 const KEYS = {
   state: 'astrosphere.gameState',
@@ -53,11 +61,16 @@ const touch = typeof window !== 'undefined' && typeof window.matchMedia === 'fun
 const DEFAULT_SETTINGS = { soundEnabled: true, hudOpacity: 1, sensitivity: 1, invertY: false, graphics: 'rendah', reduceMotion: false, tutorialSeen: false, events: true, keys: {} };
 const DEFAULT_PROGRESS = { points: 0, earned: 0, best: {}, attempts: {}, owned: ['astra'], selectedShip: 'astra', ledger: [], quizVersion: QUIZ_VERSION, predict: {}, myths: {}, cards: {}, found: { matahari: true }, events: {}, missions: {} };
 
-/** Menghitung skor kuis maksimal yang sah per planet (atau default 4 soal × 50 poin = 200) */
+/** Menghitung skor kuis maksimal yang sah per planet berdasarkan bobot poin soal aktif */
 export function quizMax(planet) {
-  return (planet && QUIZ[planet]?.questions?.length)
-    ? QUIZ[planet].questions.length * POINTS_PER_QUESTION
-    : POINTS_PER_QUESTION * 4;
+  const liveQuiz = planet ? useSupabaseContent().getQuiz(planet) : null;
+  const questions = liveQuiz?.questions?.length
+    ? liveQuiz.questions
+    : (planet && QUIZ[planet]?.questions) || null;
+  if (questions && questions.length > 0) {
+    return questions.reduce((sum, q) => sum + (Number(q.points) || POINTS_PER_QUESTION), 0);
+  }
+  return POINTS_PER_QUESTION * 4;
 }
 
 function sanitizeSettings(s) {
@@ -152,18 +165,18 @@ function sanitizeProgress(p) {
   if (!p || typeof p !== 'object') return o;
   if (Number.isFinite(p.points) && p.points >= 0) o.points = Math.floor(p.points);
   if (Number.isFinite(p.earned) && p.earned >= 0) o.earned = Math.floor(p.earned);
-  if (p.best && typeof p.best === 'object') for (const [k, v] of Object.entries(p.best)) if (QUIZ[k] && Number.isFinite(v)) o.best[k] = Math.min(quizMax(k), Math.max(0, v));
-  if (p.attempts && typeof p.attempts === 'object') for (const [k, v] of Object.entries(p.attempts)) if (QUIZ[k] && Number.isFinite(v)) o.attempts[k] = v;
+  if (p.best && typeof p.best === 'object') for (const [k, v] of Object.entries(p.best)) if ((QUIZ[k] || useSupabaseContent().getQuiz(k)) && Number.isFinite(v)) o.best[k] = Math.min(quizMax(k), Math.max(0, v));
+  if (p.attempts && typeof p.attempts === 'object') for (const [k, v] of Object.entries(p.attempts)) if ((QUIZ[k] || useSupabaseContent().getQuiz(k)) && Number.isFinite(v)) o.attempts[k] = v;
   if (Array.isArray(p.owned)) o.owned = [...new Set(['astra', ...p.owned.filter((id) => SHIPS[id])])];
   if (SHIPS[p.selectedShip] && o.owned.includes(p.selectedShip)) o.selectedShip = p.selectedShip;
   if (Array.isArray(p.ledger)) o.ledger = p.ledger.slice(-60);
-  if (p.predict && typeof p.predict === 'object') for (const [k, v] of Object.entries(p.predict)) if (PREDICT[k] && v && Number.isInteger(v.pick)) o.predict[k] = { pick: v.pick, ok: !!v.ok };
-  if (p.myths && typeof p.myths === 'object') for (const k of Object.keys(p.myths)) if (MYTH_IDS.has(k)) o.myths[k] = true;
-  if (p.cards && typeof p.cards === 'object') for (const k of Object.keys(p.cards)) if (FACTS[k]) o.cards[k] = true;
+  if (p.predict && typeof p.predict === 'object') for (const [k, v] of Object.entries(p.predict)) if (k && v && typeof v === 'object' && Number.isInteger(v.pick)) o.predict[k] = { pick: v.pick, ok: !!v.ok };
+  if (p.myths && typeof p.myths === 'object') for (const k of Object.keys(p.myths)) if (p.myths[k] && typeof k === 'string' && k.trim()) o.myths[k] = true;
+  if (p.cards && typeof p.cards === 'object') for (const k of Object.keys(p.cards)) if (FACTS[k] || useSupabaseContent().getFacts(k)?.length) o.cards[k] = true;
   if (p.missions && typeof p.missions === 'object') for (const [k, v] of Object.entries(p.missions)) if (MISSIONS[k] && v && Number.isFinite(v.done)) o.missions[k] = { done: Math.max(0, Math.floor(v.done)), stars: Math.min(3, Math.max(0, Math.floor(v.stars || 0))) };
   if (p.events && typeof p.events === 'object') for (const [k, v] of Object.entries(p.events)) if (EVENTS[k] && Number.isFinite(v)) o.events[k] = Math.max(0, Math.floor(v));
   // Benda yang pernah ditemukan (permanen)
-  for (const k of [...Object.keys(p.found || {}), ...Object.keys(o.cards), ...Object.keys(o.best), ...Object.keys(o.predict)]) if (FACTS[k]) o.found[k] = true;
+  for (const k of [...Object.keys(p.found || {}), ...Object.keys(o.cards), ...Object.keys(o.best), ...Object.keys(o.predict)]) if (FACTS[k] || useSupabaseContent().getFacts(k)?.length) o.found[k] = true;
   return o;
 }
 
@@ -190,7 +203,7 @@ export const store = reactive({
   pheno: { on: false, id: '', playing: true, line1: '', line2: '', state: '' },
   mission: { id: 'apollo13', alt: 0, amd: 0, pred: 0, fixK: 0, step: 'brief', u: 0, clock: 0, dist: 0, o2: 100, power: 100, co2: 4, cold: false, blackout: false, note: '', firstTry: {}, stars: 0, reward: 0 },
   event: { kind: '', phase: '', left: 0, shelterName: '', safe: false, shield: 100, damaged: false, hits: 0, expo: 0, flash: 0, result: null },
-  toast: { show: false, html: '' },
+  toast: { show: false, parts: [] },
   msg: { show: false, text: '' },
   saved: { show: false, label: '' },
   look: { active: false, freeLook: false },
@@ -277,7 +290,14 @@ function triggerCloudSync() {
     store.saved.label = 'Tersimpan di Awan';
     store.saved.show = true;
     setTimeout(() => { store.saved.show = false; }, 2200);
+  }, (revoked) => {
+    forceRevokeAccountSession(revoked?.reason);
   });
+}
+
+async function forceRevokeAccountSession(reasonMsg) {
+  await logoutUser();
+  showToast(reasonMsg || formatBannedMessage(), 5000);
 }
 
 export function saveSettings() {
@@ -295,7 +315,9 @@ export function saveAccount() {
 
 // Sinkronkan data progres pemain secara langsung dari Supabase ke state reaktif
 export async function pullCloudProgress() {
-  if (!store.account.loggedIn || !store.account.userId) return;
+  if (!store.account.loggedIn || !store.account.userId) {
+    return { ok: false, localOnly: true };
+  }
   try {
     const res = await syncPlayerCloudProgress(store.account.userId, {
       progress: store.progress,
@@ -303,6 +325,13 @@ export async function pullCloudProgress() {
       gameState: readGameState(),
       astroId: store.account.astroId,
     });
+    if (!res.offline && (res.banned || res.revoked)) {
+      await forceRevokeAccountSession(res.err);
+      return res;
+    }
+    if (res.offline) {
+      return { ok: false, offline: true, noClient: !!res.noClient, err: res.err || OFFLINE_ACTION_NOTICE };
+    }
     if (res.ok && res.mergedData) {
       applyMergedData(res.mergedData);
       if (res.astroId) {
@@ -317,9 +346,15 @@ export async function pullCloudProgress() {
       saveAccount();
       ls.write(KEYS.progress, store.progress);
       ls.write(KEYS.settings, store.settings);
+      return { ok: true, mergedData: res.mergedData };
     }
+    return { ok: false, err: res.err || GENERIC_PUBLIC_ERROR };
   } catch (err) {
     console.warn('[AstroSphere] Gagal sinkronisasi data awan:', err);
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, err: GENERIC_PUBLIC_ERROR };
   }
 }
 
@@ -383,9 +418,9 @@ export async function registerUser(name, pass) {
     return { ok: true, cloud: true };
   }
 
-  // Jika error bukan karena offline (misal nama sudah ada di server awan), jangan fallback diam-diam
-  if (!cloudRes.offline) {
-    return { ok: false, err: cloudRes.err };
+  // Jika Supabase terkonfigurasi tetapi gagal (termasuk offline jaringan), jangan diam-diam buat akun lokal terpisah
+  if (!cloudRes.noClient) {
+    return { ok: false, offline: !!cloudRes.offline, err: cloudRes.err };
   }
 
   // 2. Mode Cadangan Lokal (Offline)
@@ -445,6 +480,31 @@ export async function loginUser(name, pass) {
     switchAccountKeymap(userId, cloudKeymap);
     saveSettings();
     return { ok: true, cloud: true };
+  }
+
+  // Jika akun diblokir oleh administrator, tolak mutlak tanpa jatuh ke fallback lokal
+  if (cloudRes.banned) {
+    return { ok: false, banned: true, err: cloudRes.err };
+  }
+
+  // Jika gagal di cloud karena offline jaringan (bukan karena client belum dikonfigurasi), cek akun lokal yang sudah ada; jika belum ada beri pesan offline ramah
+  if (cloudRes.offline && !cloudRes.noClient) {
+    const localExisting = (ls.read(KEYS.users) || {})[nameKey(clean)];
+    if (!localExisting) {
+      return { ok: false, offline: true, err: cloudRes.err || OFFLINE_ACTION_NOTICE, unknown: false };
+    }
+    if (await hashPass(localExisting.salt, pass) !== localExisting.hash) {
+      return { ok: false, err: 'Kata sandi salah.' };
+    }
+    Object.assign(store.account, {
+      loggedIn: true,
+      name: localExisting.name,
+      username: clean,
+      userId: null,
+      cloudSynced: false,
+    });
+    saveAccount();
+    return { ok: true, cloud: false, localFallback: true };
   }
 
   // Jika gagal otentikasi di cloud dan bukan karena offline, cek apakah akun lokal ada
@@ -553,7 +613,16 @@ export function wipeAll() {
 }
 
 export async function resetAllGameData() {
-  // 1. Bersihkan localStorage data progres & posisi 3D
+  // 1. Jika login akun awan, sinkronkan reset bersih ke Supabase terlebih dahulu agar tidak terjadi reset palsu saat offline
+  if (store.account.loggedIn && store.account.userId) {
+    const cloudRes = await resetPlayerCloudProgress(store.account.userId);
+    if (!cloudRes.ok && !cloudRes.noClient) {
+      showToast(cloudRes.err || GENERIC_PUBLIC_ERROR, 3500);
+      return { ok: false, offline: !!cloudRes.offline, err: cloudRes.err };
+    }
+  }
+
+  // 2. Bersihkan localStorage data progres & posisi 3D
   ls.remove(KEYS.state);
   ls.remove(KEYS.progress);
 
@@ -561,17 +630,12 @@ export async function resetAllGameData() {
   store.settings.tutorialSeen = false;
   ls.write(KEYS.settings, store.settings);
 
-  // 2. Reset state reaktif progres & penemuan
+  // 3. Reset state reaktif progres & penemuan
   const cleanProgress = JSON.parse(JSON.stringify(DEFAULT_PROGRESS));
   Object.assign(store.progress, cleanProgress);
   store.discovered = ['matahari'];
   store.hasSave = false;
   store.saveMeta = '';
-
-  // 3. Jika login akun awan, sinkronkan reset bersih ke Supabase (akun tetap aktif)
-  if (store.account.loggedIn && store.account.id) {
-    await resetPlayerCloudProgress(store.account.id);
-  }
 
   // 4. Tutup seluruh modal dan hentikan mesin/sesi game ke splash screen
   store.modal = null;
@@ -587,12 +651,17 @@ export async function resetAllGameData() {
     store.mode = 'jelajah';
   }
   showToast('Seluruh data permainan berhasil diatur ulang dari awal.', 3200);
+  return { ok: true };
 }
 
 export async function deleteUserAccount() {
-  // 1. Panggil RPC Supabase jika login
-  if (store.account.loggedIn) {
-    await deletePlayerAccountFromCloud();
+  // 1. Panggil RPC Supabase terlebih dahulu jika akun terhubung ke awan
+  if (store.account.loggedIn && store.account.userId) {
+    const cloudRes = await deletePlayerAccountFromCloud();
+    if (!cloudRes.ok && !cloudRes.noClient) {
+      showToast(cloudRes.err || GENERIC_PUBLIC_ERROR, 3500);
+      return { ok: false, offline: !!cloudRes.offline, err: cloudRes.err };
+    }
   }
 
   // 2. Hapus seluruh data di localStorage
@@ -639,6 +708,7 @@ export async function deleteUserAccount() {
     store.mode = 'jelajah';
   }
   showToast('Akun dan seluruh progres berhasil dihapus permanen.', 3500);
+  return { ok: true };
 }
 
 /** Ringkasan simpanan untuk tombol "Lanjutkan" — bisa dibaca sebelum dunia 3D dimuat. */
@@ -662,18 +732,24 @@ if (typeof window !== 'undefined') {
 
       // Cek apakah user adalah admin (jangan sentuh sesi admin)
       try {
-        const { data: adminRow } = await client
-          .from('admin_users')
-          .select('id')
-          .eq('email', user.email)
-          .eq('is_active', true)
-          .maybeSingle();
+        if (user.email) {
+          const { data: adminRow } = await client
+            .from('admin_users')
+            .select('email')
+            .eq('email', user.email.toLowerCase())
+            .maybeSingle();
 
-        if (adminRow) {
-          // Akun admin, jangan kelola di sesi game pemain
-          return;
+          if (adminRow) {
+            // Akun admin, jangan kelola di sesi game pemain
+            return;
+          }
         }
       } catch {}
+
+      if (user.banned_until && new Date(user.banned_until) > new Date()) {
+        await forceRevokeAccountSession(formatBannedMessage());
+        return;
+      }
 
       const isSyntheticPlayer = user.email?.endsWith('@player.astrosphere.app');
       const isGoogle = user.app_metadata?.provider === 'google' ||
@@ -687,6 +763,19 @@ if (typeof window !== 'undefined') {
           gameState: readGameState(),
           astroId: store.account.astroId,
         });
+
+        if (syncRes.banned) {
+          await forceRevokeAccountSession(syncRes.err);
+          return;
+        }
+        if (syncRes.offline) {
+          // Saat offline, pertahankan sesi lokal pengguna tanpa mencabut akun
+          store.account.loggedIn = true;
+          store.account.userId = user.id;
+          store.account.cloudSynced = true;
+          saveAccount();
+          return;
+        }
 
         if (syncRes.ok) {
           if (syncRes.mergedData) {
@@ -726,28 +815,100 @@ if (typeof window !== 'undefined') {
           }
         }
       } else {
-        // Akun pemain sintetis biasa
+        // Akun pemain sintetis biasa: cek status is_active pada player_progress
+        if (isBrowserOffline()) {
+          store.account.loggedIn = true;
+          store.account.userId = user.id;
+          store.account.cloudSynced = true;
+          saveAccount();
+          return;
+        }
+        const { data: pRow, error: pErr } = await client
+          .from('player_progress')
+          .select('is_active, banned_reason, astro_id, username, display_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (pErr) {
+          if (isOfflineOrNetworkError(pErr) || isBrowserOffline()) {
+            store.account.loggedIn = true;
+            store.account.userId = user.id;
+            store.account.cloudSynced = true;
+            saveAccount();
+            return;
+          }
+          console.warn('[AstroSphere] Peringatan pemeriksaan status akun:', pErr);
+          return;
+        }
+
+        if (!pRow || pRow.is_active === false) {
+          await forceRevokeAccountSession(
+            pRow?.is_active === false
+              ? formatBannedMessage(pRow.banned_reason)
+              : 'Akun Anda telah dihapus atau tidak lagi aktif.'
+          );
+          return;
+        }
+
         store.account.loggedIn = true;
         store.account.userId = user.id;
         store.account.cloudSynced = true;
-        if (!store.account.name && user.user_metadata?.username) {
-          store.account.name = user.user_metadata.username;
-          store.account.username = user.user_metadata.username;
+        if (pRow.astro_id) {
+          store.account.astroId = pRow.astro_id;
+          ls.write(KEYS.astroId, pRow.astro_id);
         }
+        if (!store.account.name && (pRow.display_name || pRow.username || user.user_metadata?.username)) {
+          store.account.name = pRow.display_name || pRow.username || user.user_metadata.username;
+          store.account.username = pRow.username || user.user_metadata.username;
+        }
+        saveAccount();
       }
     }
 
-    client.auth.getSession().then(({ data }) => {
-      if (data?.session?.user && !authHandled) {
-        authHandled = true;
-        handleUserSession(data.session.user);
-      }
-    }).catch(() => {});
+    // Verifikasi sesi langsung ke server Auth via getUser() agar ban / hapus akun segera terdeteksi saat online
+    if (!isBrowserOffline()) {
+      client.auth.getUser().then(({ data, error }) => {
+        if (error) {
+          if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+            return;
+          }
+          if (store.account.loggedIn && store.account.cloudSynced) {
+            const banned = String(error.message || '').toLowerCase().includes('banned');
+            forceRevokeAccountSession(
+              banned
+                ? formatBannedMessage()
+                : 'Sesi akun tidak lagi valid atau telah dihapus administrator.'
+            );
+          }
+          return;
+        }
+        if (data?.user && !authHandled) {
+          authHandled = true;
+          handleUserSession(data.user);
+        }
+      }).catch(() => {});
+    }
 
     client.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         authHandled = true;
         handleUserSession(session.user, event === 'SIGNED_IN');
+      } else if (event === 'SIGNED_OUT' && store.account.loggedIn && store.account.cloudSynced) {
+        let guestAstroId = ls.read(KEYS.astroId);
+        if (!guestAstroId) {
+          guestAstroId = generateAstroId();
+          ls.write(KEYS.astroId, guestAstroId);
+        }
+        Object.assign(store.account, {
+          loggedIn: false,
+          name: '',
+          username: '',
+          userId: null,
+          cloudSynced: false,
+          astroId: guestAstroId,
+        });
+        saveAccount();
+        switchAccountKeymap(null);
       }
     });
   }
@@ -770,8 +931,11 @@ export function submitQuiz(planet, score) {
 }
 
 export function unlockShip(id) {
-  const p = store.progress, s = SHIPS[id];
-  if (!s || p.owned.includes(id)) return { ok: true, already: true };
+  const p = store.progress;
+  const liveShips = useSupabaseContent().getShips?.() || {};
+  const s = liveShips[id] || SHIPS[id];
+  if (!s || s.is_active === false) return { ok: false, inactive: true };
+  if (p.owned.includes(id)) return { ok: true, already: true };
   if (p.points < s.price) return { ok: false, need: s.price - p.points };
   p.points -= s.price;
   p.owned.push(id);
@@ -787,14 +951,15 @@ function addPoints(n) {
 }
 
 /** Simpan tebakan fenomena. Bintang hanya untuk tebakan pertama yang benar. */
-export function recordPrediction(key, pick) {
-  const p = store.progress, q = PREDICT[key];
+export function recordPrediction(key, pick, customQuestion = null) {
+  const p = store.progress;
+  const q = (customQuestion && Number.isInteger(customQuestion.a)) ? customQuestion : PREDICT[key];
   if (!q) return { ok: false, reward: 0 };
   const ok = pick === q.a, first = !p.predict[key];
   p.predict[key] = { pick, ok };
   let reward = 0;
   if (first && ok) {
-    reward = PREDICT_REWARD;
+    reward = Number(q.points) > 0 ? Number(q.points) : PREDICT_REWARD;
     addPoints(reward);
     p.ledger.push({ id: `tebak-${key}-${Date.now()}`, type: 'tebak', key, delta: reward, at: new Date().toISOString() });
   }
@@ -803,19 +968,24 @@ export function recordPrediction(key, pick) {
 }
 
 /** Satu jawaban Mitos/Fakta. Bintang hanya saat pernyataan itu pertama kali dijawab benar. */
-export function recordMyth(id, ok) {
+export function recordMyth(id, ok, customPoints = MYTH_REWARD) {
   const p = store.progress;
   if (!ok || p.myths[id]) return 0;
+  const reward = Number(customPoints) > 0 ? Number(customPoints) : MYTH_REWARD;
   p.myths[id] = true;
-  addPoints(MYTH_REWARD);
+  addPoints(reward);
   saveProgress();
-  return MYTH_REWARD;
+  return reward;
 }
 
 /** Kartu "Tahukah kamu?" dibuka: +bintang hanya pertama kali. */
 export function openCard(id) {
   const p = store.progress;
-  if (!FACTS[id] || p.cards[id]) return 0;
+  const sup = useSupabaseContent();
+  const hasFacts = sup.loadedFromDb?.value?.facts
+    ? sup.getFacts(id)?.length > 0
+    : Boolean(FACTS[id] || sup.getFacts(id)?.length);
+  if (!hasFacts || p.cards[id]) return 0;
   p.cards[id] = true;
   addPoints(CARD_REWARD);
   p.ledger.push({ id: `kartu-${id}-${Date.now()}`, type: 'kartu', key: id, delta: CARD_REWARD, at: new Date().toISOString() });
@@ -825,7 +995,9 @@ export function openCard(id) {
 
 /** Jumlah kartu benda yang sudah ditemukan tetapi belum dibaca (untuk lencana di menu). */
 export function unreadCards() {
-  return Object.keys(FACTS).filter((id) => isFound(id) && !store.progress.cards[id]).length;
+  const sup = useSupabaseContent();
+  const map = sup.loadedFromDb?.value?.facts ? sup.facts.value : FACTS;
+  return Object.keys(map).filter((id) => (map[id]?.length ?? 0) > 0 && isFound(id) && !store.progress.cards[id]).length;
 }
 
 /** Misi selesai: +bintang hanya saat pertama kali tamat; bintang misi terbaik disimpan. */
@@ -859,18 +1031,32 @@ export function logMythRound(correct, total, gained) {
   saveProgress();
 }
 
-function sanitizeToastHtml(raw) {
-  if (!raw || typeof raw !== 'string') return '';
-  return raw
-    .replace(/<\s*(?:script|iframe|object|embed|style|form|input|button|meta|link)[^>]*>.*?<\s*\/\s*(?:script|iframe|object|embed|style|form|input|button|meta|link)\s*>/gi, '')
-    .replace(/<\s*(?:script|iframe|object|embed|style|form|input|button|meta|link)[^>]*>/gi, '')
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/(?:href|src)\s*=\s*["']?\s*javascript:[^"'>\s]*/gi, '');
+function parseToastSegments(raw) {
+  if (!raw || typeof raw !== 'string') return [];
+  // Strip tag selain <b>...</b> lalu pecah aman menjadi array teks biasa & cetak tebal tanpa v-html
+  const segments = [];
+  const regex = /<b>([\s\S]*?)<\/b>/gi;
+  let lastIndex = 0;
+  let match;
+  while ((match = regex.exec(raw)) !== null) {
+    if (match.index > lastIndex) {
+      const plain = raw.slice(lastIndex, match.index).replace(/<[^>]*>/g, '');
+      if (plain) segments.push({ text: plain, bold: false });
+    }
+    const boldText = match[1].replace(/<[^>]*>/g, '');
+    if (boldText) segments.push({ text: boldText, bold: true });
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < raw.length) {
+    const rest = raw.slice(lastIndex).replace(/<[^>]*>/g, '');
+    if (rest) segments.push({ text: rest, bold: false });
+  }
+  return segments;
 }
 
 let toastT = 0;
 export function showToast(html, ms = 3200) {
-  store.toast.html = sanitizeToastHtml(html);
+  store.toast.parts = parseToastSegments(html);
   store.toast.show = true;
   clearTimeout(toastT);
   toastT = setTimeout(() => { store.toast.show = false; }, ms);

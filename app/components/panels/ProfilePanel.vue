@@ -21,8 +21,14 @@ import { POINTS_PER_QUESTION } from '~/data/quiz.js';
 import { ACTIONS, resolveKeymap, keyLabels, keyLabel, canBind } from '~/data/keymap.js';
 import { MODEL_CREDITS, LICENSE_URL } from '~/data/credits.js';
 import { fmtDate } from '~/game/util.js';
+import {
+  useNetworkStatus,
+  OFFLINE_ACTION_NOTICE,
+  GENERIC_PUBLIC_ERROR,
+} from '~/utils/networkError.js';
 
 const { planets, ships, getQuiz, loadAll } = useSupabaseContent();
+const { isOffline } = useNetworkStatus();
 
 onMounted(async () => {
   if (store.profileTab === 'armada') {
@@ -60,26 +66,33 @@ const formattedAstroId = computed(() => {
   return id.startsWith('ASTRO-ID:') ? id : `ASTRO-ID: ${id}`;
 });
 
-/** Jumlah soal kuis per planet (dinamis dari Supabase / default 4) */
+/** Jumlah soal kuis aktif per planet (dinamis dari Supabase) */
 const getPlanetQuestionCount = (planetId) => {
   const q = getQuiz(planetId);
-  return q?.questions?.length || 4;
+  return q?.questions?.length ?? 0;
 };
 
-/** Skor maksimal kuis dinamis berdasarkan jumlah soal di Supabase (jumlah soal × 50 bintang) */
+/** Skor maksimal kuis dinamis berdasarkan bobot poin tiap soal di Supabase */
 const getPlanetQuizMax = (planetId) => {
-  return getPlanetQuestionCount(planetId) * POINTS_PER_QUESTION;
+  const qs = getQuiz(planetId)?.questions;
+  if (!qs || qs.length === 0) return 0;
+  return qs.reduce((sum, q) => sum + (Number(q.points) || POINTS_PER_QUESTION), 0);
 };
 
-/** Jumlah bintang diperoleh mengikuti skor terbaik (50 poin per bintang) */
+/** Jumlah bintang diperoleh mengikuti proporsi skor terbaik terhadap skor maksimal kuis */
 const getPlanetEarnedStars = (planetId) => {
-  const score = P.best[planetId] ?? 0;
   const maxStars = getPlanetQuestionCount(planetId);
-  return Math.min(maxStars, Math.max(0, Math.floor(score / POINTS_PER_QUESTION)));
+  const maxScore = getPlanetQuizMax(planetId);
+  if (!maxStars || !maxScore) return 0;
+  const score = P.best[planetId] ?? 0;
+  return Math.min(maxStars, Math.max(0, Math.floor((score / maxScore) * maxStars)));
 };
 
 const visited = computed(() => store.discovered.filter((d) => planets.value.some((p) => p.id === d)).length);
-const perfect = computed(() => planets.value.filter((p) => (P.best[p.id] ?? 0) >= getPlanetQuizMax(p.id)).length);
+const perfect = computed(() => planets.value.filter((p) => {
+  const maxScore = getPlanetQuizMax(p.id);
+  return maxScore > 0 && (P.best[p.id] ?? 0) >= maxScore;
+}).length);
 const stars = (s) => Math.floor((s ?? 0) / POINTS_PER_QUESTION);
 const ledger = computed(() => [...P.ledger].reverse().slice(0, 8));
 
@@ -209,10 +222,19 @@ async function handleLogout() {
 
 async function triggerManualSync() {
   saveProgress();
-  if (store.account.loggedIn && store.account.userId) {
-    await pullCloudProgress();
+  if (!store.account.loggedIn || !store.account.userId) return;
+  if (isOffline.value) {
+    showToast(OFFLINE_ACTION_NOTICE, 3200);
+    return;
   }
-  showToast('Progres berhasil disinkronkan ke awan Supabase!', 2200);
+  const res = await pullCloudProgress();
+  if (res?.ok) {
+    showToast('Progres berhasil disinkronkan ke awan Supabase!', 2200);
+  } else if (res?.offline) {
+    showToast(res.err || OFFLINE_ACTION_NOTICE, 3200);
+  } else {
+    showToast(res?.err || GENERIC_PUBLIC_ERROR, 3200);
+  }
 }
 
 // ---- Dialog Konfirmasi Reset & Hapus Akun ----
@@ -260,7 +282,7 @@ async function executeConfirmDialog() {
     confirmDialog.show = false;
   } catch (err) {
     console.error(err);
-    showToast('Terjadi kesalahan saat memproses permintaan.', 3000);
+    showToast(GENERIC_PUBLIC_ERROR, 3000);
   } finally {
     confirmDialog.busy = false;
   }
@@ -359,9 +381,9 @@ const FAQ = [
             </div>
 
             <div class="stats-summary">
-              <span class="summary-metric">{{ visited }}/8 Planet Terjelajahi</span>
+              <span class="summary-metric">{{ visited }}/{{ planets.length }} Planet Terjelajahi</span>
               <span class="summary-dot">·</span>
-              <span class="summary-metric">{{ perfect }}/8 Kuis Sempurna</span>
+              <span class="summary-metric">{{ perfect }}/{{ planets.length }} Kuis Sempurna</span>
             </div>
 
             <p class="stats-footnote">
@@ -604,11 +626,17 @@ const FAQ = [
 
             <!-- TAMPILAN JIKA SUDAH LOGIN -->
             <div v-if="store.account.loggedIn" class="logged-in-box">
-              <div class="cloud-status-banner">
-                <UiIcon name="cek" :size="20" class="status-ic-ok" />
+              <div class="cloud-status-banner" :class="{ offline: isOffline }">
+                <UiIcon :name="isOffline ? 'info' : 'cek'" :size="20" :class="isOffline ? 'status-ic-warn' : 'status-ic-ok'" />
                 <div class="banner-text">
-                  <span class="banner-title">Akun Awan Aktif &amp; Terhubung</span>
-                  <p class="banner-desc">Setiap perolehan bintang, kuis, dan armada baru disinkronkan secara otomatis.</p>
+                  <span class="banner-title">{{ isOffline ? 'Sedang Offline — Sinkronisasi Awan Dijeda' : 'Akun Awan Aktif & Terhubung' }}</span>
+                  <p class="banner-desc">
+                    {{
+                      isOffline
+                        ? 'Anda tetap dapat menjelajah secara lokal. Hubungkan kembali internet untuk menyinkronkan progres ke awan.'
+                        : 'Setiap perolehan bintang, kuis, dan armada baru disinkronkan secara otomatis.'
+                    }}
+                  </p>
                 </div>
               </div>
 
@@ -627,12 +655,12 @@ const FAQ = [
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">STATUS TELEMETRI</span>
-                  <span class="detail-val green">Awan Supabase Aktif</span>
+                  <span class="detail-val" :class="isOffline ? 'warn' : 'green'">{{ isOffline ? 'Mode Offline (Menunggu Koneksi)' : 'Awan Supabase Aktif' }}</span>
                 </div>
               </div>
 
               <div class="account-actions">
-                <button type="button" class="btn-account primary" @click="triggerManualSync">
+                <button type="button" class="btn-account primary" :disabled="isOffline" @click="triggerManualSync">
                   <UiIcon name="ulang" :size="16" />
                   <span>Sinkronkan Sekarang</span>
                 </button>
@@ -1714,10 +1742,22 @@ const FAQ = [
   background: rgba(34, 197, 94, 0.08);
   border: 1px solid rgba(34, 197, 94, 0.28);
 }
+.cloud-status-banner.offline {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.3);
+}
 .status-ic-ok {
   color: #4ade80;
   flex-shrink: 0;
   margin-top: 1px;
+}
+.status-ic-warn {
+  color: #fbbf24;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.cloud-status-banner.offline .banner-title {
+  color: #fde68a;
 }
 .banner-text {
   display: flex;
@@ -1768,6 +1808,9 @@ const FAQ = [
 .detail-val.green {
   color: #4ade80;
 }
+.detail-val.warn {
+  color: #fbbf24;
+}
 .account-actions {
   display: flex;
   gap: 12px;
@@ -1790,8 +1833,12 @@ const FAQ = [
   border: 1px solid rgba(148, 174, 255, 0.28);
   color: #ffffff;
 }
-.btn-account.primary:hover {
+.btn-account.primary:hover:not(:disabled) {
   background: rgba(148, 174, 255, 0.2);
+}
+.btn-account:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .btn-account.danger-outline {
   background: transparent;

@@ -178,13 +178,13 @@ BEGIN
     ALTER TABLE public.history_events DROP COLUMN IF EXISTS lat CASCADE;
     ALTER TABLE public.history_events DROP COLUMN IF EXISTS lon CASCADE;
 
-    -- Tambahkan kolom era_label, sumber_referensi jika belum ada
+    -- Tambahkan kolom era_label, sumber_referensi, is_active jika belum ada
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS era_label TEXT NOT NULL DEFAULT 'Sejarah & Bentang Alam';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS sumber_referensi TEXT DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS gambar_url TEXT DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS ringkasan_singkat TEXT NOT NULL DEFAULT '';
     ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS karakteristik_fisik TEXT NOT NULL DEFAULT '';
-    
+    ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 
     -- Lepas constraint check kategori lama agar mendukung penamaan kategori deskriptif
     ALTER TABLE public.history_events DROP CONSTRAINT IF EXISTS history_events_kategori_poi_check;
@@ -205,11 +205,13 @@ CREATE TABLE IF NOT EXISTS public.history_events (
   deskripsi TEXT NOT NULL,
   gambar_url TEXT DEFAULT '',
   sumber_referensi TEXT DEFAULT '',
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Pastikan kolom koordinat lat & lon selalu dibersihkan
+-- Pastikan kolom koordinat lat & lon selalu dibersihkan & kolom is_active tersedia
 ALTER TABLE public.history_events DROP COLUMN IF EXISTS lat, DROP COLUMN IF EXISTS lon;
+ALTER TABLE public.history_events ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 
 CREATE INDEX IF NOT EXISTS idx_history_planet_year 
   ON public.history_events (planet_id, tahun_kejadian);
@@ -220,6 +222,8 @@ BEGIN
   ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
   ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS penjelasan_matahari TEXT DEFAULT '';
   ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS penjelasan_bulan TEXT DEFAULT '';
+  ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS sumber_referensi TEXT NOT NULL DEFAULT 'NASA';
+  ALTER TABLE public.phenomena ADD COLUMN IF NOT EXISTS tebak_dulu JSONB;
 EXCEPTION WHEN others THEN
   NULL;
 END $$;
@@ -242,11 +246,20 @@ CREATE TABLE IF NOT EXISTS public.phenomena (
   konfigurasi_visual JSONB NOT NULL DEFAULT '{}'::jsonb,
   penjelasan_matahari TEXT DEFAULT '',
   penjelasan_bulan TEXT DEFAULT '',
+  sumber_referensi TEXT NOT NULL DEFAULT 'NASA',
+  tebak_dulu JSONB,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2.5 Tabel Bank Soal Kuis Formatif (A05 - Kuis)
+DO $$
+BEGIN
+  ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+EXCEPTION WHEN others THEN
+  NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.questions (
   question_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   planet_id TEXT NOT NULL REFERENCES public.planets(planet_id) ON DELETE CASCADE,
@@ -255,19 +268,60 @@ CREATE TABLE IF NOT EXISTS public.questions (
   kunci_jawaban INT NOT NULL CHECK (kunci_jawaban BETWEEN 0 AND 3),
   pembahasan_edukatif TEXT NOT NULL,
   bobot_poin INT NOT NULL DEFAULT 50 CHECK (bobot_poin > 0),
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+
 -- 2.6 Tabel Master Pesawat Reward (R09, R11)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ships'
+  ) THEN
+    ALTER TABLE public.ships DROP CONSTRAINT IF EXISTS ships_ship_id_check;
+
+    UPDATE public.ships SET ship_id = 'astra' WHERE ship_id = 'astra-scout' AND NOT EXISTS (SELECT 1 FROM public.ships s2 WHERE s2.ship_id = 'astra');
+    UPDATE public.ships SET ship_id = 'orion' WHERE ship_id = 'orion-glider' AND NOT EXISTS (SELECT 1 FROM public.ships s2 WHERE s2.ship_id = 'orion');
+    UPDATE public.ships SET ship_id = 'nova' WHERE ship_id = 'nova-voyager' AND NOT EXISTS (SELECT 1 FROM public.ships s2 WHERE s2.ship_id = 'nova');
+    DELETE FROM public.ships WHERE ship_id IN ('astra-scout', 'orion-glider', 'nova-voyager');
+
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS kelas_pesawat TEXT NOT NULL DEFAULT '';
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS kecepatan_jelajah DOUBLE PRECISION NOT NULL DEFAULT 70;
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS kecepatan_turbo DOUBLE PRECISION NOT NULL DEFAULT 4.5;
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS akselerasi DOUBLE PRECISION NOT NULL DEFAULT 1.5;
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS kelincahan DOUBLE PRECISION NOT NULL DEFAULT 1.15;
+    ALTER TABLE public.ships ALTER COLUMN kecepatan_jelajah SET DEFAULT 70;
+    ALTER TABLE public.ships ALTER COLUMN kecepatan_turbo SET DEFAULT 4.5;
+    ALTER TABLE public.ships ALTER COLUMN akselerasi SET DEFAULT 1.5;
+    ALTER TABLE public.ships ALTER COLUMN kelincahan SET DEFAULT 1.15;
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS statistik_bar JSONB NOT NULL DEFAULT '{"speed":68,"agility":92,"accel":84,"boost":74}'::jsonb;
+    ALTER TABLE public.ships ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+
+    ALTER TABLE public.ships ADD CONSTRAINT ships_ship_id_check CHECK (ship_id IN ('astra', 'orion', 'nova'));
+  END IF;
+EXCEPTION WHEN others THEN
+  NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.ships (
-  ship_id TEXT PRIMARY KEY CHECK (ship_id IN ('astra-scout', 'orion-glider', 'nova-voyager')),
+  ship_id TEXT PRIMARY KEY CHECK (ship_id IN ('astra', 'orion', 'nova')),
   urutan_tier INT NOT NULL DEFAULT 1,
   nama TEXT NOT NULL,
+  kelas_pesawat TEXT NOT NULL DEFAULT '',
   panjang_meter INT NOT NULL,
   harga_poin INT NOT NULL,
   kecepatan_bonus_multiplier NUMERIC NOT NULL DEFAULT 1.0,
+  kecepatan_jelajah DOUBLE PRECISION NOT NULL DEFAULT 70,
+  kecepatan_turbo DOUBLE PRECISION NOT NULL DEFAULT 4.5,
+  akselerasi DOUBLE PRECISION NOT NULL DEFAULT 1.5,
+  kelincahan DOUBLE PRECISION NOT NULL DEFAULT 1.15,
+  statistik_bar JSONB NOT NULL DEFAULT '{"speed":68,"agility":92,"accel":84,"boost":74}'::jsonb,
   aset_model_url TEXT NOT NULL,
-  deskripsi TEXT NOT NULL
+  deskripsi TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true
 );
 
 -- 2.7 Tabel Bank Soal Mitos atau Fakta (Tab Mitos atau Fakta)
@@ -283,6 +337,26 @@ CREATE TABLE IF NOT EXISTS public.myths (
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 2.8 Tabel Kartu Fakta "Tahukah Kamu?" (Jurnal Penjelajah)
+CREATE TABLE IF NOT EXISTS public.facts (
+  fact_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  body_id TEXT NOT NULL CHECK (
+    body_id IN (
+      'matahari', 'merkurius', 'venus', 'bumi', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus',
+      'bulan', 'io', 'europa', 'ganymede', 'callisto', 'titan', 'sabuk'
+    )
+  ),
+  judul TEXT NOT NULL,
+  isi_fakta TEXT NOT NULL,
+  sumber_referensi TEXT NOT NULL DEFAULT 'NASA',
+  urutan INT NOT NULL DEFAULT 1,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_facts_body_order
+  ON public.facts (body_id, urutan);
 
 -- ==============================================================================
 -- 3. FUNGSI KEAMANAN & HELPER ADMIN (DENGAN search_path AMAN DARI HIJACKING)
@@ -319,7 +393,8 @@ SET search_path = public
 AS $$
   SELECT COALESCE(SUM(bobot_poin), 0)::INT
   FROM public.questions
-  WHERE planet_id = p_planet_id;
+  WHERE planet_id = p_planet_id
+    AND is_active = true;
 $$;
 
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
@@ -330,9 +405,18 @@ GRANT EXECUTE ON FUNCTION public.get_planet_max_quiz_score(TEXT) TO anon, authen
 -- 4. STORAGE BUCKET (astrosphere-assets)
 -- ==============================================================================
 
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('astrosphere-assets', 'astrosphere-assets', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'astrosphere-assets',
+  'astrosphere-assets',
+  true,
+  5242880,
+  ARRAY['image/jpeg', 'image/png', 'image/webp']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp'];
 
 DROP POLICY IF EXISTS "Public Read astrosphere-assets" ON storage.objects;
 CREATE POLICY "Public Read astrosphere-assets"
@@ -365,6 +449,7 @@ ALTER TABLE public.phenomena ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.myths ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facts ENABLE ROW LEVEL SECURITY;
 
 -- 5.1 Policies: public.admin_users (Zero Anon Access + Anti Self-Escalation)
 REVOKE ALL ON TABLE public.admin_users FROM PUBLIC, anon;
@@ -420,11 +505,21 @@ CREATE POLICY "Admins can modify planets"
   USING (public.is_admin() = true)
   WITH CHECK (public.is_admin() = true);
 
--- 5.3 Policies: public.history_events (Publik Baca Bebas Seluruh Peristiwa, Admin Kelola Penuh)
+-- 5.3 Policies: public.history_events (Publik Hanya Baca Item Aktif dari Planet Aktif, Admin Kelola Penuh)
 DROP POLICY IF EXISTS "Public can view history events" ON public.history_events;
 CREATE POLICY "Public can view history events"
   ON public.history_events FOR SELECT
-  USING (true);
+  USING (
+    public.is_admin() = true
+    OR (
+      is_active = true
+      AND EXISTS (
+        SELECT 1 FROM public.planets p
+        WHERE p.planet_id = history_events.planet_id
+          AND p.is_active = true
+      )
+    )
+  );
 
 DROP POLICY IF EXISTS "Admins can modify history events" ON public.history_events;
 CREATE POLICY "Admins can modify history events"
@@ -454,16 +549,19 @@ CREATE POLICY "Admins can modify phenomena"
   USING (public.is_admin() = true)
   WITH CHECK (public.is_admin() = true);
 
--- 5.5 Policies: public.questions (Publik Hanya Baca dari Planet Aktif, Admin Kelola Penuh)
+-- 5.5 Policies: public.questions (Publik Hanya Baca Item Aktif dari Planet Aktif, Admin Kelola Penuh)
 DROP POLICY IF EXISTS "Public can view questions" ON public.questions;
 CREATE POLICY "Public can view questions"
   ON public.questions FOR SELECT
   USING (
     public.is_admin() = true
-    OR EXISTS (
-      SELECT 1 FROM public.planets p
-      WHERE p.planet_id = questions.planet_id
-        AND p.is_active = true
+    OR (
+      is_active = true
+      AND EXISTS (
+        SELECT 1 FROM public.planets p
+        WHERE p.planet_id = questions.planet_id
+          AND p.is_active = true
+      )
     )
   );
 
@@ -473,11 +571,11 @@ CREATE POLICY "Admins can modify questions"
   USING (public.is_admin() = true)
   WITH CHECK (public.is_admin() = true);
 
--- 5.6 Policies: public.ships (Publik Baca, Admin Kelola Penuh)
+-- 5.6 Policies: public.ships (Publik Hanya Baca Item Aktif, Admin Kelola Penuh)
 DROP POLICY IF EXISTS "Public can view ships" ON public.ships;
 CREATE POLICY "Public can view ships"
   ON public.ships FOR SELECT
-  USING (true);
+  USING (is_active = true OR public.is_admin() = true);
 
 DROP POLICY IF EXISTS "Admins can modify ships" ON public.ships;
 CREATE POLICY "Admins can modify ships"
@@ -485,10 +583,34 @@ CREATE POLICY "Admins can modify ships"
   USING (public.is_admin() = true)
   WITH CHECK (public.is_admin() = true);
 
--- 5.7 Revokasi Hak Modifikasi dari Anon & Publik (Anti-Jebol REST API)
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.admin_users FROM anon, PUBLIC;
-GRANT SELECT ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths TO anon, authenticated;
-GRANT ALL ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.admin_users TO authenticated;
+-- 5.7 Policies: public.myths (Publik Hanya Baca Item Aktif, Admin Kelola Penuh)
+DROP POLICY IF EXISTS "Public can view myths" ON public.myths;
+CREATE POLICY "Public can view myths"
+  ON public.myths FOR SELECT
+  USING (is_active = true OR public.is_admin() = true);
+
+DROP POLICY IF EXISTS "Admins can modify myths" ON public.myths;
+CREATE POLICY "Admins can modify myths"
+  ON public.myths FOR ALL
+  USING (public.is_admin() = true)
+  WITH CHECK (public.is_admin() = true);
+
+-- 5.8 Policies: public.facts (Publik Hanya Baca Item Aktif, Admin Kelola Penuh)
+DROP POLICY IF EXISTS "Public can view facts" ON public.facts;
+CREATE POLICY "Public can view facts"
+  ON public.facts FOR SELECT
+  USING (is_active = true OR public.is_admin() = true);
+
+DROP POLICY IF EXISTS "Admins can modify facts" ON public.facts;
+CREATE POLICY "Admins can modify facts"
+  ON public.facts FOR ALL
+  USING (public.is_admin() = true)
+  WITH CHECK (public.is_admin() = true);
+
+-- 5.9 Revokasi Hak Modifikasi dari Anon & Publik (Anti-Jebol REST API)
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts, public.admin_users FROM anon, PUBLIC;
+GRANT SELECT ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts TO anon, authenticated;
+GRANT ALL ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts, public.admin_users TO authenticated;
 
 
 -- ==============================================================================

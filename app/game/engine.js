@@ -21,6 +21,7 @@ import { BELT, PLANETS } from '../data/solarSystem.js';
 import { resolveKeymap } from '../data/keymap.js';
 import { PHENOMENA } from '../data/phenomena.js';
 import { HISTORY } from '../data/history.js';
+import { useSupabaseContent } from '../composables/useSupabaseContent.js';
 import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent } from '../composables/useGame.js';
 
 export const TIME_RATE = 0.02;      // hari simulasi per detik (1 hari = 50 dtk) — satu faktor untuk rotasi & revolusi
@@ -183,7 +184,12 @@ export function createEngine(el) {
   let keymap = resolveKeymap(settings.keys);
   const act = (id) => { for (const c of keymap[id] || []) if (keys[c]) return true; return false; };
   const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _qi = new THREE.Quaternion(), _e = new THREE.Euler(), _m = new THREE.Matrix4();
-  const shipDef = () => SHIPS[store.progress.selectedShip] || SHIPS.astra;
+  const shipDef = () => {
+    const id = store.progress.selectedShip;
+    const fallback = SHIPS[id] || SHIPS.astra;
+    const live = useSupabaseContent().getShips?.()?.[id];
+    return live ? { ...fallback, ...live } : fallback;
+  };
   const camOffset = (d) => new THREE.Vector3(0, d.camY, d.camZ);
 
   function defaultPose() {
@@ -675,7 +681,9 @@ export function createEngine(el) {
     clearAllInputs();
     ship.throttle = 0; ship.braking = true;
     approachShownAt = performance.now();
-    const ph = PHENOMENA[b.id];
+    const sup = useSupabaseContent();
+    const rawPh = sup.getPhenomenon(b.id) || (sup.loadedFromDb?.value?.phenomena ? null : PHENOMENA[b.id]);
+    const ph = rawPh && rawPh.is_active !== false ? rawPh : null;
     Object.assign(store.approach, { show: true, id: b.id, name: b.name, kind: b.kind, color: b.color, desc: (b.desc || '').split('. ')[0].replace(/\.$/, '') + '.', pheno: ph ? ph.title : '', isNew });
   }
   function autopilotOff(manual) { if (!store.autopilot) return; store.autopilot = false; if (manual) toast('Kemudi manual', 1300); }
@@ -818,7 +826,13 @@ export function createEngine(el) {
   const _q2 = new THREE.Quaternion();
   function moonsVisible(parent, v) { for (const x of sys.bodies) if (x.isMoon && x.parent === parent) x.holder.visible = v; }
   function startPheno(id) {
-    const def = PHENOMENA[id], b = sys.byId[id]; if (!def || def.lab || !b) return;
+    const sup = useSupabaseContent();
+    const livePh = sup.getPhenomenon(id);
+    if (sup.loadedFromDb?.value?.phenomena && (!livePh || livePh.is_active === false)) return;
+    if (livePh && livePh.is_active === false) return;
+    const def = livePh || PHENOMENA[id];
+    const b = sys.byId[id];
+    if (!def || def.lab || !b) return;
     if (store.mode !== 'planet' || store.focus !== id) setMode('planet', { body: id, force: true });
     Object.assign(pheno, { id, def, view: def.view, t0: obsTime, spin: obsTime, tick: 1, prevDec: null });
     store.obs.mul = def.mul;
@@ -1350,7 +1364,7 @@ export function createEngine(el) {
     } catch (err) {
       console.error(err);
       booting = null;
-      store.loading.error = 'Dunia 3D gagal dimuat: ' + (err && err.message ? err.message : err) + '. Pakai browser terbaru yang mendukung WebGL2.';
+      store.loading.error = 'Saat ini halaman ruang angkasa 3D belum bisa diakses. Pastikan koneksi stabil dan browser mendukung WebGL2.';
     }
   }
 

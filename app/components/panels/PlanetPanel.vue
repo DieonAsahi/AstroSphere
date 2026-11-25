@@ -11,11 +11,19 @@ import { HISTORY } from '~/data/history.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT, FACTS } from '~/data/learning.js';
 
-const { getPlanet, getPhenomenon } = useSupabaseContent();
+const { getPlanet, getPhenomenon, getHistory, getFacts, loadedFromDb } = useSupabaseContent();
 const p = computed(() => PLANETS.find((x) => x.id === store.focus) || MOONS.find((x) => x.id === store.focus) || PLANETS[2]);
 const planetData = computed(() => getPlanet(p.value.id));
-const ph = computed(() => getPhenomenon(p.value.id) || PHENOMENA[p.value.id]);
-const pq = computed(() => PREDICT[p.value.id] || null);
+const bodyFacts = computed(() => getFacts(p.value.id));
+const ph = computed(() => {
+  const item = getPhenomenon(p.value.id) || (loadedFromDb.value.phenomena ? null : PHENOMENA[p.value.id]);
+  return item && item.is_active !== false ? item : null;
+});
+const pq = computed(() => {
+  const td = ph.value?.tebak_dulu;
+  if (td && typeof td === 'object' && td.q) return td;
+  return PREDICT[p.value.id] || null;
+});
 const predicted = computed(() => !!store.progress.predict[p.value.id]);
 const nf = (n, d = 1) => (n != null && Number.isFinite(+n) ? (+n).toLocaleString('id-ID', { maximumFractionDigits: d }) : (n || '—'));
 
@@ -69,7 +77,12 @@ const scientificBoxes = computed(() => {
 });
 function quiz() { store.quiz.planet = p.value.id; store.quiz.kind = 'planet'; store.quiz.stage = 'intro'; game()?.setMode('kuis'); }
 function openFacts() { store.journalId = p.value.id; store.modal = 'journal'; }
-function history() { store.sejarah.era = 'semua'; store.sejarah.selected = (HISTORY[p.value.id] || [])[0]?.id || null; game()?.setMode('sejarah', { body: p.value.id }); }
+function history() {
+  store.sejarah.era = 'semua';
+  const liveHist = getHistory(p.value.id);
+  store.sejarah.selected = (liveHist?.[0] || HISTORY[p.value.id]?.[0])?.id || null;
+  game()?.setMode('sejarah', { body: p.value.id });
+}
 
 // ---- Tebak dulu ----
 const WATCH_S = 6;
@@ -94,7 +107,7 @@ function choose(i) {
 }
 function reveal() {
   clearInterval(timer); timer = 0;
-  result.value = recordPrediction(p.value.id, pick.value);
+  result.value = recordPrediction(p.value.id, pick.value, pq.value);
   revealed.value = true;
   if (result.value.ok) game()?.correct(); else game()?.wrong();
 }
@@ -218,9 +231,9 @@ const stageEyebrow = computed(() => {
           </button>
 
           <!-- 5. KARTU TAHUKAH KAMU? -->
-          <button v-if="FACTS[p.id]" class="dyk" @click="openFacts">
+          <button v-if="bodyFacts.length" class="dyk" @click="openFacts">
             <UiIcon name="info" :size="18" />
-            <span class="t">Tahukah kamu?<small>{{ FACTS[p.id].length }} kartu</small></span>
+            <span class="t">Tahukah kamu?<small>{{ bodyFacts.length }} kartu</small></span>
             <span v-if="!store.progress.cards[p.id]" class="tag star">Baru</span>
             <UiIcon name="lanjut" :size="16" />
           </button>
@@ -230,7 +243,7 @@ const stageEyebrow = computed(() => {
         <div v-else key="ph" class="sheet-body sheet-scroll sbody scroll">
           <span class="tag blue"><UiIcon name="fenomena" :size="13" />Fenomena</span>
           <h2 class="h2">{{ runTitle }}</h2>
-          <UiPredictCard v-if="guessing" :q="pq" :picked="pick" :revealed="revealed" :ok="result.ok" :reward="result.reward" :why="ph?.short" :progress="watched / WATCH_S" />
+          <UiPredictCard v-if="guessing" :q="pq" :picked="pick" :revealed="revealed" :ok="result.ok" :reward="result.reward" :why="pq?.why || ph?.short" :progress="watched / WATCH_S" />
           <p v-else class="desc">{{ ph?.short }}</p>
           <div class="live" :class="store.pheno.state" aria-live="polite">
             <span class="ico"><UiIcon :name="stateIcon" :size="24" /></span>
@@ -247,7 +260,7 @@ const stageEyebrow = computed(() => {
           <button class="btn-foot line block" @click="resetGuess"><UiIcon name="kembali" :size="18" />Kembali</button>
         </template>
         <template v-else-if="!store.pheno.on">
-          <button v-if="ph" class="btn-foot primary block" @click="phenomenon">
+          <button v-if="ph && ph.is_active !== false" class="btn-foot primary block" @click="phenomenon">
             <UiIcon name="fenomena" :size="18" />Fenomena
           </button>
           <div class="row2">

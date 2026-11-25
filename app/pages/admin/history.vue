@@ -1,8 +1,8 @@
 <script setup>
-// Halaman Pengelola Sejarah & POI (/admin/history) — Filter 6 Zaman Baku Bumi & Pratinjau PLY-03 / PLY-04
-import { ref, computed, onMounted } from 'vue';
+// Halaman Pengelola Sejarah (/admin/history) — Filter Era Dinamis & Pratinjau PLY-03 / PLY-04
+import { ref, computed, watch, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
-import { formatSupabaseError } from '~/utils/adminAuth.js';
+import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
 import { uploadAdminAsset } from '~/utils/adminStorage.js';
 import { isSafeMediaUrl } from '~/utils/mediaSecurity.js';
 
@@ -15,7 +15,9 @@ const loading = ref(true);
 const refreshing = ref(false);
 const saving = ref(false);
 const uploadingImage = ref(false);
+const togglingId = ref('');
 const error = ref('');
+const formError = ref('');
 const notification = ref(null);
 
 const events = ref([]);
@@ -83,6 +85,7 @@ const DEFAULT_EVENT = {
   deskripsi: '',
   gambar_url: '',
   sumber_referensi: 'NASA / Arsip Eksplorasi Antariksa',
+  is_active: true,
 };
 
 const formData = ref({ ...DEFAULT_EVENT });
@@ -117,6 +120,18 @@ async function handleRefresh() {
   await loadHistoryEvents();
 }
 
+const availableEraLabels = computed(() => {
+  const base = selectedPlanet.value === 'all'
+    ? events.value
+    : events.value.filter((e) => e.planet_id === selectedPlanet.value);
+  const labels = new Set();
+  for (const e of base) {
+    const lbl = (e.era_label || '').trim();
+    if (lbl) labels.add(lbl);
+  }
+  return [...labels];
+});
+
 // Penyaringan Daftar
 const filteredEvents = computed(() => {
   return events.value.filter((e) => {
@@ -124,11 +139,8 @@ const filteredEvents = computed(() => {
       return false;
     }
 
-    if (selectedEra.value !== 'all') {
-      const z = EARTH_6_ZAMAN.find((x) => x.id === selectedEra.value);
-      if (z && (e.tahun_kejadian < z.min || e.tahun_kejadian > z.max)) {
-        return false;
-      }
+    if (selectedEra.value !== 'all' && (e.era_label || '').trim() !== selectedEra.value) {
+      return false;
     }
 
     if (searchQuery.value) {
@@ -144,13 +156,52 @@ const filteredEvents = computed(() => {
   });
 });
 
+const ALLOWED_PLANET_IDS = new Set(PLANET_OPTIONS.map((p) => p.id));
+
+async function toggleActive(eventItem) {
+  if (togglingId.value === eventItem.event_id) return;
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  const nextState = !(eventItem.is_active !== false);
+  eventItem.is_active = nextState;
+  togglingId.value = eventItem.event_id;
+
+  try {
+    const { error: updErr } = await client
+      .from('history_events')
+      .update({ is_active: nextState })
+      .eq('event_id', eventItem.event_id);
+
+    if (updErr) throw updErr;
+    showNotification('success', `Status sejarah "${eventItem.judul}" diperbarui.`);
+  } catch (err) {
+    eventItem.is_active = !nextState;
+    showNotification('error', formatSupabaseError(err, 'Gagal memperbarui status aktif sejarah.'));
+  } finally {
+    togglingId.value = '';
+  }
+}
+
 const totalPages = computed(() => Math.ceil(filteredEvents.value.length / itemsPerPage) || 1);
 const paginatedEvents = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
+  const safePage = Math.min(Math.max(1, currentPage.value), totalPages.value);
+  const start = (safePage - 1) * itemsPerPage;
   return filteredEvents.value.slice(start, start + itemsPerPage);
 });
 
+watch([selectedPlanet, selectedEra, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (tp) => {
+  if (currentPage.value > tp) {
+    currentPage.value = tp;
+  }
+});
+
 function openCreateModal() {
+  formError.value = '';
   isEditing.value = false;
   formData.value = { ...DEFAULT_EVENT };
   modalViewMode.value = 'EDIT';
@@ -158,12 +209,13 @@ function openCreateModal() {
 }
 
 function openEditModal(eventItem) {
+  formError.value = '';
   isEditing.value = true;
   formData.value = {
     event_id: eventItem.event_id,
     planet_id: eventItem.planet_id,
     era_label: eventItem.era_label || '',
-    tahun_kejadian: Number(eventItem.tahun_kejadian || 0),
+    tahun_kejadian: Number(eventItem.tahun_kejadian ?? 0),
     kategori_poi: eventItem.kategori_poi || 'Titik Observasi',
     judul: eventItem.judul || '',
     ringkasan_singkat: eventItem.ringkasan_singkat || '',
@@ -172,38 +224,85 @@ function openEditModal(eventItem) {
     deskripsi: eventItem.deskripsi || '',
     gambar_url: eventItem.gambar_url || '',
     sumber_referensi: eventItem.sumber_referensi || '',
+    is_active: eventItem.is_active !== false,
   };
   modalViewMode.value = 'EDIT';
   modalOpen.value = true;
 }
 
 function closeModal() {
+  if (saving.value || uploadingImage.value) return;
   modalOpen.value = false;
+  formError.value = '';
+}
+
+function closeImportModal() {
+  if (saving.value) return;
+  importModalOpen.value = false;
 }
 
 async function handleSave() {
-  const client = getSupabaseClient();
-  if (!client) return;
-
-  if (formData.value.gambar_url && !isSafeMediaUrl(formData.value.gambar_url)) {
-    showNotification('error', 'URL foto tidak valid atau berisiko keamanan (hanya tautan HTTPS resmi atau unggah berkas langsung yang diizinkan).');
+  formError.value = '';
+  if (!ALLOWED_PLANET_IDS.has(formData.value.planet_id)) {
+    formError.value = 'Target planet tidak valid.';
     return;
   }
+  const yearVal = Number(formData.value.tahun_kejadian);
+  if (
+    formData.value.tahun_kejadian === '' ||
+    formData.value.tahun_kejadian === null ||
+    formData.value.tahun_kejadian === undefined ||
+    !Number.isFinite(yearVal) ||
+    !Number.isInteger(yearVal)
+  ) {
+    formError.value = 'Tahun kejadian harus berupa bilangan bulat yang valid (contoh: 1969 atau -3000).';
+    return;
+  }
+  if (!formData.value.era_label?.trim()) {
+    formError.value = 'Era sejarah wajib diisi.';
+    return;
+  }
+  if (!formData.value.kategori_poi?.trim()) {
+    formError.value = 'Kategori observasi wajib diisi.';
+    return;
+  }
+  if (!formData.value.judul?.trim()) {
+    formError.value = 'Judul peristiwa sejarah wajib diisi.';
+    return;
+  }
+  if (!formData.value.ringkasan_singkat?.trim()) {
+    formError.value = 'Ringkasan singkat (PLY-03) wajib diisi.';
+    return;
+  }
+  if (!formData.value.deskripsi?.trim()) {
+    formError.value = 'Uraian narasi lengkap (PLY-04) wajib diisi.';
+    return;
+  }
+
+  const cleanImageUrl = (formData.value.gambar_url || '').trim();
+  if (cleanImageUrl && !isSafeMediaUrl(cleanImageUrl)) {
+    formError.value = 'URL foto tidak valid atau berisiko keamanan (hanya tautan HTTPS resmi, path lokal /..., atau unggah berkas langsung yang diizinkan).';
+    return;
+  }
+
+  const client = getSupabaseClient();
+  if (!client) return;
 
   saving.value = true;
   try {
     const payload = {
       planet_id: formData.value.planet_id,
-      era_label: formData.value.era_label,
-      tahun_kejadian: Number(formData.value.tahun_kejadian),
-      kategori_poi: formData.value.kategori_poi,
-      judul: formData.value.judul,
-      ringkasan_singkat: formData.value.ringkasan_singkat,
-      nama_wahana: formData.value.nama_wahana,
-      karakteristik_fisik: formData.value.karakteristik_fisik,
-      deskripsi: formData.value.deskripsi,
-      gambar_url: formData.value.gambar_url,
-      sumber_referensi: formData.value.sumber_referensi,
+      era_label: formData.value.era_label.trim(),
+      tahun_kejadian: yearVal,
+      kategori_poi: formData.value.kategori_poi.trim(),
+      judul: formData.value.judul.trim(),
+      ringkasan_singkat: formData.value.ringkasan_singkat.trim(),
+      nama_wahana: (formData.value.nama_wahana || '').trim(),
+      karakteristik_fisik: (formData.value.karakteristik_fisik || '').trim(),
+      deskripsi: formData.value.deskripsi.trim(),
+      gambar_url: cleanImageUrl,
+      sumber_referensi: (formData.value.sumber_referensi || '').trim(),
+      is_active: formData.value.is_active !== false,
     };
 
     if (isEditing.value && formData.value.event_id) {
@@ -212,19 +311,20 @@ async function handleSave() {
         .update(payload)
         .eq('event_id', formData.value.event_id);
       if (updErr) throw updErr;
-      showNotification('success', `Peristiwa "${formData.value.judul}" berhasil diperbarui.`);
+      showNotification('success', `Peristiwa "${payload.judul}" berhasil diperbarui.`);
     } else {
       const { error: insErr } = await client
         .from('history_events')
         .insert(payload);
       if (insErr) throw insErr;
-      showNotification('success', `Peristiwa "${formData.value.judul}" berhasil ditambahkan.`);
+      showNotification('success', `Peristiwa "${payload.judul}" berhasil ditambahkan.`);
     }
 
+    saving.value = false;
     closeModal();
     await loadHistoryEvents();
   } catch (err) {
-    showNotification('error', formatSupabaseError(err, 'Gagal menyimpan peristiwa.'));
+    formError.value = formatSupabaseError(err, 'Gagal menyimpan peristiwa.');
   } finally {
     saving.value = false;
   }
@@ -280,13 +380,9 @@ function exportJson() {
 
 function exportCsv() {
   if (!filteredEvents.value.length) return;
-  const headers = ['event_id', 'planet_id', 'era_label', 'tahun_kejadian', 'kategori_poi', 'judul', 'ringkasan_singkat', 'nama_wahana', 'karakteristik_fisik', 'deskripsi', 'gambar_url', 'sumber_referensi'];
-  const rows = filteredEvents.value.map((e) => headers.map((h) => `"${String(e[h] ?? '').replace(/"/g, '""')}"`).join(','));
-  const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows].join('\n'));
-  const dlAnchor = document.createElement('a');
-  dlAnchor.setAttribute('href', csvContent);
-  dlAnchor.setAttribute('download', `history_events_${Date.now()}.csv`);
-  dlAnchor.click();
+  const headers = ['event_id', 'planet_id', 'era_label', 'tahun_kejadian', 'kategori_poi', 'judul', 'ringkasan_singkat', 'nama_wahana', 'karakteristik_fisik', 'deskripsi', 'gambar_url', 'sumber_referensi', 'is_active'];
+  const rows = filteredEvents.value.map((e) => headers.map((h) => (e[h] ?? '')));
+  downloadSafeCsv(`history_events_${Date.now()}.csv`, headers, rows);
 }
 
 async function handleImportSubmit() {
@@ -298,32 +394,77 @@ async function handleImportSubmit() {
 
   try {
     const parsed = JSON.parse(importText.value);
-    if (!Array.isArray(parsed)) {
-      importError.value = 'Format JSON harus berupa array objek peristiwa.';
+    if (!Array.isArray(parsed) || !parsed.length) {
+      importError.value = 'Format JSON harus berupa array objek peristiwa yang tidak kosong.';
       return;
+    }
+
+    const cleanRows = [];
+    for (let i = 0; i < parsed.length; i++) {
+      const row = parsed[i];
+      if (!row || typeof row !== 'object') {
+        importError.value = `Baris ${i + 1}: entri harus berupa objek JSON.`;
+        return;
+      }
+
+      const planetId = row.planet_id !== undefined && row.planet_id !== null && String(row.planet_id).trim() !== ''
+        ? String(row.planet_id).toLowerCase().trim()
+        : 'earth';
+      if (!ALLOWED_PLANET_IDS.has(planetId)) {
+        importError.value = `Baris ${i + 1}: planet_id "${row.planet_id}" tidak valid.`;
+        return;
+      }
+
+      const rawYear = row.tahun_kejadian;
+      const parsedYear = rawYear !== undefined && rawYear !== null && String(rawYear).trim() !== ''
+        ? Number(rawYear)
+        : 2000;
+      if (!Number.isFinite(parsedYear) || !Number.isInteger(parsedYear)) {
+        importError.value = `Baris ${i + 1}: tahun_kejadian "${rawYear}" tidak valid (harus bilangan bulat).`;
+        return;
+      }
+
+      const judul = String(row.judul ?? '').trim();
+      const deskripsi = String(row.deskripsi ?? '').trim();
+      if (!judul || !deskripsi) {
+        importError.value = `Baris ${i + 1}: judul dan deskripsi wajib diisi.`;
+        return;
+      }
+
+      const gambarUrl = String(row.gambar_url || '').trim();
+      if (gambarUrl && !isSafeMediaUrl(gambarUrl)) {
+        importError.value = `Baris ${i + 1}: URL gambar_url tidak valid atau berisiko keamanan.`;
+        return;
+      }
+
+      const isActiveRaw = row.is_active;
+      const isActive = isActiveRaw === undefined || isActiveRaw === null
+        ? true
+        : (typeof isActiveRaw === 'string'
+          ? !['false', '0', 'no', 'nonaktif'].includes(isActiveRaw.trim().toLowerCase())
+          : Boolean(isActiveRaw));
+
+      cleanRows.push({
+        planet_id: planetId,
+        era_label: String(row.era_label || '').trim() || 'Zaman Modern',
+        tahun_kejadian: parsedYear,
+        kategori_poi: String(row.kategori_poi || '').trim() || 'Titik Observasi',
+        judul,
+        ringkasan_singkat: String(row.ringkasan_singkat || '').trim(),
+        nama_wahana: String(row.nama_wahana || '').trim(),
+        karakteristik_fisik: String(row.karakteristik_fisik || '').trim(),
+        deskripsi,
+        gambar_url: gambarUrl,
+        sumber_referensi: String(row.sumber_referensi || '').trim(),
+        is_active: isActive,
+      });
     }
 
     const client = getSupabaseClient();
     if (!client) return;
 
     saving.value = true;
-    const cleanRows = parsed.map((row) => {
-      return {
-        planet_id: row.planet_id || 'earth',
-        era_label: row.era_label || 'Zaman Modern',
-        tahun_kejadian: Number(row.tahun_kejadian || 2000),
-        kategori_poi: row.kategori_poi || 'Titik Observasi',
-        judul: row.judul || 'Peristiwa Baru',
-        ringkasan_singkat: row.ringkasan_singkat || '',
-        nama_wahana: row.nama_wahana || '',
-        karakteristik_fisik: row.karakteristik_fisik || '',
-        deskripsi: row.deskripsi || '',
-        gambar_url: row.gambar_url || '',
-        sumber_referensi: row.sumber_referensi || '',
-      };
-    });
-
-    const { error: insErr } = await client.from('history_events').upsert(cleanRows);
+    const { error: insErr } = await client.from('history_events').insert(cleanRows);
     if (insErr) throw insErr;
 
     showNotification('success', `Berhasil mengimpor ${cleanRows.length} catatan sejarah.`);
@@ -331,7 +472,7 @@ async function handleImportSubmit() {
     importText.value = '';
     await loadHistoryEvents();
   } catch (err) {
-    importError.value = err.message || 'Gagal memproses data impor.';
+    importError.value = formatSupabaseError(err, 'Gagal memproses data impor.');
   } finally {
     saving.value = false;
   }
@@ -362,7 +503,7 @@ onMounted(() => {
   <div class="admin-history-page">
     <div class="page-head">
       <div>
-        <h1 class="page-title">Manajemen Sejarah &amp; POI Eksplorasi</h1>
+        <h1 class="page-title">Manajemen Sejarah Eksplorasi</h1>
         <p class="page-desc">Kelola lini masa misi luar angkasa, penemuan teleskopik, serta pendaratan wahana antarplanet.</p>
       </div>
       <div class="head-actions">
@@ -387,21 +528,26 @@ onMounted(() => {
       <span>{{ notification.msg }}</span>
     </div>
 
-    <!-- BILAH FILTER PLANET & 6 ZAMAN BAKU BUMI -->
+    <div v-if="error" class="dash-alert error" role="alert">
+      <UiIcon name="silang" :size="18" />
+      <span>{{ error }}</span>
+    </div>
+
+    <!-- BILAH FILTER PLANET & ERA DINAMIS -->
     <div class="card-section filters-bar">
       <div class="filter-field">
         <label>Filter Planet</label>
-        <select v-model="selectedPlanet" class="adm-select">
+        <select v-model="selectedPlanet" class="adm-select" @change="selectedEra = 'all'">
           <option value="all">Semua Planet ({{ events.length }})</option>
           <option v-for="p in PLANET_OPTIONS" :key="p.id" :value="p.id">Planet {{ p.name }}</option>
         </select>
       </div>
 
       <div class="filter-field">
-        <label>Filter 6 Zaman Baku Bumi</label>
+        <label>Filter Era / Zaman</label>
         <select v-model="selectedEra" class="adm-select">
-          <option value="all">Semua Zaman</option>
-          <option v-for="z in EARTH_6_ZAMAN" :key="z.id" :value="z.id">{{ z.label }}</option>
+          <option value="all">Semua Era</option>
+          <option v-for="lbl in availableEraLabels" :key="lbl" :value="lbl">{{ lbl }}</option>
         </select>
       </div>
 
@@ -429,10 +575,11 @@ onMounted(() => {
             <th style="width: 110px;">Tahun</th>
             <th style="width: 100px;">Planet</th>
             <th>Judul Peristiwa</th>
-            <th>Kategori POI</th>
+            <th>Kategori</th>
             <th>Wahana / Tokoh</th>
             <th style="width: 70px; text-align: center;">Foto</th>
-            <th style="width: 140px; text-align: right;">Aksi</th>
+            <th style="width: 96px; text-align: center;">Status</th>
+            <th style="width: 110px; text-align: right;">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -456,6 +603,18 @@ onMounted(() => {
             <td style="text-align: center;">
               <span v-if="e.gambar_url" class="has-img" title="Memiliki foto"><UiIcon name="cek" :size="16" /></span>
               <span v-else class="no-img">—</span>
+            </td>
+            <td style="text-align: center;">
+              <button
+                type="button"
+                class="status-toggle-btn"
+                :class="{ on: e.is_active !== false }"
+                :disabled="togglingId === e.event_id"
+                :title="e.is_active !== false ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'"
+                @click="toggleActive(e)"
+              >
+                {{ togglingId === e.event_id ? '…' : (e.is_active !== false ? 'Aktif' : 'Nonaktif') }}
+              </button>
             </td>
             <td style="text-align: right;">
               <div class="row-actions">
@@ -490,15 +649,19 @@ onMounted(() => {
             <p class="modal-sub">Kelola data peristiwa sejarah, waktu, dan narasi peristiwa.</p>
           </div>
           <div class="modal-mode-tabs">
-            <button :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
-            <button :class="{ on: modalViewMode === 'PLY03' }" @click="modalViewMode = 'PLY03'">Pratinjau PLY-03 (Kartu)</button>
-            <button :class="{ on: modalViewMode === 'PLY04' }" @click="modalViewMode = 'PLY04'">Pratinjau PLY-04 (Detail)</button>
-            <button class="btn-close-modal" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
+            <button type="button" :class="{ on: modalViewMode === 'EDIT' }" @click="modalViewMode = 'EDIT'">Formulir</button>
+            <button type="button" :class="{ on: modalViewMode === 'PLY03' }" @click="modalViewMode = 'PLY03'">Pratinjau PLY-03 (Kartu)</button>
+            <button type="button" :class="{ on: modalViewMode === 'PLY04' }" @click="modalViewMode = 'PLY04'">Pratinjau PLY-04 (Detail)</button>
+            <button type="button" class="btn-close-modal" :disabled="saving || uploadingImage" @click="closeModal"><UiIcon name="tutup" :size="18" /></button>
           </div>
         </div>
 
         <!-- FORMULIR INPUT -->
         <form v-if="modalViewMode === 'EDIT'" class="modal-body scroll" @submit.prevent="handleSave">
+          <div v-if="formError" class="dash-alert error" role="alert">
+            <UiIcon name="silang" :size="16" />
+            <span>{{ formError }}</span>
+          </div>
           <div class="grid-2">
             <label class="field">
               <span>Target Planet</span>
@@ -527,7 +690,7 @@ onMounted(() => {
               </div>
             </label>
             <label class="field">
-              <span>Kategori POI / Jenis Observasi</span>
+              <span>Kategori / Jenis Observasi</span>
               <input v-model="formData.kategori_poi" type="text" placeholder="misal: Pendaratan Permukaan / Orbit" required />
             </label>
           </div>
@@ -578,8 +741,13 @@ onMounted(() => {
             <input v-model="formData.sumber_referensi" type="text" placeholder="misal: NASA Historical Data / ESA Archives" />
           </label>
 
+          <label class="checkbox-row">
+            <input v-model="formData.is_active" type="checkbox" />
+            <span>Aktifkan catatan sejarah ini (tampil ke siswa di halaman publik)</span>
+          </label>
+
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" @click="closeModal">Batal</button>
+            <button type="button" class="btn-cancel" :disabled="saving || uploadingImage" @click="closeModal">Batal</button>
             <button type="submit" class="btn-save" :disabled="saving || uploadingImage">
               {{ saving ? 'Menyimpan…' : (isEditing ? 'Simpan Perubahan' : 'Buat Peristiwa Baru') }}
             </button>
@@ -615,7 +783,7 @@ onMounted(() => {
             </div>
 
             <div class="ply04-meta-box">
-              <div class="meta-row"><span>Kategori POI</span><b>{{ formData.kategori_poi }}</b></div>
+              <div class="meta-row"><span>Kategori</span><b>{{ formData.kategori_poi }}</b></div>
               <div class="meta-row"><span>Status / Era</span><b>{{ formData.era_label }}</b></div>
               <div class="meta-row"><span>Wahana / Tokoh</span><b>{{ formData.nama_wahana || '—' }}</b></div>
               <div class="meta-row"><span>Karakteristik Fisik</span><b>{{ formData.karakteristik_fisik || '—' }}</b></div>
@@ -635,12 +803,12 @@ onMounted(() => {
     </div>
 
     <!-- MODAL KONFIRMASI HAPUS -->
-    <div v-if="deletingEvent" class="modal-backdrop" @click.self="deletingEvent = null">
+    <div v-if="deletingEvent" class="modal-backdrop" @click.self="!saving && (deletingEvent = null)">
       <div class="modal-card small">
         <h3 class="modal-title">Hapus Peristiwa Sejarah?</h3>
         <p class="modal-desc">Apakah Anda yakin ingin menghapus peristiwa <b>"{{ deletingEvent.judul }}"</b>? Tindakan ini tidak dapat dibatalkan.</p>
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" @click="deletingEvent = null">Batal</button>
+          <button type="button" class="btn-cancel" :disabled="saving" @click="deletingEvent = null">Batal</button>
           <button type="button" class="btn-danger" :disabled="saving" @click="handleDelete">
             {{ saving ? 'Menghapus…' : 'Ya, Hapus' }}
           </button>
@@ -649,19 +817,19 @@ onMounted(() => {
     </div>
 
     <!-- MODAL IMPOR MASSAL JSON -->
-    <div v-if="importModalOpen" class="modal-backdrop" @click.self="importModalOpen = false">
+    <div v-if="importModalOpen" class="modal-backdrop" @click.self="closeImportModal">
       <div class="modal-card">
         <div class="modal-header">
           <h3 class="modal-title">Impor Massal Catatan Sejarah (JSON)</h3>
-          <button class="btn-close-modal" @click="importModalOpen = false"><UiIcon name="tutup" :size="18" /></button>
+          <button type="button" class="btn-close-modal" :disabled="saving" @click="closeImportModal"><UiIcon name="tutup" :size="18" /></button>
         </div>
         <div class="modal-body">
-          <p class="hint">Tempelkan array objek JSON dengan kolom: planet_id, era_label, tahun_kejadian, kategori_poi, judul, ringkasan_singkat, nama_wahana, deskripsi, gambar_url, sumber_referensi.</p>
+          <p class="hint">Tempelkan array objek JSON dengan kolom: planet_id, era_label, tahun_kejadian, kategori_poi, judul, ringkasan_singkat, nama_wahana, karakteristik_fisik, deskripsi, gambar_url, sumber_referensi, is_active.</p>
           <textarea v-model="importText" rows="10" placeholder="[ { &quot;planet_id&quot;: &quot;earth&quot;, &quot;judul&quot;: &quot;...&quot; } ]" class="import-textarea" />
           <p v-if="importError" class="error-text">{{ importError }}</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" @click="importModalOpen = false">Batal</button>
+          <button type="button" class="btn-cancel" :disabled="saving" @click="closeImportModal">Batal</button>
           <button type="button" class="btn-save" :disabled="saving" @click="handleImportSubmit">
             {{ saving ? 'Mengimpor…' : 'Proses Impor' }}
           </button>
@@ -718,6 +886,9 @@ onMounted(() => {
 .btn-head.line { background-color: #ffffff; border-color: #cbd5e1; color: #334155; }
 .btn-head.line:hover { background-color: #f1f5f9; }
 .btn-head.ghost { background-color: #f1f5f9; color: #475569; }
+.dash-alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 500; border: 1px solid transparent; }
+.dash-alert.success { background-color: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+.dash-alert.error { background-color: #fef2f2; border-color: #fecaca; color: #dc2626; }
 
 /* Filters Bar */
 .filters-bar {
@@ -1003,4 +1174,7 @@ onMounted(() => {
 
 .import-textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace; font-size: 12px; }
 .error-text { color: #dc2626; font-size: 13px; margin: 4px 0 0 0; }
+.status-toggle-btn { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: #f1f5f9; color: #94a3b8; }
+.status-toggle-btn.on { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; cursor: pointer; }
 </style>

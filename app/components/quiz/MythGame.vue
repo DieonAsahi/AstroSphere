@@ -12,8 +12,8 @@ const { getMyths, loadAll } = useSupabaseContent();
 const Q = store.quiz;
 const deck = ref([]), idx = ref(0), choice = ref(null), score = ref(0), gained = ref(0), lastReward = ref(0), results = ref([]);
 
-// Ambil seluruh mitos secara reaktif dari state Supabase (fallback ke lokal MYTHS)
-const allMyths = computed(() => getMyths() || MYTHS);
+// Ambil seluruh mitos aktif secara reaktif dari state Supabase (fallback ke lokal MYTHS)
+const allMyths = computed(() => (getMyths() || MYTHS).filter((m) => m.is_active !== false));
 
 // Hanya pernyataan tentang benda yang sudah ditemukan; sisanya terbuka sambil menjelajah.
 const pool = computed(() => allMyths.value.filter((m) => isFound(m.body)));
@@ -37,7 +37,7 @@ function answer(isFact) {
   const ok = isFact === cur.value.fact;
   if (ok) score.value++;
   results.value[idx.value] = ok;
-  lastReward.value = recordMyth(cur.value.id, ok); gained.value += lastReward.value;
+  lastReward.value = recordMyth(cur.value.id, ok, cur.value.points || MYTH_REWARD); gained.value += lastReward.value;
   if (ok) game()?.correct(); else game()?.wrong();
 }
 function next() {

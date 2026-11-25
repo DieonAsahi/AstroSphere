@@ -1,17 +1,21 @@
 <script setup>
 // Hanggar: pesawat 3D berputar di latar, carousel pemilih 1-per-1 di bawah pesawat, detail & aksi di kartu kanan.
 // Astra gratis, Orion 300, Nova 700 bintang. Membuka memotong saldo sekali; memilih pesawat yang dimiliki gratis.
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, unlockShip, saveProgress, showToast } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 import { KM } from '~/game/util.js';
 
-const { getShips } = useSupabaseContent();
+const { getShips, loadAll } = useSupabaseContent();
 const shipsData = computed(() => getShips());
+const availableShipIds = computed(() => {
+  const ids = SHIP_IDS.filter((id) => shipsData.value[id]?.is_active !== false);
+  return ids.length ? ids : [SHIP_IDS[0]];
+});
 const cur = computed(() => shipsData.value[store.hangarPreview] || SHIPS[store.hangarPreview] || SHIPS.astra);
 const currentIndex = computed(() => {
-  const idx = SHIP_IDS.indexOf(store.hangarPreview);
+  const idx = availableShipIds.value.indexOf(store.hangarPreview);
   return idx >= 0 ? idx : 0;
 });
 const cruiseSpeedKm = computed(() => Math.round((cur.value.speed || 70) * KM).toLocaleString('id-ID'));
@@ -25,14 +29,22 @@ function preview(id) {
 }
 
 function prevShip() {
-  const prevIdx = (currentIndex.value - 1 + SHIP_IDS.length) % SHIP_IDS.length;
-  preview(SHIP_IDS[prevIdx]);
+  const list = availableShipIds.value;
+  const prevIdx = (currentIndex.value - 1 + list.length) % list.length;
+  preview(list[prevIdx]);
 }
 
 function nextShip() {
-  const nextIdx = (currentIndex.value + 1) % SHIP_IDS.length;
-  preview(SHIP_IDS[nextIdx]);
+  const list = availableShipIds.value;
+  const nextIdx = (currentIndex.value + 1) % list.length;
+  preview(list[nextIdx]);
 }
+
+watch(availableShipIds, (list) => {
+  if (list.length && !list.includes(store.hangarPreview)) {
+    game()?.previewShip(list[0]);
+  }
+});
 
 function use(id) {
   store.progress.selectedShip = id;
@@ -62,6 +74,7 @@ function onKeydown(e) {
 }
 
 onMounted(() => {
+  loadAll();
   window.addEventListener('keydown', onKeydown);
 });
 
@@ -104,7 +117,7 @@ onBeforeUnmount(() => {
       <div class="hangar-ship-card">
         <div class="ship-card-top">
           <b class="ship-name-text">{{ cur.name }}</b>
-          <span class="ship-counter">{{ currentIndex + 1 }} / {{ SHIP_IDS.length }}</span>
+          <span class="ship-counter">{{ currentIndex + 1 }} / {{ availableShipIds.length }}</span>
         </div>
 
         <div class="ship-card-meta">
@@ -119,10 +132,10 @@ onBeforeUnmount(() => {
             <UiIcon name="kunci" :size="12" /> {{ cur.price }} Bintang
           </span>
 
-          <!-- Indikator 3 Garis Kecil -->
+          <!-- Indikator Garis Kecil -->
           <div class="ship-dots-track" role="tablist" aria-label="Pilih kapal">
             <button
-              v-for="(id, i) in SHIP_IDS"
+              v-for="(id, i) in availableShipIds"
               :key="id"
               type="button"
               class="ship-dot-bar"
@@ -203,7 +216,7 @@ onBeforeUnmount(() => {
             <span>Butuh {{ cur.price - store.progress.points }} bintang lagi</span>
           </button>
           <div class="stat-bar-track star-progress">
-            <i :style="{ width: Math.min(100, store.progress.points / cur.price * 100) + '%' }" />
+            <i :style="{ width: Math.min(100, cur.price > 0 ? store.progress.points / cur.price * 100 : 100) + '%' }" />
           </div>
         </template>
       </div>
