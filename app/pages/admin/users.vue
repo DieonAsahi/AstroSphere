@@ -809,4 +809,10 @@ onMounted(() => {
 .btn-warn { padding: 8px 18px; border-radius: 6px; border: none; background: #d97706; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 .btn-danger { padding: 8px 18px; border-radius: 6px; border: none; background: #dc2626; color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
 .btn-danger-outline { padding: 8px 14px; border-radius: 6px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+@media (max-width: 640px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

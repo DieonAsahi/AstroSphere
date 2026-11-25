@@ -20,6 +20,15 @@ const planet = computed(() => planetList.value.find((p) => p.id === Q.planet) ||
 const set = computed(() => getQuiz(Q.planet) || QUIZ[Q.planet]);
 const questionCount = computed(() => set.value?.questions?.length ?? 0);
 const maxScore = computed(() => (set.value?.questions?.length ? set.value.questions.reduce((sum, q) => sum + (Number(q.points) || POINTS_PER_QUESTION), 0) : 0));
+const questionPointsLabel = computed(() => {
+  const qs = set.value?.questions || [];
+  if (!qs.length) return '';
+  const ptsList = qs.map((q) => Number(q.points) || POINTS_PER_QUESTION);
+  const minPts = Math.min(...ptsList);
+  const maxPts = Math.max(...ptsList);
+  if (minPts === maxPts) return `${minPts} bintang per jawaban benar`;
+  return `hingga ${maxScore.value} bintang (${minPts}–${maxPts} bintang/soal)`;
+});
 const order = ref([]); // urutan acak indeks pilihan per soal
 const qq = computed(() => set.value?.questions?.[Q.index] || { text: '', options: [], answer: 0, explanation: '' });
 const opts = computed(() => (order.value[Q.index] || [0, 1, 2, 3]).map((i) => ({ i, text: qq.value.options?.[i] || '' })));
@@ -130,7 +139,10 @@ const letters = ['A', 'B', 'C', 'D'];
 
         <template v-if="open">
           <p class="lead-sub">
-            <b class="num text-sky">{{ questionCount }} soal</b> · <UiIcon name="bintang" :size="15" class="si" /> {{ POINTS_PER_QUESTION }} bintang per jawaban benar
+            <template v-if="questionCount > 0">
+              <b class="num text-sky">{{ questionCount }} soal</b> · <UiIcon name="bintang" :size="15" class="si" /> {{ questionPointsLabel }}
+            </template>
+            <span v-else>Soal kuis untuk planet ini belum tersedia.</span>
           </p>
           <div class="starrow" :aria-label="`Skor terbaik ${stars(best)} dari ${questionCount} bintang`">
             <UiIcon

@@ -7,10 +7,13 @@ import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT } from '~/data/learning.js';
 
-const { getPlanet, getPhenomenon } = useSupabaseContent();
+const { getPlanet, getPhenomenon, loadedFromDb } = useSupabaseContent();
 
 const planetData = computed(() => getPlanet(store.approach.id));
-const phenomenonData = computed(() => getPhenomenon(store.approach.id) || PHENOMENA[store.approach.id]);
+const phenomenonData = computed(() => {
+  const item = getPhenomenon(store.approach.id) || (loadedFromDb.value.phenomena ? null : PHENOMENA[store.approach.id]);
+  return item && item.is_active !== false ? item : null;
+});
 
 const approachName = computed(() => planetData.value?.nama || store.approach.name);
 const approachDesc = computed(() => {
@@ -38,7 +41,12 @@ const teaser = computed(() => {
   const ph = phenomenonData.value;
   if (!ph) return null;
   const title = ph.title || ph.judul || '';
-  return PREDICT[id] && !store.progress.predict[id] ? { label: 'Tebak dulu', text: PREDICT[id].q } : { label: 'Fenomena', text: title };
+  const td = ph.tebak_dulu && typeof ph.tebak_dulu === 'object' && ph.tebak_dulu.q
+    ? ph.tebak_dulu
+    : PREDICT[id];
+  return td && !store.progress.predict[id]
+    ? { label: 'Tebak dulu', text: td.q }
+    : { label: 'Fenomena', text: title };
 });
 </script>
 

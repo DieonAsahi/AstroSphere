@@ -2,7 +2,7 @@
 // Halaman Pengelola Sejarah (/admin/history) — Filter Era Dinamis & Pratinjau Kartu / Detail
 import { ref, computed, watch, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
-import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
+import { formatSupabaseError, downloadSafeCsv, parseAdminJsonBatch } from '~/utils/adminAuth.js';
 import { uploadAdminAsset } from '~/utils/adminStorage.js';
 import { isSafeMediaUrl } from '~/utils/mediaSecurity.js';
 
@@ -406,19 +406,16 @@ async function handleImportSubmit() {
   }
 
   try {
-    const parsed = JSON.parse(importText.value);
-    if (!Array.isArray(parsed) || !parsed.length) {
-      importError.value = 'Format JSON harus berupa array objek peristiwa yang tidak kosong.';
+    const batch = parseAdminJsonBatch(importText.value, 'Format JSON harus berupa array objek peristiwa yang tidak kosong.');
+    if (!batch.ok) {
+      importError.value = batch.error;
       return;
     }
+    const parsed = batch.rows;
 
     const cleanRows = [];
     for (let i = 0; i < parsed.length; i++) {
       const row = parsed[i];
-      if (!row || typeof row !== 'object') {
-        importError.value = `Baris ${i + 1}: entri harus berupa objek JSON.`;
-        return;
-      }
 
       const planetId = row.planet_id !== undefined && row.planet_id !== null && String(row.planet_id).trim() !== ''
         ? String(row.planet_id).toLowerCase().trim()

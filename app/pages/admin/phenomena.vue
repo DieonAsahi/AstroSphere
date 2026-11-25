@@ -397,7 +397,7 @@ onMounted(() => {
 
       <div v-else-if="!filteredPhenomena.length" class="empty-state">
         <p>Belum ada data fenomena untuk kategori planet ini.</p>
-        <button class="btn-outline" @click="openCreateModal">Buat Fenomena Baru</button>
+        <button v-if="selectedPlanet !== 'all'" type="button" class="btn-outline" @click="selectedPlanet = 'all'">Tampilkan Semua Fenomena</button>
       </div>
 
       <table v-else class="adm-table">

@@ -263,6 +263,7 @@ function downloadPdf() {
 <head>
   <meta charset="utf-8">
   <title>${escapeHtml(title)} - AstroSphere</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
   <style>
     @page {
       size: A4 portrait;
@@ -274,7 +275,7 @@ function downloadPdf() {
       print-color-adjust: exact;
     }
     body {
-      font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+      font-family: 'Poppins', sans-serif;
       color: #0f172a;
       background: #ffffff;
       line-height: 1.6;

@@ -634,7 +634,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   font-size:11px;
   font-weight:500;
   color:rgba(148,174,255,.55);
-  font-family:var(--mono);
+  font-family:var(--display);
+  font-variant-numeric:tabular-nums;
 }
 .fc-title{
   font-family:var(--display);

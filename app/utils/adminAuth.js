@@ -531,3 +531,37 @@ export function downloadSafeCsv(filename, headers, rows) {
   dlAnchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export const MAX_ADMIN_IMPORT_ROWS = 200;
+
+/**
+ * Memvalidasi muatan JSON impor massal Admin: harus array objek non-kosong & tidak melebihi batas batch
+ */
+export function parseAdminJsonBatch(
+  rawText,
+  emptyArrayMsg = 'Format JSON harus berupa array objek yang tidak kosong.',
+  maxRows = MAX_ADMIN_IMPORT_ROWS,
+) {
+  let parsed;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    return { ok: false, error: 'Format JSON tidak valid. Periksa tanda kutip, koma, dan kurung.' };
+  }
+  if (!Array.isArray(parsed) || !parsed.length) {
+    return { ok: false, error: emptyArrayMsg };
+  }
+  if (parsed.length > maxRows) {
+    return {
+      ok: false,
+      error: `Maksimal ${maxRows} entri per sekali impor agar proses tetap aman dan stabil (ditemukan ${parsed.length} entri).`,
+    };
+  }
+  for (let i = 0; i < parsed.length; i++) {
+    const row = parsed[i];
+    if (!row || typeof row !== 'object' || Array.isArray(row)) {
+      return { ok: false, error: `Baris ${i + 1}: entri harus berupa objek JSON.` };
+    }
+  }
+  return { ok: true, rows: parsed };
+}

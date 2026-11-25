@@ -320,14 +320,46 @@ async function executeConfirmDialog() {
 }
 
 const openFaq = ref({ 0: true });
-const FAQ = [
-  ['Apa itu AstroSphere?', 'Game belajar tata surya interaktif 3D di browser. Terbangkan pesawat antariksa, singgahi delapan planet, amati fenomenanya, telusuri sejarah eksplorasi, lalu uji wawasanmu lewat kuis.'],
-  ['Bagaimana cara ke planet tertentu?', 'Buka Peta (tombol M atau lewat navigasi), pilih planet tujuan, lalu tekan "Terbang ke sini". Pesawat akan bermanuver otomatis dan berhenti tepat saat mendekati planet.'],
-  ['Bagaimana mendapat bintang?', 'Kerjakan kuis planet: 4 soal, 50 bintang per jawaban benar. Bintang hanya bertambah jika skormu melampaui skor terbaik sebelumnya. Jawaban salah tidak mengurangi saldo bintang.'],
-  ['Untuk apa bintang digunakan?', 'Membuka armada pesawat baru di Hanggar: Orion Glider (300 bintang) dan Nova Voyager (700 bintang).'],
-  ['Apakah progres tersimpan aman?', 'Ya! Saat Anda mendaftar atau masuk akun, seluruh saldo bintang, armada pesawat, dan jurnal tersimpan otomatis di akun Anda. Dalam Mode Tamu, progres tetap tersimpan di peramban perangkat ini.'],
-  ['Apakah ukuran dan jaraknya berskala nyata?', 'Rasio ukuran planet dibandingkan satu sama lain akurat sesuai data NASA JPL. Jarak orbit antarplanet dipadatkan secara ergonomis agar seluruh tata surya dapat dijelajahi dengan nyaman.'],
-];
+const FAQ = computed(() => {
+  const activePlanets = planets.value?.length ? planets.value : PLANETS;
+  const counts = [];
+  const ptsValues = [];
+  for (const p of activePlanets) {
+    const qs = getQuiz(p.id)?.questions || [];
+    if (qs.length > 0) {
+      counts.push(qs.length);
+      for (const q of qs) {
+        ptsValues.push(Number(q.points) || POINTS_PER_QUESTION);
+      }
+    }
+  }
+  const minC = counts.length ? Math.min(...counts) : 4;
+  const maxC = counts.length ? Math.max(...counts) : 4;
+  const countTxt = minC === maxC ? `${minC} soal` : `${minC}–${maxC} soal`;
+
+  const minP = ptsValues.length ? Math.min(...ptsValues) : POINTS_PER_QUESTION;
+  const maxP = ptsValues.length ? Math.max(...ptsValues) : POINTS_PER_QUESTION;
+  const ptsTxt = minP === maxP ? `${minP} bintang` : `${minP}–${maxP} bintang`;
+
+  const paidShips = (ships.value || []).filter((s) => s && Number(s.price) > 0);
+  const shipItems = paidShips.map((s) => `${s.name} (${s.price} bintang)`);
+  let shipSummary = 'Membuka armada pesawat baru yang tersedia di Hanggar.';
+  if (shipItems.length === 1) {
+    shipSummary = `Membuka armada pesawat baru di Hanggar: ${shipItems[0]}.`;
+  } else if (shipItems.length > 1) {
+    const last = shipItems[shipItems.length - 1];
+    shipSummary = `Membuka armada pesawat baru di Hanggar: ${shipItems.slice(0, -1).join(', ')} dan ${last}.`;
+  }
+
+  return [
+    ['Apa itu AstroSphere?', 'Game belajar tata surya interaktif 3D di browser. Terbangkan pesawat antariksa, singgahi delapan planet, amati fenomenanya, telusuri sejarah eksplorasi, lalu uji wawasanmu lewat kuis.'],
+    ['Bagaimana cara ke planet tertentu?', 'Buka Peta (tombol M atau lewat navigasi), pilih planet tujuan, lalu tekan "Terbang ke sini". Pesawat akan bermanuver otomatis dan berhenti tepat saat mendekati planet.'],
+    ['Bagaimana mendapat bintang?', `Kerjakan kuis planet: ${countTxt}, ${ptsTxt} per jawaban benar. Bintang hanya bertambah jika skormu melampaui skor terbaik sebelumnya. Jawaban salah tidak mengurangi saldo bintang.`],
+    ['Untuk apa bintang digunakan?', shipSummary],
+    ['Apakah progres tersimpan aman?', 'Ya! Saat Anda mendaftar atau masuk akun, seluruh saldo bintang, armada pesawat, dan jurnal tersimpan otomatis di akun Anda. Dalam Mode Tamu, progres tetap tersimpan di peramban perangkat ini.'],
+    ['Apakah ukuran dan jaraknya berskala nyata?', 'Rasio ukuran planet dibandingkan satu sama lain akurat sesuai data NASA JPL. Jarak orbit antarplanet dipadatkan secara ergonomis agar seluruh tata surya dapat dijelajahi dengan nyaman.'],
+  ];
+});
 </script>
 
 <template>

@@ -181,6 +181,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
               maxlength="20"
               class="form-input"
             >
+            <span v-if="store.screen === 'register'" class="field-hint">3–20 karakter: huruf kecil, angka, atau garis bawah _</span>
           </label>
 
           <label class="form-field">
@@ -292,6 +293,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 .form-title{font-size:22px;font-weight:600;color:#f4f7ff;line-height:1.2;margin:0}
 .form-subtitle{font-size:13.5px;color:var(--muted);line-height:1.45}
 .form-field{display:flex;flex-direction:column;gap:7px;text-align:left;font-size:13px;font-weight:500;color:#cbd5e1}
+.field-hint{font-size:11.5px;font-weight:400;color:var(--muted);line-height:1.4}
 .form-input{width:100%;height:44px;padding:0 14px;background:#161d36;border:1px solid #2a355c;border-radius:10px;color:#f4f7ff;font-size:14px;transition:border-color .15s,box-shadow .15s}
 .form-input:focus{outline:none;border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.2)}
 .form-input::placeholder{color:rgba(148,163,184,.65);font-size:13.5px}

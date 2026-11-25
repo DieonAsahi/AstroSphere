@@ -19,7 +19,6 @@ const SLIDES = [
     lead: 'Kendalikan pesawat antariksamu mengarungi Matahari, 8 planet, dan Bulan dengan orbit astronomis yang akurat.',
     image: '/img/guide/slide-1-jelajah.webp',
     icon: 'planet',
-    filename: 'public/img/guide/slide-1-jelajah.webp',
     placeholderTitle: 'Simulasi Tata Surya 3D',
     points: [
       {
@@ -45,7 +44,6 @@ const SLIDES = [
     lead: 'Singkap jejak peradaban manusia serta laboratorium fenomena astronomi interaktif di setiap planet.',
     image: '/img/guide/slide-2-sejarah.webp',
     icon: 'fenomena',
-    filename: 'public/img/guide/slide-2-sejarah.webp',
     placeholderTitle: 'Laboratorium Fenomena & Sejarah',
     points: [
       {
@@ -71,7 +69,6 @@ const SLIDES = [
     lead: 'Raih Bintang penjelajah lewat kuis sains dan jalankan misi penyelamatan sejarah berisiko tinggi.',
     image: '/img/guide/slide-3-kuis-misi.webp',
     icon: 'bintang',
-    filename: 'public/img/guide/slide-3-kuis-misi.webp',
     placeholderTitle: 'Kuis Astronomi & Misi Nyata',
     points: [
       {
@@ -97,7 +94,6 @@ const SLIDES = [
     lead: 'Kumpulkan Bintang untuk membuka dan menerbangkan pesawat antariksa generasi masa depan.',
     image: '/img/guide/slide-4-hanggar.webp',
     icon: 'hanggar',
-    filename: 'public/img/guide/slide-4-hanggar.webp',
     placeholderTitle: 'Hanggar Pesawat Antariksa',
     points: [
       {
@@ -289,7 +285,7 @@ onBeforeUnmount(() => {
                   @error="onImgError(idx)"
                 />
 
-                <!-- Tampilan cadangan estetis jika gambar belum ditaruh pengguna -->
+                <!-- Tampilan cadangan estetis jika gambar belum tersedia -->
                 <div v-else class="visual-placeholder">
                   <div class="ph-glow" />
                   <div class="ph-content">
@@ -297,9 +293,6 @@ onBeforeUnmount(() => {
                       <UiIcon :name="item.icon" :size="48" />
                     </span>
                     <b class="ph-title">{{ item.placeholderTitle }}</b>
-                  </div>
-                  <div class="ph-filepath" title="Tempat menaruh gambar kustom">
-                    <code>{{ item.filename }}</code>
                   </div>
                 </div>
               </div>
@@ -606,8 +599,7 @@ onBeforeUnmount(() => {
 .ph-icon{width:80px;height:80px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.15);border:1px solid rgba(148,174,255,.2);color:var(--sky);box-shadow:0 0 24px rgba(59,130,246,.3)}
 .ph-icon.star-ph{background:rgba(234,179,8,.15);border-color:rgba(234,179,8,.3);color:var(--star);box-shadow:0 0 24px rgba(234,179,8,.3)}
 .ph-title{font-family:var(--display);font-size:16px;color:var(--text);font-weight:500}
-.ph-filepath{position:absolute;bottom:10px;left:14px;right:14px;display:flex;justify-content:center;z-index:2}
-.ph-filepath code{font-size:10.5px;color:var(--faint);background:rgba(0,0,0,.45);padding:3px 8px;border-radius:6px;border:1px solid rgba(148,174,255,.1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.guide code{font-family:var(--font)}
 
 /* KOLOM KANAN: PENJELASAN BERSIH & LEGA */
 .info-col{display:flex;flex-direction:column;gap:12px}

@@ -805,4 +805,15 @@ onMounted(() => {
 .pv-track { height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.09); overflow: hidden; }
 .pv-track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #38bdf8, #818cf8); }
 .pv-stat-row small { text-align: right; color: #94a3b8; }
+
+@media (max-width: 640px) {
+  .grid-2,
+  .pv-speed-grid {
+    grid-template-columns: 1fr;
+  }
+  .bar-input-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
 </style>

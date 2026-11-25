@@ -350,7 +350,8 @@ onBeforeUnmount(() => {
   font-weight:500;
   color:rgba(148,174,255,.6);
   letter-spacing:.04em;
-  font-family:var(--mono);
+  font-family:var(--display);
+  font-variant-numeric:tabular-nums;
 }
 
 .ship-card-meta{

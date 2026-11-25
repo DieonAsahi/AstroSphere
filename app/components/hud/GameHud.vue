@@ -41,7 +41,7 @@ function refreshRows() {
   const d = game()?.mapData?.();
   if (!d) return;
   const by = Object.fromEntries(d.bodies.map((b) => [b.id, b]));
-  rows.value = LIST.filter((id) => by[id]).map((id) => ({
+  rows.value = LIST.filter((id) => by[id] && by[id].active !== false).map((id) => ({
     id,
     name: by[id].name,
     color: COLOR_OF[id],

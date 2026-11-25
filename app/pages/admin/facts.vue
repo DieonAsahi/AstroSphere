@@ -2,7 +2,7 @@
 // Halaman Pengelola Kartu Fakta "Tahukah Kamu?" (/admin/facts) — 16 Entitas Jurnal Penjelajah
 import { ref, computed, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
-import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
+import { formatSupabaseError, downloadSafeCsv, parseAdminJsonBatch } from '~/utils/adminAuth.js';
 import { COLOR_OF } from '~/data/solarSystem.js';
 
 definePageMeta({
@@ -354,19 +354,16 @@ async function handleImportSubmit() {
   }
 
   try {
-    const parsed = JSON.parse(importText.value);
-    if (!Array.isArray(parsed) || !parsed.length) {
-      importError.value = 'Format JSON harus berupa array objek yang tidak kosong.';
+    const batch = parseAdminJsonBatch(importText.value, 'Format JSON harus berupa array objek yang tidak kosong.');
+    if (!batch.ok) {
+      importError.value = batch.error;
       return;
     }
+    const parsed = batch.rows;
 
     const cleanRows = [];
     for (let i = 0; i < parsed.length; i++) {
       const row = parsed[i];
-      if (!row || typeof row !== 'object') {
-        importError.value = `Baris ${i + 1}: entri harus berupa objek JSON.`;
-        return;
-      }
       const bId = String(row.body_id || '').toLowerCase().trim();
       if (!ALLOWED_BODY_IDS.has(bId)) {
         importError.value = `Baris ${i + 1}: body_id "${row.body_id}" tidak valid.`;

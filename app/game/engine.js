@@ -23,7 +23,7 @@ import { resolveKeymap } from '../data/keymap.js';
 import { PHENOMENA } from '../data/phenomena.js';
 import { HISTORY } from '../data/history.js';
 import { useSupabaseContent } from '../composables/useSupabaseContent.js';
-import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent } from '../composables/useGame.js';
+import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent, showToast } from '../composables/useGame.js';
 
 export const TIME_RATE = 0.02;      // hari simulasi per detik (1 hari = 50 dtk) — satu faktor untuk rotasi & revolusi
 export const RMAX = 8500;           // radius navigasi; peringatan mulai 0,8 R (PRD R02)
@@ -713,9 +713,9 @@ export function createEngine(el) {
   }
 
   // ---------- Pesan, banner, toast ----------
-  let bannerT = null, toastT = null, savedT = null;
-  function showBanner(kick, title) { toast(`<b>${title}</b> · ${kick}`, 2600); }
-  function toast(html, ms = 4200) { store.toast.html = html; store.toast.show = true; clearTimeout(toastT); toastT = setTimeout(() => { store.toast.show = false; }, ms); }
+  let savedT = null;
+  function showBanner(kick, title) { showToast(`<b>${title}</b> · ${kick}`, 2600); }
+  function toast(html, ms = 4200) { showToast(html, ms); }
   function flashMsg(text) { store.msg.text = text; store.msg.show = true; msgTimer = 2; }
   function flashSaved(label = 'Tersimpan') { store.saved.label = label; store.saved.show = true; clearTimeout(savedT); savedT = setTimeout(() => { store.saved.show = false; }, 1800); }
 

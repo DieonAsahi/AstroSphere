@@ -2,7 +2,7 @@
 // Halaman Pengelola Bank Soal Kuis (/admin/quizzes) — CRUD, Pratinjau Kuis Siswa, & Ekspor/Impor
 import { ref, computed, watch, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
-import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
+import { formatSupabaseError, downloadSafeCsv, parseAdminJsonBatch } from '~/utils/adminAuth.js';
 
 definePageMeta({
   layout: 'admin',
@@ -345,19 +345,16 @@ async function handleImportSubmit() {
   }
 
   try {
-    const parsed = JSON.parse(importText.value);
-    if (!Array.isArray(parsed) || !parsed.length) {
-      importError.value = 'Format JSON harus berupa array objek soal yang tidak kosong.';
+    const batch = parseAdminJsonBatch(importText.value, 'Format JSON harus berupa array objek soal yang tidak kosong.');
+    if (!batch.ok) {
+      importError.value = batch.error;
       return;
     }
+    const parsed = batch.rows;
 
     const cleanRows = [];
     for (let i = 0; i < parsed.length; i++) {
       const row = parsed[i];
-      if (!row || typeof row !== 'object') {
-        importError.value = `Baris ${i + 1}: entri harus berupa objek JSON.`;
-        return;
-      }
 
       const planetId = String(row.planet_id || '').toLowerCase().trim();
       if (!ALLOWED_PLANET_IDS.has(planetId)) {
@@ -409,13 +406,19 @@ async function handleImportSubmit() {
           ? !['false', '0', 'no', 'nonaktif'].includes(isActiveRaw.trim().toLowerCase())
           : Boolean(isActiveRaw));
 
+      const pembahasanText = String(row.pembahasan_edukatif ?? '').trim();
+      if (!pembahasanText) {
+        importError.value = `Baris ${i + 1}: pembahasan_edukatif wajib diisi.`;
+        return;
+      }
+
       cleanRows.push({
         planet_id: planetId,
         soal: soalText,
         opsi: cleanOpts,
         kunci_jawaban: ans,
         bobot_poin: Math.round(pts),
-        pembahasan_edukatif: String(row.pembahasan_edukatif ?? '').trim(),
+        pembahasan_edukatif: pembahasanText,
         is_active: isActive,
       });
     }

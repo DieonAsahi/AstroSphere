@@ -2,7 +2,7 @@
 // Halaman Pengelola Bank Soal Mitos atau Fakta (/admin/myths) — Selaras dengan MythGame.vue
 import { ref, computed, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
-import { formatSupabaseError, downloadSafeCsv } from '~/utils/adminAuth.js';
+import { formatSupabaseError, downloadSafeCsv, parseAdminJsonBatch } from '~/utils/adminAuth.js';
 import { COLOR_OF } from '~/data/solarSystem.js';
 
 definePageMeta({
@@ -363,19 +363,16 @@ async function handleImportSubmit() {
   }
 
   try {
-    const parsed = JSON.parse(importText.value);
-    if (!Array.isArray(parsed) || !parsed.length) {
-      importError.value = 'Format JSON harus berupa array objek yang tidak kosong.';
+    const batch = parseAdminJsonBatch(importText.value, 'Format JSON harus berupa array objek yang tidak kosong.');
+    if (!batch.ok) {
+      importError.value = batch.error;
       return;
     }
+    const parsed = batch.rows;
 
     const cleanRows = [];
     for (let i = 0; i < parsed.length; i++) {
       const row = parsed[i];
-      if (!row || typeof row !== 'object') {
-        importError.value = `Baris ${i + 1}: entri harus berupa objek JSON.`;
-        return;
-      }
 
       const bodyId = String(row.benda_langit || 'bumi').toLowerCase().trim();
       if (!ALLOWED_BODY_IDS.has(bodyId)) {
@@ -963,4 +960,13 @@ onMounted(() => {
 .hint { margin: 0; font-size: 12.5px; color: #64748b; }
 .import-textarea { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 13px; background-color: #ffffff; color: #0f172a; }
 .error-text { color: #dc2626; font-size: 13px; margin: 0; }
+
+@media (max-width: 640px) {
+  .grid-2,
+  .grid-3,
+  .truth-toggle,
+  .pv-pick-row {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
