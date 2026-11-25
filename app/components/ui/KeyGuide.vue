@@ -175,21 +175,21 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
 
           <div class="kg-item">
             <div class="kg-keys">
-              <b class="kbd badge-mouse">Klik Kiri 1&times;</b>
+              <b class="kbd badge-mouse">Tahan klik &amp; geser</b>
             </div>
             <div class="kg-info">
-              <b class="kg-act">Aktifkan Kamera Bebas (POV)</b>
-              <small class="kg-sub">Gerakkan kursor/trackpad untuk lihat 360&deg;</small>
+              <b class="kg-act">Lihat Sekeliling</b>
+              <small class="kg-sub">Kamera berputar selama tombol mouse ditahan</small>
             </div>
           </div>
 
           <div class="kg-item">
             <div class="kg-keys">
-              <b class="kbd badge-mouse wide">Klik Kanan 1&times; / Klik Kiri 2&times;</b>
+              <b class="kbd badge-mouse wide">Lepas klik</b>
             </div>
             <div class="kg-info">
-              <b class="kg-act">Matikan Kamera Bebas</b>
-              <small class="kg-sub">Keluar &amp; luruskan kamera ke depan</small>
+              <b class="kg-act">Luruskan Kamera</b>
+              <small class="kg-sub">Kamera kembali menghadap depan pesawat</small>
             </div>
           </div>
         </div>

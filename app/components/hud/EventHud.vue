@@ -39,7 +39,7 @@ function close() { ev.result = null; }
 
     <!-- BANNER PERINGATAN PERISAI 0% (TURBO NONAKTIF) -->
     <Transition name="fade">
-      <div v-if="ev.damaged" class="damaged-shield-banner" role="alert" aria-live="assertive">
+      <div v-if="ev.damaged && !ev.result" class="damaged-shield-banner" role="alert" aria-live="assertive">
         <span class="dam-ic"><UiIcon name="silang" :size="20" /></span>
         <div class="dam-tx">
           <b>Perisai rusak (Turbo nonaktif)</b>

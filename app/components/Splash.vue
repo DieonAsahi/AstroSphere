@@ -1,7 +1,8 @@
 <script setup>
-// Layar awal: Beranda = Bumi berputar, Masuk = Matahari, Daftar = lubang hitam.
-// Latar digambar hidup oleh WebGL kecil (utils/liveBackdrop.js, tanpa Three.js); gambar statis tampil lebih dulu
-// dan jadi cadangan (mode Hemat untuk lubang hitam, "kurangi gerakan", hemat data, atau perangkat lambat).
+// Layar awal: Beranda = Bumi berputar, Masuk = Matahari 3D, Daftar = tabrakan galaksi 3D.
+// Beranda digambar oleh WebGL kecil (utils/liveBackdrop.js, tanpa Three.js). Masuk & Daftar memakai model GLB yang
+// disiapkan (utils/splash3d.js: sun.glb + efek suar/CME/prominensa/granulasi/spikula, galaxy_collision.glb).
+// Gambar statis tampil lebih dulu dan jadi cadangan ("kurangi gerakan", hemat data, atau perangkat lambat).
 // Dunia 3D game baru dimuat setelah pemain menekan "Main".
 import { reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { store, registerUser, loginUser, logoutUser, loginWithGoogle, showToast, shouldShowGuide } from '~/composables/useGame.js';
@@ -44,12 +45,32 @@ async function handleGoogleLogin() {
 }
 
 // ---- latar hidup ----
-const liveEl = ref(null), liveOn = ref(false);
-let live = null;
-const SCENE = { welcome: 'earth', login: 'sun', register: 'hole' };
+const liveEl = ref(null), liveOn = ref(false), live3dEl = ref(null), live3dOn = ref(false);
+let live = null, liveLoad = null, live3d = null, live3dLoad = null, motionOk = false;
+const SCENE_3D = { login: 'sun', register: 'galaxy' };
 const hemat = () => store.settings.graphics === 'rendah';
-const sceneFor = (s) => (hemat() && s === 'register' ? null : SCENE[s]);
-watch(() => store.screen, (s) => live?.setScene(sceneFor(s)));
+async function getLive3d() {
+  if (!motionOk || !live3dEl.value) return null;
+  live3dLoad ||= import('~/utils/splash3d.js').then(({ createSplash3D }) =>
+    (live3d = motionOk && live3dEl.value ? createSplash3D(live3dEl.value, (v) => { live3dOn.value = v; }, { quality: hemat() ? .8 : 1 }) : null));
+  return live3dLoad;
+}
+async function getLive() {
+  if (!motionOk || !liveEl.value) return null;
+  liveLoad ||= import('~/utils/liveBackdrop.js').then(({ createLiveBackdrop }) =>
+    (live = motionOk && liveEl.value ? createLiveBackdrop(liveEl.value, (v) => { liveOn.value = v; }, { quality: hemat() ? .8 : 1 }) : null));
+  return liveLoad;
+}
+async function showScreen(s) {
+  if (s === 'welcome') (await getLive())?.setScene(store.screen === 'welcome' ? 'earth' : null);
+  else live?.setScene(null);
+  const want = SCENE_3D[s] || null;
+  if (!want) { live3d?.setScene(null); return; }
+  (await getLive3d())?.setScene(store.screen === s ? want : null);
+}
+// unduh model lebih awal saat kursor/jari mendekati tombol Masuk/Daftar
+async function prefetch3d(name) { (await getLive3d())?.prefetch(name); }
+watch(() => store.screen, showScreen);
 
 onMounted(async () => {
   const c = navigator.connection, slowNet = !!(c && (c.saveData || /2g/.test(c.effectiveType || '')));
@@ -66,20 +87,19 @@ onMounted(async () => {
   }
   const still = store.settings.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (still || slowNet || !liveEl.value) return;
-  const { createLiveBackdrop } = await import('~/utils/liveBackdrop.js');
-  if (!liveEl.value) return;
-  live = createLiveBackdrop(liveEl.value, (v) => { liveOn.value = v; }, { quality: hemat() ? .8 : 1 });
-  live?.setScene(sceneFor(store.screen));
+  motionOk = true;
+  showScreen(store.screen);
 });
-onBeforeUnmount(() => { live?.dispose(); live = null; });
+onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d = null; motionOk = false; });
 </script>
 
 <template>
   <div class="splash" :class="store.screen">
     <div class="bg earth" :class="{ on: store.screen === 'welcome' }" />
     <div class="bg sun" :class="{ on: store.screen === 'login' }" />
-    <div class="bg hole" :class="{ on: store.screen === 'register' }" />
+    <div class="bg galaxy" :class="{ on: store.screen === 'register' }" />
     <canvas ref="liveEl" class="live" :class="{ on: liveOn }" aria-hidden="true" />
+    <canvas ref="live3dEl" class="live" :class="{ on: live3dOn }" aria-hidden="true" />
     <div class="shade" />
 
     <header class="top">
@@ -115,7 +135,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
           <button v-else class="btn primary lg" @click="play(false)"><UiIcon name="putar" :size="20" />Mulai bermain</button>
         </div>
         <div v-if="!store.account.loggedIn" class="acct">
-          <button class="btn line" @click="go('login')">
+          <button class="btn line" @click="go('login')" @pointerenter="prefetch3d('sun')" @focus="prefetch3d('sun')">
             <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
               <polyline points="10 17 15 12 10 7" />
@@ -123,7 +143,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
             </svg>
             Masuk
           </button>
-          <button class="btn line" @click="go('register')">
+          <button class="btn line" @click="go('register')" @pointerenter="prefetch3d('galaxy')" @focus="prefetch3d('galaxy')">
             <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
@@ -237,7 +257,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; });
 .bg.on{opacity:1}
 .earth{background-image:url(/img/bg-earth.webp);background-position:center bottom}
 .sun{background-image:url(/img/bg-sun.webp)}
-.hole{background-image:url(/img/bg-blackhole.webp)}
+.galaxy{background-image:url(/img/bg-galaxy.webp)}
 .live{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .6s ease;pointer-events:none}
 .live.on{opacity:1}
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,26,.55) 0%,rgba(5,8,26,0) 34%)}

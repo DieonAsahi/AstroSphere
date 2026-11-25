@@ -10,6 +10,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "models": "node scripts/optimize-models.mjs",
+    "backdrops": "node scripts/optimize-backdrops.mjs",
+    "guide-images": "node scripts/render-guide.mjs",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {

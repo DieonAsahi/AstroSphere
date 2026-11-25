@@ -9,7 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SKY_VS, SKY_FS, STARS_VS, STARS_FS } from './shaders.js';
 import { clamp, lerp, damp, smooth, dead, nextFrame, DEG, TAU, KM, fmtDist, fmtEta, fmtInt, daysSinceJ2000, fmtSimDate, dateFromDays, isTouchDevice } from './util.js';
 import { buildSystem, updateBodies, latLonToLocal, upgradePlanetModel } from './system.js';
-import { initShipFactory, buildShip, setShipModels } from './ships.js';
+import { initShipFactory, buildShip, setShipModels, updateShipFx } from './ships.js';
 import { loadCoreModels, loadSingleModel, REMAINING_PLANET_IDS, loadDecor } from './models.js';
 import { createLab, LAB_DURATION } from './lab.js';
 import { createAudio } from './audio.js';
@@ -173,7 +173,7 @@ export function createEngine(el) {
   // ---------- Pesawat ----------
   const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, yaw: 0, pitch: 0 };
   const shipRoot = new THREE.Group();
-  let shipModel = null; const shipModels = {};
+  let shipModel = null, shownShip = null; const shipModels = {};
   let camMode = 'chase', target = null, nearest = null;
   const discovered = new Set(['matahari']);
   let sessionActive = false, shake = 0, msgTimer = 0, inBelt = false;
@@ -204,25 +204,29 @@ export function createEngine(el) {
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
     ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false;
   }
-  async function ensureShipModel(id) {
-    if (!id || !SHIPS[id] || models?.ships?.[id]) return;
-    const m = await loadSingleModel('ships', id);
-    if (m && models?.ships) {
+  // Tampilkan tepat SATU pesawat: semua grup pesawat lain di shipRoot dilepas lebih dulu
+  // (mencegah model bertumpuk di hanggar saat unduhan GLB selesai tidak berurutan).
+  function showShip(id) {
+    for (const c of [...shipRoot.children]) if (c.userData.isShip) shipRoot.remove(c);
+    shipModel = shipModels[id]; shownShip = id;
+    shipRoot.add(shipModel.group);
+  }
+  const shipLoads = {};
+  function ensureShipModel(id) {
+    if (!id || !SHIPS[id] || !models?.ships || models.ships[id]) return;
+    shipLoads[id] ||= loadSingleModel('ships', id).then((m) => {
+      delete shipLoads[id];
+      if (!m || !models?.ships) return;
       models.ships[id] = m;
       setShipModels(models.ships);
       shipModels[id] = buildShip(id);
-      if (shipModel && (store.progress.selectedShip === id || store.hangarPreview === id)) {
-        shipRoot.remove(shipModel.group);
-        shipModel = shipModels[id];
-        shipRoot.add(shipModel.group);
-      }
-    }
+      if (shownShip === id) showShip(id); // hanya bila pesawat ini yang sedang tampil
+    });
   }
   function setShip(id) {
     if (!SHIPS[id]) id = 'astra';
-    if (!shipModels[id]) shipModels[id] = buildShip(id);
-    if (shipModel) shipRoot.remove(shipModel.group);
-    shipModel = shipModels[id]; shipRoot.add(shipModel.group);
+    if (!shipModels[id] || (shipModels[id].pending && models?.ships?.[id])) shipModels[id] = buildShip(id);
+    showShip(id);
     ensureShipModel(id);
   }
   function readInput(dt) {
@@ -325,19 +329,10 @@ export function createEngine(el) {
     // Efek visual miring sayap (banking roll) halus saat memutar moncong kiri/kanan HANYA pada mesh 3D anak
     g.rotation.z = damp(g.rotation.z, -input.yaw * .45, 6, dt);
     g.rotation.x = damp(g.rotation.x, ship.rate.x * .05, 5, dt);
-    const thrust = Math.max(0, ship.throttle), b = ship.boost, def = shipModel.def;
+    const thrust = Math.max(0, ship.throttle), b = ship.boost;
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
     const pw = Math.max(idle, thrust) + b * .8;
-    const fl = .9 + Math.sin(time * 43) * .06 + Math.sin(time * 71) * .04;
-    for (const f of shipModel.flames) { f.material.uniforms.uPower.value = Math.min(1.4, .15 + pw); f.scale.set(1, 1, (.5 + thrust * 1.6 + b * 2.8) * def.glow * fl); }
-    // semburan api bawaan model (Discovery): panjang mengikuti gas, padam saat gas nol
-    for (const p of shipModel.plumes || []) { const w = .7 + .3 * Math.min(1, pw); p.scale.set(w, w, (.3 + thrust * .85 + b * 1.4) * fl); p.visible = pw > .03; }
-    for (const s of shipModel.sprites) s.scale.setScalar(def.glow * (.42 + pw * .5) * fl);
-    const blink = (time % 1.4) < .12;
-    for (const n of shipModel.navLights) n.visible = blink;
-    const st = time % 1.3, flash = st < .05 || (st > .14 && st < .19);
-    for (const n of shipModel.strobes) n.visible = flash;
-    for (const gm of shipModel.glowMats) gm.mat.color.copy(gm.base).multiplyScalar(.5 + pw * 2.6);
+    updateShipFx(shipModel, pw, thrust, b, time);
     shipRoot.visible = wm !== 'observe' && !(camMode === 'cockpit' && wm === 'jelajah');
   }
 
@@ -351,18 +346,6 @@ export function createEngine(el) {
   let freeLookMode = false;
   const obsCam = { yaw: .9, pitch: .22, dist: 3.4, drag: false };
   const lookActive = () => worldMode() === 'jelajah' && store.phase === 'playing' && (freeLookMode || look.rmb || !!keys.KeyL || look.touchId !== null);
-
-  function enterFreeLook() {
-    if (worldMode() !== 'jelajah' || store.phase !== 'playing') return;
-    freeLookMode = true;
-    store.look.freeLook = true;
-    store.look.active = true;
-    try {
-      if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
-        canvas.requestPointerLock();
-      }
-    } catch {}
-  }
 
   function exitFreeLook() {
     if (!freeLookMode && (typeof document === 'undefined' || document.pointerLockElement !== canvas)) return;
@@ -1002,17 +985,14 @@ export function createEngine(el) {
   });
   on(window, 'blur', () => { clearAllInputs(); });
   function applyLookDelta(dx, dy, k) { look.yaw -= dx * k; look.pitch = clamp(look.pitch - dy * k * (settings.invertY ? -1 : 1), -1.35, 1.35); }
-  let lastTouchT = 0, downX = 0, downY = 0, downT = 0;
+  let lastTouchT = 0;
   on(canvas, 'mousedown', (e) => {
     if (performance.now() - lastTouchT < 800) return;
     const wm = worldMode();
     if ((wm === 'menu' || wm === 'hangar' || wm === 'observe' || wm === 'lab') && e.button === 0) { look.drag = true; obsCam.drag = true; return; }
     if (wm === 'jelajah' && store.phase === 'playing') {
       if (e.button === 0) {
-        downX = e.clientX;
-        downY = e.clientY;
-        downT = performance.now();
-        look.rmb = true;
+        look.rmb = true; // kamera berputar hanya selama tombol ditahan (lihat mousemove)
       } else if (e.button === 2) {
         if (freeLookMode) exitFreeLook();
       }
@@ -1023,13 +1003,6 @@ export function createEngine(el) {
       look.drag = false;
       obsCam.drag = false;
       look.rmb = false;
-      if (worldMode() === 'jelajah' && store.phase === 'playing') {
-        const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
-        const elapsed = performance.now() - downT;
-        if (moved < 6 && elapsed < 350) {
-          if (!freeLookMode) enterFreeLook();
-        }
-      }
     }
     if (e.button === 0 || e.button === 2) look.rmb = false;
   });
@@ -1195,6 +1168,9 @@ export function createEngine(el) {
     if ((store.modal || store.approach.show || store.phase !== 'playing' || wm !== 'jelajah') && (freeLookMode || (typeof document !== 'undefined' && document.pointerLockElement === canvas))) {
       exitFreeLook();
     }
+    // suara mesin hanya saat terbang; di layar pengamatan (Planet, Sejarah, Fenomena) dengung latar juga senyap.
+    // Dipanggil sebelum percabangan lab/misi/jeda agar suara tidak tertahan di volume terakhir.
+    sfx.update(wm === 'jelajah' && store.phase === 'playing', ship, wm === 'observe' || wm === 'lab');
     // layar yang menutupi dunia (jeda, kuis, profil): render cukup ± 20 fps, tapi pada mode 'peta' tetap update real-time
     if ((store.phase === 'paused' || (wm === 'frozen' && store.mode !== 'peta')) && (++idleN % 3)) return;
     if ((wm === 'jelajah' || wm === 'peta') && store.phase === 'playing') gameTime += dt * TIME_RATE;
@@ -1275,7 +1251,6 @@ export function createEngine(el) {
     }
     renderWorld();
     updateHUD(dt); updatePOIs();
-    sfx.update(wm === 'jelajah' && store.phase === 'playing', ship);
   }
 
   let bgPlanetsLoading = false;
@@ -1337,13 +1312,10 @@ export function createEngine(el) {
       updateCamera(1, 0);
       camera.position.copy(ship.pos).add(_v.set(Math.sin(menuAngle) * 11, 3, Math.cos(menuAngle) * 11).applyQuaternion(ship.quat));
       camera.lookAt(ship.pos);
-      const warm = new THREE.Group(); warm.position.copy(ship.pos); scene.add(warm);
-      const curShip = store.progress.selectedShip || 'astra';
-      if (!shipModels[curShip]) shipModels[curShip] = buildShip(curShip);
-      warm.add(shipModels[curShip].group);
+      // pemanasan shader: pesawat aktif tetap di shipRoot (tidak dipindah induk, agar tidak hilang/terduplikasi)
+      const shipVis = shipRoot.visible; shipRoot.visible = true;
       try { await renderer.compileAsync(scene, camera); await renderer.compileAsync(bgScene, bgCam); } catch (e) { console.warn(e); }
-      warm.remove(shipModels[curShip].group);
-      scene.remove(warm);
+      shipRoot.visible = shipVis;
       trans.t = 1;
       setLoad(1, 'Siap terbang');
       store.ready = true;

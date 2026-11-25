@@ -881,12 +881,13 @@ export const setEngine = (e) => { engineRef = e; };
 export const game = () => engineRef;
 
 /**
- * Menentukan apakah layar Onboarding 5 Slide (Guide.vue) harus ditampilkan:
- * - HANYA tampil untuk Tamu Baru (!store.account.loggedIn && !store.hasSave && !store.settings.tutorialSeen).
- * - Langsung lewati jika sudah login akun ATAU sudah pernah main (hasSave / tutorialSeen).
+ * Panduan 5 slide (Guide.vue) SELALU tampil saat menekan "Mulai" / "Lanjutkan" — untuk tamu maupun pemain yang
+ * sudah login/punya simpanan. Panduan sekaligus menjadi layar muat: dunia 3D dimuat di belakangnya, dan
+ * "Lewati" / Enter langsung terbang begitu siap. Layar muat cepat (phase 'loading') hanya dipakai bila pemain
+ * melewati panduan sebelum dunia selesai dimuat, atau sepulang dari login Google.
  */
 export function shouldShowGuide() {
-  return !store.account.loggedIn && !store.hasSave && !store.settings.tutorialSeen;
+  return true;
 }
 
 export function useGame() { return { store, game, shouldShowGuide }; }

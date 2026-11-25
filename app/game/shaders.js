@@ -438,23 +438,55 @@ void main(){
   #include <colorspace_fragment>
 }`;
 
-export const FLAME_VS = /* glsl */`
-varying float vY; varying vec3 vN; varying vec3 vV;
+/* ---------- Api mesin pesawat (ships.js) ----------
+   Kerucut lathe sumbu +Z; aT = 0 di nosel, 1 di ujung. uLayer 0 = inti panas, 1 = selubung lembut.
+   Vertex: ujung bergoyang oleh derau + denyut radial yang merambat ke belakang.
+   Fragment: derau fbm bergulir sepanjang semburan, ekor "koyak", inti putih-panas, berlian kejut saat turbo. */
+export const JET_VS = /* glsl */`
+attribute float aT;
+uniform float uTime; uniform float uPower; uniform float uBoost; uniform float uSeed; uniform float uLayer;
+varying float vT; varying float vAng; varying vec3 vN; varying vec3 vV;
+float jh1(float n){ return fract(sin(n) * 43758.5453); }
+float jn1(float x){ float i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(jh1(i), jh1(i + 1.0), f) * 2.0 - 1.0; }
 void main(){
-  vY = position.y;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vT = aT;
+  vec3 p = position;
+  vAng = atan(p.y, p.x);
+  float t = aT;
+  float sp = uTime * (5.0 + 4.0 * uLayer + 4.0 * uBoost) + uSeed * 7.0;
+  float sway = t * t * (0.5 + 0.45 * uLayer);
+  p.x += jn1(t * 2.6 - sp * 0.55) * sway;
+  p.y += jn1(t * 2.6 - sp * 0.55 + 17.0) * sway;
+  p.xy *= 1.0 + 0.11 * sin(t * 13.0 - uTime * 36.0 + uSeed) * t;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
   gl_Position = projectionMatrix * mv;
 }`;
-export const FLAME_FS = /* glsl */`
-uniform vec3 uColor; uniform float uPower; uniform float uTime;
-varying float vY; varying vec3 vN; varying vec3 vV;
+export const JET_FS = /* glsl */`
+uniform vec3 uColor; uniform float uPower; uniform float uBoost; uniform float uTime; uniform float uSeed; uniform float uLayer;
+varying float vT; varying float vAng; varying vec3 vN; varying vec3 vV;
+float jhash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float jnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(jhash(i), jhash(i + vec2(1.0, 0.0)), f.x), mix(jhash(i + vec2(0.0, 1.0)), jhash(i + vec2(1.0, 1.0)), f.x), f.y); }
+float jfbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * jnoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }
 void main(){
-  float t = clamp(vY, 0.0, 1.0);
-  float edge = pow(abs(dot(vN, vV)), 1.5);
-  float fl = 0.85 + 0.15 * sin(uTime * 60.0 + vY * 20.0);
-  float a = pow(1.0 - t, 1.6) * edge * uPower * fl;
-  vec3 col = mix(uColor, vec3(1.0), pow(1.0 - t, 5.0) * 0.8) * a * 2.2;
+  float t = clamp(vT, 0.0, 1.0);
+  float edge = abs(dot(normalize(vN), normalize(vV)));
+  vec2 ap = vec2(cos(vAng), sin(vAng));
+  float spd = 8.0 + 6.0 * uLayer + 9.0 * uBoost;
+  float n1 = jfbm(vec2(ap.x * 1.6 + ap.y * 1.3 + uSeed, t * (5.0 + 3.0 * uLayer) - uTime * spd));
+  float n2 = jfbm(vec2(ap.y * 2.1 - ap.x + uSeed * 2.0, t * 9.0 - uTime * spd * 1.45));
+  float turb = 0.5 * (n1 + n2);
+  float body = pow(1.0 - t, 1.2 + 0.6 * uLayer);
+  float core = pow(edge, 1.15 + 1.4 * uLayer);
+  float tear = smoothstep(0.0, 0.35, (1.0 - t) * 1.25 - (turb - 0.5) * 0.95 * t);
+  float a = body * core * tear * (0.5 + 1.0 * turb) * uPower;
+  float diamonds = (1.0 - uLayer) * uBoost * smoothstep(0.55, 1.0, edge) * pow(max(0.0, cos(t * 31.4 - uTime * 3.0)), 6.0) * (1.0 - t);
+  a += diamonds * 0.8;
+  vec3 hot = vec3(1.0, 0.96, 0.88);
+  vec3 col = mix(uColor, hot, pow(1.0 - t, 4.0) * (1.0 - uLayer * 0.7) * smoothstep(0.3, 1.0, edge));
+  col = mix(col, uColor * vec3(1.0, 0.72, 0.66), smoothstep(0.45, 1.0, t) * 0.5);
+  col *= a * mix(2.4, 0.85, uLayer);
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

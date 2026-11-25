@@ -12,13 +12,15 @@ npm run dev          # http://localhost:3000
 npm run generate     # build statis (SPA) di .output/public — bisa di-hosting di Vercel/Netlify/GitHub Pages
 npm run models       # (opsional) olah ulang model 3D mentah → public/models
 node scripts/render-backdrops.mjs   # (opsional) buat ulang tekstur Bumi & gambar latar statis → public/img
+npm run backdrops    # (opsional) olah ulang model Matahari & tabrakan galaksi (latar Masuk/Daftar) → public/models/decor
+npm run guide-images # (opsional) buat ulang 12 gambar slide panduan + latar statis Daftar dari model 3D game → public/img
 ```
 
 Butuh browser dengan WebGL2 untuk bagian 3D. Bila dunia 3D gagal dimuat, layar "Cara terbang" menampilkan pesan dan tombol *Coba lagi*.
 
 ## Alur
 
-1. **Beranda** (Bumi berputar) → *Mulai bermain* / *Lanjutkan*; tombol **Masuk** (latar Matahari) dan **Daftar** (latar lubang hitam) ada di tengah.
+1. **Beranda** (Bumi berputar) → *Mulai bermain* / *Lanjutkan*; tombol **Masuk** (latar Matahari 3D) dan **Daftar** (latar tabrakan galaksi 3D) ada di tengah.
    Akun cukup **nama + kata sandi** (tersimpan di perangkat ini; kata sandi disimpan sebagai hash SHA-256 bergaram).
 2. **Cara terbang** — penjelasan kontrol sekaligus layar muat. Mesin 3D (Three.js, ± 800 KB) baru diunduh di sini.
 3. **Terbang** — dekati planet: pesawat berhenti sendiri dan menawarkan *Lihat planet ini?* (Ya → halaman planet, Tidak → lanjut terbang).
@@ -65,14 +67,23 @@ Karena `Ctrl` dipakai sebagai rem, browser akan bertanya dulu sebelum tab ditutu
 
 ## Latar layar awal
 
-Latar digambar **hidup** oleh satu kanvas WebGL 1 kecil tanpa Three.js (`app/utils/liveBackdrop.js`, shader di `backdropShaders.js`, ± 15 KB, dimuat setelah halaman tampil):
-Bumi berputar (1 putaran / 3 menit), Matahari dengan granulasi bergerak + prominensa + korona, dan lubang hitam dengan cahaya yang ditekuk
-(geodesik Schwarzschild) + piringan akresi berputar. Hemat: maks 30 fps, resolusi diperkecil per adegan, berhenti saat tab tersembunyi,
-turun kualitas otomatis lalu kembali ke gambar statis bila perangkat lambat, dan konteks GPU dilepas saat game dimulai.
-Tidak dijalankan pada "Kurangi gerakan" / hemat data; mode grafis **Hemat** memakai gambar statis untuk lubang hitam.
+**Beranda** digambar hidup oleh satu kanvas WebGL 1 kecil tanpa Three.js (`app/utils/liveBackdrop.js`, shader di `backdropShaders.js`,
+± 15 KB, dimuat setelah halaman tampil): Bumi berputar (1 putaran / 3 menit).
+
+**Masuk** dan **Daftar** memakai model 3D yang disiapkan (`app/utils/splash3d.js`, Three.js diunduh saat layar dibuka atau saat kursor
+mendekati tombolnya):
+- *Masuk* — Matahari (`public/models/decor/sun.glb`, 0,6 MB) berputar ± 4 menit/putaran, dengan **granulasi** seluler yang "mendidih",
+  **spikula** di tepi, empat **prominensa** (busur plasma yang mengalir), dan siklus 16 detik: **suar (solar flare)** → **CME**
+  (gelembung plasma yang meluas lalu memudar), ditambah korona.
+- *Daftar* — tabrakan galaksi Bima Sakti × Andromeda (`galaxy_collision.glb`, 12.000 bintang, 22 morph target, 1,5 MB). Bidang
+  tabrakan dihadapkan ke kamera dengan PCA, satu siklus ± 44 detik lalu memudar dan diulang.
+
+Hemat: maks 30 fps, resolusi diperkecil, berhenti saat tab tersembunyi, turun kualitas otomatis lalu kembali ke gambar statis bila
+perangkat lambat, dan konteks GPU dilepas saat game dimulai. Tidak dijalankan pada "Kurangi gerakan" / hemat data (gambar statis).
 
 `scripts/render-backdrops.mjs` membuat `earth-band-{4k,2k}.webp` (tekstur Bumi pita lintang ±62°, 850/240 KB) dan
-`bg-{earth,sun,blackhole}.webp` (frame pertama yang sama, ± 35–85 KB) sebagai gambar instan & cadangan. Fungsi pikselnya
+`bg-{earth,sun}.webp` (frame pertama yang sama, ± 35–85 KB) sebagai gambar instan & cadangan. `bg-galaxy.webp` (cadangan
+halaman Daftar) dibuat oleh `npm run guide-images` dari bingkai awal model galaksi. Fungsi pikselnya
 adalah padanan JS dari shader — ubah keduanya bersamaan; `node scripts/render-backdrops.mjs preview sun 390 844 30 out.png` untuk cek komposisi ponsel.
 
 ## Model 3D
@@ -88,7 +99,16 @@ Model mentah disimpan di `3D Planet/` dan `3D Pesawat/` (± 250 MB, tidak ikut g
 - **Lubang hitam**: dekorasi langit di luar tata surya (± 17.000 satuan, di luar batas navigasi). Dimuat ± 3 detik setelah permainan
   dimulai dan shader-nya dikompilasi asinkron, jadi tidak membebani layar awal maupun pemuatan.
 - Tekstur WebP ≤ 2048 px, geometri `EXT_meshopt_compression`. Saat di beranda, model planet & pesawat diunduh di latar (prefetch, prioritas rendah; dilewati pada mode hemat data).
-- Bila sebuah model gagal dimuat, game memakai planet/pesawat prosedural sebagai cadangan.
+- Bila model planet gagal dimuat, game memakai planet prosedural sebagai cadangan. Pesawat **hanya** memakai model GLB
+  (model prosedural lama sudah dihapus): selama unduhan berjalan pesawat belum tampil, lalu muncul begitu siap — tidak pernah dua model sekaligus.
+- **Api mesin** (`app/game/ships.js`): dua lapis kerucut ber-shader (inti panas + selubung) yang bergoyang, berdenyut, dan
+  bergolak oleh derau; panjangnya mengikuti gas, berlian kejut muncul saat turbo.
+
+## Gambar panduan
+
+Slide 1–4 panduan menampilkan slider 3 gambar (`public/img/guide/slide-N-M-*.webp`, 1280×800, ± 25–70 KB) yang selaras dengan poin
+01/02/03 di kanan. Gambar dibuat oleh `npm run guide-images` (`scripts/render-guide.mjs`): perender perangkat lunak kecil
+(`scripts/lib/raster.mjs`) menggambar planet & pesawat langsung dari model GLB game, lalu menambah latar nebula dan lapisan SVG.
 
 | Di game | Model | Pembuat | Lisensi |
 |---|---|---|---|
@@ -105,6 +125,8 @@ Model mentah disimpan di `3D Planet/` dan `3D Pesawat/` (± 250 MB, tidak ikut g
 | Uranus | [Uranus](https://sketchfab.com/3d-models/uranus-0009a69dbace44608c0bd09af9ba20db) | NestaEric | CC BY 4.0 |
 | Neptunus | [Neptune](https://sketchfab.com/3d-models/neptune-2a6f9ccc5c724a709912774caa197b77) | Nestaeric | CC BY 4.0 |
 | Lubang hitam di langit | [Black Hole](https://sketchfab.com/3d-models/black-hole-e410da98b1e5445eae2acafaaa53587d) | NestaEric | CC BY 4.0 |
+| Latar halaman Masuk | [Sun](https://sketchfab.com/3d-models/sun-9ef1c68fbb944147bcfcc891d3912645) | SebastianSosnowski | CC BY 4.0 |
+| Latar halaman Daftar | [Galaxy Collision 1- Milky Way x Andromeda](https://sketchfab.com/3d-models/galaxy-collision-1-milky-way-x-andromeda-0ec6b1f811684bfca7abe3ea78221fe5) | aditya299792 | CC BY 4.0 |
 
 Semua model di atas **diubah** (dikonversi, diorientasikan ulang, disederhanakan, tekstur dikompres). Hasil olahan model Venus
 tetap berlisensi **CC BY-SA 4.0**. Kredit yang sama tampil di game: *Profil → FAQ*.
@@ -123,7 +145,7 @@ app/
     ships.js, lab.js, shaders.js, audio.js, util.js
   data/                    solarSystem, ships, history, quiz, phenomena (fenomena per planet), keymap (tombol), credits
 public/img/                earth-band-*.webp, bg-earth.webp, bg-sun.webp, bg-blackhole.webp (hasil render-backdrops)
-public/models/             planets/*.glb, ships/*.glb, decor/black_hole.glb (hasil npm run models)
+public/models/             planets/*.glb, ships/*.glb, decor/black_hole.glb (hasil npm run models), decor/{sun,galaxy_collision}.glb (npm run backdrops)
 scripts/                   optimize-models.mjs, render-backdrops.mjs
 ```
 
