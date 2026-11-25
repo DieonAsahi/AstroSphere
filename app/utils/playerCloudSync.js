@@ -1,4 +1,6 @@
-// Utilitas Sinkronisasi Progres Pemain ke Awan (Supabase) dengan Mode Tamu Lokal & Fallback Graceful.
+// Utilitas Autentikasi & Sinkronisasi Progres Pemain:
+// - Akun Username + Password memakai RPC pgcrypto & session_token tanpa email / Supabase Email Auth.
+// - Akun Google memakai Google OAuth dan tetap terhubung ke tabel public.player_progress.
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
 import {
   isBrowserOffline,
@@ -7,17 +9,27 @@ import {
   GENERIC_PUBLIC_ERROR,
 } from './networkError.js';
 
-// Domain sintetis untuk memetakan nama penjelajah ke format email Supabase Auth
-const SYNTHETIC_DOMAIN = 'player.astrosphere.app';
-
-export const toSyntheticEmail = (username) => {
-  const clean = sanitizeUsername(username);
-  return `${clean}@${SYNTHETIC_DOMAIN}`;
-};
-
-function isValidSyntheticEmail(email) {
-  return /^[a-z0-9_]{3,20}@[a-z0-9.-]+\.[a-z]{2,}$/.test(String(email || '').trim().toLowerCase());
-}
+const SAFE_PLAYER_COLUMNS = [
+  'user_id',
+  'auth_user_id',
+  'auth_provider',
+  'username',
+  'astro_id',
+  'display_name',
+  'points',
+  'earned',
+  'selected_ship',
+  'owned_ships',
+  'progress_data',
+  'game_state',
+  'settings_data',
+  'is_active',
+  'banned_at',
+  'banned_reason',
+  'last_sign_in_at',
+  'created_at',
+  'updated_at',
+].join(', ');
 
 export const isValidUsername = (username) => {
   const clean = String(username || '').trim().toLowerCase();
@@ -38,7 +50,80 @@ export function formatBannedMessage(reason = '') {
 function isBannedAuthError(err) {
   const msg = String(err?.message || err || '').toLowerCase();
   const code = String(err?.code || '').toLowerCase();
-  return msg.includes('user is banned') || msg.includes('banned') || code === 'user_banned';
+  return (
+    msg.includes('account_disabled') ||
+    msg.includes('user is banned') ||
+    msg.includes('banned') ||
+    code === 'user_banned'
+  );
+}
+
+function extractDisabledReason(err) {
+  const raw = String(err?.message || err || '');
+  const idx = raw.indexOf('ACCOUNT_DISABLED:');
+  if (idx === -1) return '';
+  return raw.slice(idx + 'ACCOUNT_DISABLED:'.length).trim();
+}
+
+function mapSafePlayerError(err, fallback = GENERIC_PUBLIC_ERROR) {
+  if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+    return { offline: true, err: OFFLINE_ACTION_NOTICE };
+  }
+  const msg = String(err?.message || err || '');
+  const lower = msg.toLowerCase();
+  const code = String(err?.code || '').toLowerCase();
+  const status = Number(err?.status || 0);
+
+  if (msg.includes('ACCOUNT_DISABLED:') || lower.includes('user_banned') || lower.includes('user is banned')) {
+    return { banned: true, revoked: true, err: formatBannedMessage(extractDisabledReason(err)) };
+  }
+  if (msg.includes('USERNAME_TAKEN') || (code === '23505' && lower.includes('username'))) {
+    return { err: 'Nama penjelajah sudah digunakan.' };
+  }
+  if (msg.includes('INVALID_USERNAME')) {
+    return { err: 'Nama penjelajah harus 3–20 karakter (huruf kecil, angka, atau garis bawah _).' };
+  }
+  if (msg.includes('WEAK_PASSWORD')) {
+    return { err: 'Kata sandi minimal 6 karakter.' };
+  }
+  if (msg.includes('INVALID_CREDENTIALS') || lower.includes('invalid login credentials') || code === 'invalid_credentials') {
+    return { err: 'Nama penjelajah atau kata sandi salah.' };
+  }
+  if (msg.includes('SESSION_INVALID')) {
+    return { revoked: true, err: 'Sesi akun telah berakhir atau tidak valid. Silakan masuk kembali.' };
+  }
+  if (status === 429 || lower.includes('rate limit') || lower.includes('too many requests')) {
+    return { err: 'Terlalu banyak percobaan. Silakan tunggu beberapa saat lalu coba lagi.' };
+  }
+  return { err: fallback };
+}
+
+function buildRpcProgressPayload(merged, astroId) {
+  return {
+    points: merged.points,
+    earned: merged.earned,
+    selected_ship: merged.selected_ship,
+    owned_ships: merged.owned_ships,
+    astro_id: astroId,
+    progress_data: merged.progress_data,
+    game_state: merged.game_state && typeof merged.game_state === 'object' ? merged.game_state : {},
+    settings_data: merged.settings_data && typeof merged.settings_data === 'object' ? merged.settings_data : {},
+  };
+}
+
+function resolveSessionArg(sessionOrUserId) {
+  if (sessionOrUserId && typeof sessionOrUserId === 'object') {
+    return {
+      userId: sessionOrUserId.userId || null,
+      authProvider: sessionOrUserId.authProvider || (sessionOrUserId.sessionToken ? 'username' : 'google'),
+      sessionToken: sessionOrUserId.sessionToken || '',
+    };
+  }
+  return {
+    userId: typeof sessionOrUserId === 'string' ? sessionOrUserId : null,
+    authProvider: 'google',
+    sessionToken: '',
+  };
 }
 
 // Pembuat ASTRO-ID unik otomatis (8 digit acak + tahun berjalan)
@@ -170,7 +255,7 @@ export async function checkUsernameAvailability(username) {
   }
 }
 
-// Pendaftaran Pemain Baru di Supabase Auth + Tabel public.player_progress
+// Pendaftaran Pemain Baru via RPC player_register_username (tanpa email)
 export async function registerPlayerToCloud(username, password, localStoreData) {
   const cleanUsername = String(username || '').trim().toLowerCase();
   if (!isValidUsername(cleanUsername)) {
@@ -188,187 +273,47 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
     return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
   }
 
-  // 1. Cek ketersediaan nama penjelajah via RPC is_username_available
-  const avail = await checkUsernameAvailability(cleanUsername);
-  if (avail.offline) {
-    return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-  }
-  if (avail.ok && !avail.available) {
-    return { ok: false, err: 'Nama penjelajah sudah digunakan.' };
-  }
-
-  const email = toSyntheticEmail(cleanUsername);
-  if (!isValidSyntheticEmail(email)) {
-    console.error('[AstroSphere] Format email internal hasil pemetaan username tidak valid:', { cleanUsername, email });
-    return { ok: false, err: 'Nama penjelajah hanya boleh menggunakan huruf kecil, angka, atau garis bawah (_).' };
-  }
-
   try {
-    // 2. Daftarkan akun di Auth
-    const { data: authData, error: authErr } = await client.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username: cleanUsername,
-          display_name: cleanUsername,
-        },
-      },
-    });
-
-    if (authErr) {
-      if (isOfflineOrNetworkError(authErr)) {
-        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-      }
-      console.error('[AstroSphere] signUp gagal:', {
-        code: authErr.code,
-        status: authErr.status,
-        message: authErr.message,
-        username: cleanUsername,
-      });
-      const authMsg = String(authErr.message || '').toLowerCase();
-      const authCode = String(authErr.code || '').toLowerCase();
-      if (
-        authCode === 'user_already_exists' ||
-        authMsg.includes('already registered') ||
-        authMsg.includes('already exists') ||
-        authMsg.includes('already been registered')
-      ) {
-        return { ok: false, err: 'Nama penjelajah sudah digunakan.' };
-      }
-      if (authCode === 'weak_password' || authMsg.includes('password')) {
-        return { ok: false, err: 'Kata sandi minimal 6 karakter dan memenuhi syarat keamanan.' };
-      }
-      if (authCode === 'email_address_invalid' || authMsg.includes('invalid email') || authMsg.includes('unable to validate email')) {
-        return { ok: false, err: 'Format nama penjelajah tidak valid untuk pendaftaran.' };
-      }
-      if (authCode === 'over_email_send_rate_limit' || authCode === 'over_request_rate_limit' || authErr.status === 429) {
-        return { ok: false, err: 'Terlalu banyak percobaan pendaftaran. Silakan tunggu beberapa saat lalu coba lagi.' };
-      }
-      return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
-    }
-
-    const user = authData?.user;
-    if (!user) {
-      console.error('[AstroSphere] signUp tidak mengembalikan objek user:', authData);
-      return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
-    }
-
-    // Jika Supabase menyamarkan duplikasi akun (identities kosong saat Confirm email aktif)
-    if (Array.isArray(user.identities) && user.identities.length === 0) {
-      console.error('[AstroSphere] signUp terdeteksi nama penjelajah sudah terdaftar (identities kosong):', { username: cleanUsername });
-      return { ok: false, err: 'Nama penjelajah sudah digunakan.' };
-    }
-
-    // Pastikan sesi aktif terpasang agar RLS INSERT public.player_progress (auth.uid() = user_id) lolos
-    let activeSession = authData?.session || null;
-    if (!activeSession) {
-      const { data: loginFallback, error: loginFallbackErr } = await client.auth.signInWithPassword({ email, password });
-      if (loginFallback?.session) {
-        activeSession = loginFallback.session;
-      } else {
-        console.error('[AstroSphere] signUp berhasil tanpa sesi aktif (periksa pengaturan Confirm email):', {
-          error: loginFallbackErr?.message || 'no_session',
-          code: loginFallbackErr?.code,
-        });
-        return { ok: false, err: 'Akun dibuat tetapi belum aktif. Silakan coba masuk kembali.' };
-      }
-    }
-
-    if (activeSession?.access_token && activeSession?.refresh_token) {
-      const { data: curSess } = await client.auth.getSession();
-      if (!curSess?.session?.access_token) {
-        await client.auth.setSession({
-          access_token: activeSession.access_token,
-          refresh_token: activeSession.refresh_token,
-        });
-      }
-    }
-
-    // 3. Susun data awal progres yang menggabungkan capaian lokal tamu
     const merged = mergeProgress(null, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
-    let assignedAstroId = (typeof localStoreData?.astroId === 'string' && localStoreData.astroId.trim()) || generateAstroId();
+    const desiredAstroId = (typeof localStoreData?.astroId === 'string' && localStoreData.astroId.trim()) || generateAstroId();
 
-    // 4. Buat baris data progres di tabel public.player_progress (memenuhi RLS is_active = true & NOT NULL JSONB)
-    const buildPayload = (astroId) => ({
-      user_id: user.id,
-      username: cleanUsername,
-      astro_id: astroId,
-      display_name: cleanUsername,
-      points: merged.points,
-      earned: merged.earned,
-      selected_ship: merged.selected_ship,
-      owned_ships: merged.owned_ships,
-      progress_data: merged.progress_data,
-      game_state: merged.game_state,
-      settings_data: merged.settings_data,
-      is_active: true,
+    const { data: row, error } = await client.rpc('player_register_username', {
+      p_username: cleanUsername,
+      p_password: password,
+      p_astro_id: desiredAstroId,
+      p_progress: buildRpcProgressPayload(merged, desiredAstroId),
     });
 
-    let insertRes = await client.from('player_progress').insert(buildPayload(assignedAstroId));
-
-    for (let attempt = 0; attempt < 3 && insertRes.error; attempt++) {
-      const iErr = insertRes.error;
-      const iCode = String(iErr.code || '');
-      const iMsg = `${iErr.message || ''} ${iErr.details || ''}`.toLowerCase();
-
-      if (iCode === '42501' && activeSession?.access_token && activeSession?.refresh_token) {
-        await client.auth.setSession({
-          access_token: activeSession.access_token,
-          refresh_token: activeSession.refresh_token,
-        });
-        insertRes = await client.from('player_progress').insert(buildPayload(assignedAstroId));
-        continue;
-      }
-
-      if (iCode === '23505') {
-        if (iMsg.includes('username')) {
-          console.error('[AstroSphere] Bentrok constraint unik username saat daftar:', iErr);
-          return { ok: false, err: 'Nama penjelajah sudah digunakan.' };
-        }
-        if (iMsg.includes('user_id') || iMsg.includes('pkey')) {
-          const { is_active: _ignored, ...updateFields } = buildPayload(assignedAstroId);
-          insertRes = await client.from('player_progress').update(updateFields).eq('user_id', user.id);
-          continue;
-        }
-        assignedAstroId = generateAstroId();
-        insertRes = await client.from('player_progress').insert(buildPayload(assignedAstroId));
-        continue;
-      }
-      break;
+    if (error) {
+      console.error('[AstroSphere] player_register_username gagal:', error);
+      const mapped = mapSafePlayerError(error, 'Tidak dapat membuat akun saat ini. Silakan coba lagi.');
+      return { ok: false, offline: !!mapped.offline, err: mapped.err };
     }
 
-    if (insertRes.error) {
-      console.error('[AstroSphere] Gagal menyimpan baris awal player_progress:', {
-        code: insertRes.error.code,
-        message: insertRes.error.message,
-        details: insertRes.error.details,
-        hint: insertRes.error.hint,
-      });
-      if (isOfflineOrNetworkError(insertRes.error) || isBrowserOffline()) {
-        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-      }
+    if (!row || !row.user_id || !row.session_token) {
+      console.error('[AstroSphere] player_register_username mengembalikan data tidak lengkap:', row);
       return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
     }
 
     return {
       ok: true,
-      user,
-      username: cleanUsername,
-      displayName: cleanUsername,
-      astroId: assignedAstroId,
-      mergedData: merged,
+      userId: row.user_id,
+      user: { id: row.user_id },
+      username: row.username || cleanUsername,
+      displayName: row.display_name || cleanUsername,
+      astroId: row.astro_id || desiredAstroId,
+      sessionToken: row.session_token,
+      authProvider: 'username',
+      mergedData: mergeProgress(row, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState),
     };
   } catch (err) {
-    console.error('[AstroSphere] Kesalahan tak terduga saat pendaftaran akun:', err);
-    if (isOfflineOrNetworkError(err)) {
-      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-    }
-    return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
+    console.error('[AstroSphere] Kesalahan tak terduga saat pendaftaran username:', err);
+    const mapped = mapSafePlayerError(err, 'Tidak dapat membuat akun saat ini. Silakan coba lagi.');
+    return { ok: false, offline: !!mapped.offline, err: mapped.err };
   }
 }
 
-// Masuk Akun Pemain di Supabase Auth & Tarik Progres Awan
+// Masuk Akun Username + Password via RPC player_login_username (tanpa email)
 export async function loginPlayerToCloud(username, password, localStoreData) {
   const cleanUsername = sanitizeUsername(username);
   if (!cleanUsername) {
@@ -386,106 +331,66 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
     return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
   }
 
-  const email = toSyntheticEmail(cleanUsername);
-
   try {
-    const { data: authData, error: authErr } = await client.auth.signInWithPassword({
-      email,
-      password,
+    const { data: row, error } = await client.rpc('player_login_username', {
+      p_username: cleanUsername,
+      p_password: password,
     });
 
-    if (authErr) {
-      if (isOfflineOrNetworkError(authErr)) {
-        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
+    if (error) {
+      const mapped = mapSafePlayerError(error, 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.');
+      if (!mapped.banned && mapped.err !== 'Nama penjelajah atau kata sandi salah.') {
+        console.error('[AstroSphere] player_login_username gagal:', error);
       }
-      if (isBannedAuthError(authErr)) {
-        return { ok: false, banned: true, err: formatBannedMessage() };
-      }
-      if (authErr.message?.includes('Invalid login credentials') || authErr.code === 'invalid_credentials') {
-        return { ok: false, err: 'Nama penjelajah atau kata sandi salah.', unknown: false };
-      }
-      console.error('[AstroSphere] loginPlayerToCloud signInWithPassword error:', {
-        code: authErr.code,
-        status: authErr.status,
-        message: authErr.message,
-      });
-      return { ok: false, err: 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.' };
-    }
-
-    const user = authData.user;
-    if (!user) {
-      return { ok: false, err: 'Sesi masuk tidak ditemukan.' };
-    }
-
-    // Ambil data progres dari tabel public.player_progress
-    const { data: progressRow, error: pErr } = await client
-      .from('player_progress')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (pErr) {
-      console.warn('[AstroSphere] Peringatan saat membaca player_progress:', pErr);
-    }
-
-    if (progressRow?.is_active === false) {
-      await client.auth.signOut().catch(() => {});
       return {
         ok: false,
-        banned: true,
-        bannedReason: progressRow.banned_reason || '',
-        err: formatBannedMessage(progressRow.banned_reason),
+        offline: !!mapped.offline,
+        banned: !!mapped.banned,
+        err: mapped.err,
+        unknown: false,
       };
     }
 
-    // Gabungkan dengan capaian lokal tamu saat ini agar bintang/planet baru tidak hilang
-    const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
-    let assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
-
-    // Perbarui (atau buat jika belum ada) baris progres di awan dengan data gabungan
-    const buildPayload = (astroId) => ({
-      user_id: user.id,
-      username: progressRow?.username || cleanUsername,
-      astro_id: astroId,
-      display_name: progressRow?.display_name || cleanUsername,
-      points: merged.points,
-      earned: merged.earned,
-      selected_ship: merged.selected_ship,
-      owned_ships: merged.owned_ships,
-      progress_data: merged.progress_data,
-      game_state: merged.game_state,
-      settings_data: merged.settings_data,
-      ...(progressRow ? {} : { is_active: true }),
-    });
-
-    let updateRes = await client.from('player_progress').upsert(buildPayload(assignedAstroId), { onConflict: 'user_id' });
-
-    if (updateRes.error && (updateRes.error.message?.includes('astro_id') || updateRes.error.code === '23505')) {
-      assignedAstroId = generateAstroId();
-      updateRes = await client.from('player_progress').upsert(buildPayload(assignedAstroId), { onConflict: 'user_id' });
+    if (!row || !row.user_id || !row.session_token) {
+      console.error('[AstroSphere] player_login_username mengembalikan data tidak lengkap:', row);
+      return { ok: false, err: 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.' };
     }
 
-    if (updateRes.error) {
-      console.error('[AstroSphere] Gagal memperbarui/menyimpan player_progress saat login:', updateRes.error);
-      if (!progressRow) {
-        return { ok: false, err: GENERIC_PUBLIC_ERROR };
-      }
+    const merged = mergeProgress(row, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+    const assignedAstroId = row.astro_id || localStoreData?.astroId || generateAstroId();
+
+    // Gabungkan progres tamu lokal jika ada tambahan capaian lalu sinkronkan via player_sync_username
+    const { error: syncErr } = await client.rpc('player_sync_username', {
+      p_user_id: row.user_id,
+      p_session_token: row.session_token,
+      p_progress: buildRpcProgressPayload(merged, assignedAstroId),
+      p_game_state: merged.game_state,
+    });
+
+    if (syncErr) {
+      console.error('[AstroSphere] Peringatan sinkronisasi pasca-login username:', syncErr);
     }
 
     return {
       ok: true,
-      user,
-      username: progressRow?.username || cleanUsername,
-      displayName: progressRow?.display_name || cleanUsername,
+      userId: row.user_id,
+      user: { id: row.user_id },
+      username: row.username || cleanUsername,
+      displayName: row.display_name || cleanUsername,
       astroId: assignedAstroId,
+      sessionToken: row.session_token,
+      authProvider: 'username',
       mergedData: merged,
     };
   } catch (err) {
-    console.error('[AstroSphere] Kesalahan saat masuk akun awan:', err);
-    if (isOfflineOrNetworkError(err)) {
-      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-    }
-    return { ok: false, err: 'Terjadi kendala saat masuk ke akun. Silakan coba lagi.' };
+    console.error('[AstroSphere] Kesalahan tak terduga saat masuk akun:', err);
+    const mapped = mapSafePlayerError(err, 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.');
+    return {
+      ok: false,
+      offline: !!mapped.offline,
+      banned: !!mapped.banned,
+      err: mapped.err,
+    };
   }
 }
 
@@ -552,15 +457,15 @@ export async function syncGooglePlayerSession(user, localStoreData) {
       return { ok: false, banned: true, err: formatBannedMessage() };
     }
 
-    // 1. Cek tabel public.player_progress untuk user_id tersebut
+    // 1. Cek tabel public.player_progress untuk user Google tersebut
     const { data: progressRow, error: pErr } = await client
       .from('player_progress')
-      .select('*')
-      .eq('user_id', user.id)
+      .select(SAFE_PLAYER_COLUMNS)
+      .or(`user_id.eq.${user.id},auth_user_id.eq.${user.id}`)
       .maybeSingle();
 
     if (pErr) {
-      console.warn('[AstroSphere] Peringatan saat mengambil player_progress untuk Google user:', pErr);
+      console.error('[AstroSphere] Gagal membaca player_progress untuk Google user:', pErr);
       if (isOfflineOrNetworkError(pErr)) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
       }
@@ -590,23 +495,34 @@ export async function syncGooglePlayerSession(user, localStoreData) {
     const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
     let assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
 
-    const buildGooglePayload = (uname, astroId) => ({
-      user_id: user.id,
-      username: uname,
-      astro_id: astroId,
-      display_name: displayName,
-      points: merged.points,
-      earned: merged.earned,
-      selected_ship: merged.selected_ship,
-      owned_ships: merged.owned_ships,
-      progress_data: merged.progress_data,
-      game_state: merged.game_state,
-      settings_data: merged.settings_data,
-      ...(progressRow ? {} : { is_active: true }),
-    });
+    const saveGoogleRow = async (uname, astroId) => {
+      const mutableFields = {
+        username: uname,
+        astro_id: astroId,
+        display_name: displayName,
+        points: merged.points,
+        earned: merged.earned,
+        selected_ship: merged.selected_ship,
+        owned_ships: merged.owned_ships,
+        progress_data: merged.progress_data,
+        game_state: merged.game_state,
+        settings_data: merged.settings_data,
+        last_sign_in_at: new Date().toISOString(),
+      };
+      if (progressRow?.user_id) {
+        return client.from('player_progress').update(mutableFields).eq('user_id', progressRow.user_id);
+      }
+      return client.from('player_progress').insert({
+        user_id: user.id,
+        auth_user_id: user.id,
+        auth_provider: 'google',
+        is_active: true,
+        ...mutableFields,
+      });
+    };
 
-    // 3. Upsert baris progres di public.player_progress (dengan coba ulang unik jika astro_id / username bertabrakan)
-    let upsertRes = await client.from('player_progress').upsert(buildGooglePayload(username, assignedAstroId), { onConflict: 'user_id' });
+    // 3. Insert / Update baris progres di public.player_progress (dengan coba ulang unik jika astro_id / username bertabrakan)
+    let upsertRes = await saveGoogleRow(username, assignedAstroId);
 
     for (let attempt = 0; attempt < 3 && upsertRes.error; attempt++) {
       const msg = String(upsertRes.error.message || '').toLowerCase();
@@ -618,14 +534,14 @@ export async function syncGooglePlayerSession(user, localStoreData) {
         if (msg.includes('astro_id') || code === '23505') {
           assignedAstroId = generateAstroId();
         }
-        upsertRes = await client.from('player_progress').upsert(buildGooglePayload(username, assignedAstroId), { onConflict: 'user_id' });
+        upsertRes = await saveGoogleRow(username, assignedAstroId);
       } else {
         break;
       }
     }
 
     if (upsertRes.error) {
-      console.warn('[AstroSphere] Gagal menyimpan data player_progress Google user:', upsertRes.error);
+      console.error('[AstroSphere] Gagal menyimpan data player_progress Google user:', upsertRes.error);
       if (isOfflineOrNetworkError(upsertRes.error) || isBrowserOffline()) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
       }
@@ -635,9 +551,11 @@ export async function syncGooglePlayerSession(user, localStoreData) {
     return {
       ok: true,
       user,
+      userId: progressRow?.user_id || user.id,
       username,
       displayName,
       astroId: assignedAstroId,
+      authProvider: 'google',
       mergedData: merged,
     };
   } catch (err) {
@@ -649,14 +567,15 @@ export async function syncGooglePlayerSession(user, localStoreData) {
   }
 }
 
-// Keluar Akun Supabase
-export async function logoutPlayerFromCloud() {
+// Keluar Akun (bersihkan sesi Auth jika Google)
+export async function logoutPlayerFromCloud(sessionOrUserId = null) {
+  const { authProvider } = resolveSessionArg(sessionOrUserId);
   const client = getSupabaseClient();
-  if (client) {
+  if (client && authProvider !== 'username') {
     try {
       await client.auth.signOut();
     } catch (err) {
-      console.warn('[AstroSphere] Kesalahan saat logout Supabase:', err);
+      console.error('[AstroSphere] Kesalahan saat logout:', err);
     }
   }
   return { ok: true };
@@ -666,31 +585,65 @@ export async function logoutPlayerFromCloud() {
 let saveTimer = null;
 let isSaving = false;
 
-// Simpan Progres Awan dengan Jeda (Debounce 2 Detik)
-export function scheduleCloudSave(userId, payloadGetter, onSavedCallback, onRevokedCallback) {
+// Simpan Progres Otomatis dengan Jeda (Debounce 2 Detik)
+export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallback, onRevokedCallback) {
+  const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
   if (!userId) return;
   if (saveTimer) clearTimeout(saveTimer);
 
   saveTimer = setTimeout(async () => {
     const client = getSupabaseClient();
-    if (!client || isSaving) return;
+    if (!client || isSaving || isBrowserOffline()) return;
 
     isSaving = true;
     try {
-      // Verifikasi ke server Auth terlebih dahulu agar status ban / hapus akun langsung terdeteksi
-      const { data: authCheck, error: authCheckErr } = await client.auth.getUser();
-      if (authCheckErr || !authCheck?.user) {
-        if (typeof onRevokedCallback === 'function') {
-          onRevokedCallback({
-            banned: isBannedAuthError(authCheckErr),
-            reason: isBannedAuthError(authCheckErr) ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
-          });
+      const payload = payloadGetter();
+      if (!payload) return;
+
+      if (authProvider === 'username' && sessionToken) {
+        const { error: rpcErr } = await client.rpc('player_sync_username', {
+          p_user_id: userId,
+          p_session_token: sessionToken,
+          p_progress: {
+            points: payload.points,
+            earned: payload.earned,
+            selected_ship: payload.selected_ship,
+            owned_ships: payload.owned_ships,
+            astro_id: payload.astro_id,
+            progress_data: payload.progress_data,
+            settings_data: payload.settings_data,
+          },
+          p_game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
+        });
+
+        if (rpcErr) {
+          if (isOfflineOrNetworkError(rpcErr) || isBrowserOffline()) return;
+          const mapped = mapSafePlayerError(rpcErr);
+          if (mapped.banned || mapped.revoked) {
+            onRevokedCallback?.({
+              banned: !!mapped.banned,
+              reason: mapped.err,
+            });
+            return;
+          }
+          console.error('[AstroSphere] Gagal sinkronisasi otomatis akun username:', rpcErr);
+          return;
         }
+
+        onSavedCallback?.();
         return;
       }
 
-      const payload = payloadGetter();
-      if (!payload) return;
+      // Jalur Google OAuth: verifikasi ke Auth lalu perbarui public.player_progress
+      const { data: authCheck, error: authCheckErr } = await client.auth.getUser();
+      if (authCheckErr || !authCheck?.user) {
+        if (isOfflineOrNetworkError(authCheckErr) || isBrowserOffline()) return;
+        onRevokedCallback?.({
+          banned: isBannedAuthError(authCheckErr),
+          reason: isBannedAuthError(authCheckErr) ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
+        });
+        return;
+      }
 
       const updateData = {
         points: payload.points,
@@ -698,7 +651,7 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback, onRevo
         selected_ship: payload.selected_ship,
         owned_ships: payload.owned_ships,
         progress_data: payload.progress_data,
-        game_state: payload.game_state,
+        game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
         settings_data: payload.settings_data,
         updated_at: new Date().toISOString(),
       };
@@ -716,29 +669,28 @@ export function scheduleCloudSave(userId, payloadGetter, onSavedCallback, onRevo
           .maybeSingle();
 
         if (!rowStatus || rowStatus.is_active === false) {
-          if (typeof onRevokedCallback === 'function') {
-            onRevokedCallback({
-              banned: rowStatus?.is_active === false,
-              reason: rowStatus?.is_active === false
-                ? formatBannedMessage(rowStatus.banned_reason)
-                : 'Akun Anda tidak ditemukan atau telah dihapus oleh administrator.',
-            });
-          }
+          onRevokedCallback?.({
+            banned: rowStatus?.is_active === false,
+            reason: rowStatus?.is_active === false
+              ? formatBannedMessage(rowStatus.banned_reason)
+              : 'Akun Anda tidak ditemukan atau telah dihapus oleh administrator.',
+          });
           return;
         }
-      } else if (typeof onSavedCallback === 'function') {
-        onSavedCallback();
+      } else {
+        onSavedCallback?.();
       }
     } catch (err) {
-      console.warn('[AstroSphere] Gagal sinkronisasi otomatis ke awan:', err);
+      console.error('[AstroSphere] Gagal sinkronisasi otomatis:', err);
     } finally {
       isSaving = false;
     }
   }, 2000);
 }
 
-// Sinkronkan data pemain live dari Supabase (tarik data awan & gabungkan dengan data lokal)
-export async function syncPlayerCloudProgress(userId, localStoreData) {
+// Sinkronkan data pemain live (tarik data terbaru & gabungkan dengan data lokal)
+export async function syncPlayerCloudProgress(sessionOrUserId, localStoreData) {
+  const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
   if (!userId) return { ok: false, err: 'Sesi pengguna tidak ditemukan.' };
   const client = getSupabaseClient();
   if (!client) return { ok: false, offline: true, noClient: true };
@@ -747,6 +699,62 @@ export async function syncPlayerCloudProgress(userId, localStoreData) {
   }
 
   try {
+    if (authProvider === 'username' && sessionToken) {
+      const { data: serverRow, error: fetchErr } = await client.rpc('player_sync_username', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+        p_progress: null,
+        p_game_state: null,
+      });
+
+      if (fetchErr) {
+        console.error('[AstroSphere] Gagal mengambil sesi player_sync_username:', fetchErr);
+        const mapped = mapSafePlayerError(fetchErr);
+        return {
+          ok: false,
+          offline: !!mapped.offline,
+          banned: !!mapped.banned,
+          revoked: !!mapped.revoked,
+          err: mapped.err,
+        };
+      }
+
+      if (!serverRow || !serverRow.user_id) {
+        return { ok: false, revoked: true, err: 'Akun penjelajah tidak ditemukan atau telah dihapus.' };
+      }
+
+      const merged = mergeProgress(serverRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
+      const assignedAstroId = serverRow?.astro_id || localStoreData?.astroId || generateAstroId();
+
+      const { data: updatedRow, error: updErr } = await client.rpc('player_sync_username', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+        p_progress: buildRpcProgressPayload(merged, assignedAstroId),
+        p_game_state: merged.game_state,
+      });
+
+      if (updErr) {
+        console.error('[AstroSphere] Gagal menyimpan hasil gabungan player_sync_username:', updErr);
+        const mapped = mapSafePlayerError(updErr);
+        return {
+          ok: false,
+          offline: !!mapped.offline,
+          banned: !!mapped.banned,
+          revoked: !!mapped.revoked,
+          err: mapped.err,
+        };
+      }
+
+      return {
+        ok: true,
+        username: updatedRow?.username || serverRow.username,
+        displayName: updatedRow?.display_name || serverRow.display_name,
+        astroId: assignedAstroId,
+        mergedData: merged,
+      };
+    }
+
+    // Jalur Google OAuth
     const { data: userCheck, error: userErr } = await client.auth.getUser();
     if (userErr) {
       if (isOfflineOrNetworkError(userErr) || isBrowserOffline()) {
@@ -772,12 +780,12 @@ export async function syncPlayerCloudProgress(userId, localStoreData) {
 
     const { data: progressRow, error: pErr } = await client
       .from('player_progress')
-      .select('*')
+      .select(SAFE_PLAYER_COLUMNS)
       .eq('user_id', userId)
       .maybeSingle();
 
     if (pErr) {
-      console.warn('[AstroSphere] Peringatan saat mengambil player_progress live:', pErr);
+      console.error('[AstroSphere] Gagal mengambil player_progress live:', pErr);
       if (isOfflineOrNetworkError(pErr) || isBrowserOffline()) {
         return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
       }
@@ -799,11 +807,9 @@ export async function syncPlayerCloudProgress(userId, localStoreData) {
       };
     }
 
-    // Gabungkan dengan data lokal saat ini agar capaian baru tidak tertimpa
     const merged = mergeProgress(progressRow, localStoreData?.progress, localStoreData?.settings, localStoreData?.gameState);
-    let assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
+    const assignedAstroId = progressRow?.astro_id || localStoreData?.astroId || generateAstroId();
 
-    // Perbarui baris di awan dengan gabungan terbaru
     await client.from('player_progress').update({
       points: merged.points,
       earned: merged.earned,
@@ -825,15 +831,15 @@ export async function syncPlayerCloudProgress(userId, localStoreData) {
     };
   } catch (err) {
     console.error('[AstroSphere] Kesalahan sinkronisasi live pemain:', err);
-    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
-      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-    }
-    return { ok: false, err: GENERIC_PUBLIC_ERROR };
+    const mapped = mapSafePlayerError(err);
+    return { ok: false, offline: !!mapped.offline, err: mapped.err };
   }
 }
+export const syncPlayerProgress = syncPlayerCloudProgress;
 
-// Reset bersih data progres pemain di Supabase (tetap mempertahankan akun)
-export async function resetPlayerCloudProgress(userId) {
+// Reset bersih data progres pemain (tetap mempertahankan akun)
+export async function resetPlayerCloudProgress(sessionOrUserId) {
+  const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
   if (!userId) return { ok: false, err: 'Sesi pengguna tidak ditemukan.' };
   const client = getSupabaseClient();
   if (!client) return { ok: false, offline: true, noClient: true };
@@ -842,6 +848,19 @@ export async function resetPlayerCloudProgress(userId) {
   }
 
   try {
+    if (authProvider === 'username' && sessionToken) {
+      const { error: rpcErr } = await client.rpc('player_reset_username', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+      });
+      if (rpcErr) {
+        console.error('[AstroSphere] player_reset_username gagal:', rpcErr);
+        const mapped = mapSafePlayerError(rpcErr, 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.');
+        return { ok: false, offline: !!mapped.offline, err: mapped.err };
+      }
+      return { ok: true };
+    }
+
     const cleanData = {
       points: 0,
       earned: 0,
@@ -864,24 +883,21 @@ export async function resetPlayerCloudProgress(userId) {
     };
     const { error } = await client.from('player_progress').update(cleanData).eq('user_id', userId);
     if (error) {
-      console.warn('[AstroSphere] Gagal mengatur ulang progres:', error);
-      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
-        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-      }
-      return { ok: false, err: 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.' };
+      console.error('[AstroSphere] Gagal mengatur ulang progres:', error);
+      const mapped = mapSafePlayerError(error, 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.');
+      return { ok: false, offline: !!mapped.offline, err: mapped.err };
     }
     return { ok: true };
   } catch (err) {
     console.error('[AstroSphere] Error saat mengatur ulang progres:', err);
-    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
-      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-    }
-    return { ok: false, err: 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.' };
+    const mapped = mapSafePlayerError(err, 'Tidak bisa mengatur ulang data akun saat ini. Silakan coba lagi.');
+    return { ok: false, offline: !!mapped.offline, err: mapped.err };
   }
 }
 
 // Hapus akun pemain secara permanen
-export async function deletePlayerAccountFromCloud() {
+export async function deletePlayerAccountFromCloud(sessionOrUserId = null) {
+  const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
   const client = getSupabaseClient();
   if (!client) return { ok: false, offline: true, noClient: true };
   if (isBrowserOffline()) {
@@ -889,21 +905,31 @@ export async function deletePlayerAccountFromCloud() {
   }
 
   try {
+    if (authProvider === 'username' && sessionToken && userId) {
+      const { data, error: rpcErr } = await client.rpc('player_delete_username', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+      });
+      if (rpcErr) {
+        console.error('[AstroSphere] player_delete_username gagal:', rpcErr);
+        const mapped = mapSafePlayerError(rpcErr, 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.');
+        return { ok: false, offline: !!mapped.offline, err: mapped.err };
+      }
+      return { ok: true, data };
+    }
+
     const { data, error } = await client.rpc('delete_my_account');
     if (error) {
-      console.warn('[AstroSphere] Gagal menghapus akun:', error);
-      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
-        return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-      }
-      return { ok: false, err: 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.' };
+      console.error('[AstroSphere] delete_my_account gagal:', error);
+      const mapped = mapSafePlayerError(error, 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.');
+      return { ok: false, offline: !!mapped.offline, err: mapped.err };
     }
     await client.auth.signOut().catch(() => {});
     return { ok: true, data };
   } catch (err) {
     console.error('[AstroSphere] Error saat menghapus akun:', err);
-    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
-      return { ok: false, offline: true, err: OFFLINE_ACTION_NOTICE };
-    }
-    return { ok: false, err: 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.' };
+    const mapped = mapSafePlayerError(err, 'Tidak bisa menghapus akun saat ini. Silakan coba lagi.');
+    return { ok: false, offline: !!mapped.offline, err: mapped.err };
   }
 }
+export const deletePlayerAccount = deletePlayerAccountFromCloud;

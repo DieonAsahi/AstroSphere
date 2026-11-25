@@ -222,6 +222,8 @@ export const store = reactive({
       name: typeof a?.name === 'string' ? a.name : '',
       username: typeof a?.username === 'string' ? a.username : '',
       userId: typeof a?.userId === 'string' ? a.userId : null,
+      authProvider: a?.authProvider === 'google' ? 'google' : (a?.authProvider === 'username' ? 'username' : ''),
+      sessionToken: typeof a?.sessionToken === 'string' ? a.sessionToken : '',
       cloudSynced: !!a?.cloudSynced,
       astroId: a?.astroId || guestAstroId,
     };
@@ -263,11 +265,21 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Memicu sinkronisasi ke awan (debounced 2 detik) jika pemain masuk akun Supabase
+function getAccountSessionInfo() {
+  return {
+    userId: store.account.userId,
+    authProvider: store.account.authProvider || (store.account.sessionToken ? 'username' : 'google'),
+    sessionToken: store.account.sessionToken || '',
+  };
+}
+
+// Memicu sinkronisasi otomatis (debounced 2 detik) jika pemain masuk akun online
 function triggerCloudSync() {
   if (!store.account.loggedIn || !store.account.userId || !store.account.cloudSynced) return;
+  const sessionInfo = getAccountSessionInfo();
+  if (sessionInfo.authProvider === 'username' && !sessionInfo.sessionToken) return;
 
-  scheduleCloudSave(store.account.userId, () => ({
+  scheduleCloudSave(sessionInfo, () => ({
     points: store.progress.points,
     earned: store.progress.earned,
     selected_ship: store.progress.selectedShip,
@@ -314,13 +326,13 @@ export function saveAccount() {
   ls.write(KEYS.account, store.account);
 }
 
-// Sinkronkan data progres pemain secara langsung dari Supabase ke state reaktif
+// Sinkronkan data progres pemain secara langsung ke state reaktif
 export async function pullCloudProgress() {
   if (!store.account.loggedIn || !store.account.userId) {
     return { ok: false, localOnly: true };
   }
   try {
-    const res = await syncPlayerCloudProgress(store.account.userId, {
+    const res = await syncPlayerCloudProgress(getAccountSessionInfo(), {
       progress: store.progress,
       settings: store.settings,
       gameState: readGameState(),
@@ -409,19 +421,21 @@ export async function registerUser(name, pass) {
       applyMergedData(cloudRes.mergedData);
     }
     const finalAstroId = cloudRes.astroId || store.account.astroId;
-    const userId = cloudRes.user?.id || null;
+    const userId = cloudRes.userId || cloudRes.user?.id || null;
     Object.assign(store.account, {
       loggedIn: true,
       name: cloudRes.displayName || clean,
-      username: clean,
+      username: cloudRes.username || clean,
       userId,
+      authProvider: 'username',
+      sessionToken: cloudRes.sessionToken || '',
       cloudSynced: true,
       astroId: finalAstroId,
     });
     ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
-    // Beralih ke keymap akun ini secara terisolasi (muat milik akun atau awan, jangan warisi tamu)
+    // Beralih ke keymap akun ini secara terisolasi (muat milik akun atau tamu bersih)
     const cloudKeymap = cloudRes.mergedData?.progress_data?.keymap || null;
     switchAccountKeymap(userId, cloudKeymap);
     saveSettings();
@@ -479,19 +493,21 @@ export async function loginUser(name, pass) {
       applyMergedData(cloudRes.mergedData);
     }
     const finalAstroId = cloudRes.astroId || store.account.astroId;
-    const userId = cloudRes.user?.id || null;
+    const userId = cloudRes.userId || cloudRes.user?.id || null;
     Object.assign(store.account, {
       loggedIn: true,
       name: cloudRes.displayName || clean,
-      username: clean,
+      username: cloudRes.username || clean,
       userId,
+      authProvider: 'username',
+      sessionToken: cloudRes.sessionToken || '',
       cloudSynced: true,
       astroId: finalAstroId,
     });
     ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
-    // Beralih ke keymap akun ini secara terisolasi (muat milik akun atau awan, jangan warisi tamu)
+    // Beralih ke keymap akun ini secara terisolasi (muat milik akun, jangan warisi tamu)
     const cloudKeymap = cloudRes.mergedData?.progress_data?.keymap || null;
     switchAccountKeymap(userId, cloudKeymap);
     saveSettings();
@@ -559,7 +575,8 @@ export async function loginUser(name, pass) {
 
 // Keluar Akun
 export async function logoutUser() {
-  await logoutPlayerFromCloud();
+  const info = getAccountSessionInfo();
+  await logoutPlayerFromCloud(info);
   let guestAstroId = ls.read(KEYS.astroId);
   if (!guestAstroId) {
     guestAstroId = generateAstroId();
@@ -570,6 +587,8 @@ export async function logoutUser() {
     name: '',
     username: '',
     userId: null,
+    authProvider: '',
+    sessionToken: '',
     cloudSynced: false,
     astroId: guestAstroId,
   });
@@ -630,9 +649,9 @@ export function wipeAll() {
 }
 
 export async function resetAllGameData() {
-  // 1. Jika login akun awan, sinkronkan reset bersih ke Supabase terlebih dahulu agar tidak terjadi reset palsu saat offline
+  // 1. Jika login akun online, sinkronkan reset bersih ke database terlebih dahulu agar tidak terjadi reset palsu saat offline
   if (store.account.loggedIn && store.account.userId) {
-    const cloudRes = await resetPlayerCloudProgress(store.account.userId);
+    const cloudRes = await resetPlayerCloudProgress(getAccountSessionInfo());
     if (!cloudRes.ok && !cloudRes.noClient) {
       showToast(cloudRes.err || GENERIC_PUBLIC_ERROR, 3500);
       return { ok: false, offline: !!cloudRes.offline, err: cloudRes.err };
@@ -672,9 +691,9 @@ export async function resetAllGameData() {
 }
 
 export async function deleteUserAccount() {
-  // 1. Panggil RPC Supabase terlebih dahulu jika akun terhubung ke awan
+  // 1. Hapus akun dari server (RPC username atau Google) jika akun online terhubung
   if (store.account.loggedIn && store.account.userId) {
-    const cloudRes = await deletePlayerAccountFromCloud();
+    const cloudRes = await deletePlayerAccountFromCloud(getAccountSessionInfo());
     if (!cloudRes.ok && !cloudRes.noClient) {
       showToast(cloudRes.err || GENERIC_PUBLIC_ERROR, 3500);
       return { ok: false, offline: !!cloudRes.offline, err: cloudRes.err };
@@ -696,6 +715,8 @@ export async function deleteUserAccount() {
   store.account.name = '';
   store.account.id = null;
   store.account.userId = null;
+  store.account.authProvider = '';
+  store.account.sessionToken = '';
   store.account.email = null;
   store.account.username = '';
   store.account.cloudSynced = false;
@@ -871,7 +892,9 @@ if (typeof window !== 'undefined') {
             loggedIn: true,
             name: syncRes.displayName || syncRes.username,
             username: syncRes.username,
-            userId: user.id,
+            userId: syncRes.userId || user.id,
+            authProvider: 'google',
+            sessionToken: '',
             cloudSynced: true,
             astroId: finalAstroId,
           });
@@ -984,6 +1007,11 @@ if (typeof window !== 'undefined') {
           if (INITIAL_OAUTH_CALLBACK || window.location.search.includes('code=')) {
             cleanOAuthUrl();
           }
+          // Jika sesi yang aktif adalah akun username + sessionToken, pulihkan & sinkronkan lewat RPC
+          if (store.account.loggedIn && store.account.cloudSynced && store.account.userId && store.account.sessionToken) {
+            pullCloudProgress();
+            return;
+          }
           if (store.account.loggedIn && store.account.cloudSynced) {
             syncedSessionUserId = null;
             await forceRevokeAccountSession('Sesi akun berakhir. Silakan masuk kembali.');
@@ -1018,7 +1046,7 @@ if (typeof window !== 'undefined') {
         handleUserSession(session.user, event === 'SIGNED_IN' || INITIAL_OAUTH_CALLBACK);
       } else if (event === 'SIGNED_OUT') {
         syncedSessionUserId = null;
-        if (store.account.loggedIn && store.account.cloudSynced) {
+        if (store.account.loggedIn && store.account.cloudSynced && store.account.authProvider !== 'username') {
           let guestAstroId = ls.read(KEYS.astroId);
           if (!guestAstroId) {
             guestAstroId = generateAstroId();
@@ -1029,6 +1057,8 @@ if (typeof window !== 'undefined') {
             name: '',
             username: '',
             userId: null,
+            authProvider: '',
+            sessionToken: '',
             cloudSynced: false,
             astroId: guestAstroId,
           });

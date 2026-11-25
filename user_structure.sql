@@ -8,10 +8,19 @@
 --   ketat, serta izin akses per-role.
 -- ============================================================================
 
+-- ============================================================================
+-- 0. EKSTENSI KEAMANAN KRIPTOGRAFI (pgcrypto)
+-- ============================================================================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. TABEL UTAMA: public.player_progress
 CREATE TABLE IF NOT EXISTS public.player_progress (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  auth_provider TEXT NOT NULL DEFAULT 'username' CHECK (auth_provider IN ('username', 'google')),
   username TEXT UNIQUE NOT NULL CHECK (username ~ '^[a-z0-9_]{3,20}$'),
+  password_hash TEXT,
+  session_token TEXT,
   astro_id TEXT UNIQUE,
   display_name TEXT NOT NULL DEFAULT '',
   points INT NOT NULL DEFAULT 0 CHECK (points >= 0),
@@ -24,19 +33,72 @@ CREATE TABLE IF NOT EXISTS public.player_progress (
   is_active BOOLEAN NOT NULL DEFAULT true,
   banned_at TIMESTAMPTZ,
   banned_reason TEXT NOT NULL DEFAULT '',
+  last_sign_in_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Migrasi idempotent penambahan kolom astro_id & status akun jika tabel sudah ada sebelumnya
+-- Migrasi idempotent: lepas FK lama pada user_id agar akun username dapat berdiri mandiri tanpa auth.users
+DO $$
+DECLARE
+  fk_name TEXT;
+BEGIN
+  FOR fk_name IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+    WHERE c.conrelid = 'public.player_progress'::regclass
+      AND c.contype = 'f'
+      AND a.attname = 'user_id'
+  LOOP
+    EXECUTE format('ALTER TABLE public.player_progress DROP CONSTRAINT IF EXISTS %I', fk_name);
+  END LOOP;
+END $$;
+
+ALTER TABLE public.player_progress ALTER COLUMN user_id SET DEFAULT gen_random_uuid();
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'username';
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS session_token TEXT;
 ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS astro_id TEXT UNIQUE;
 ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
 ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS banned_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.player_progress ADD COLUMN IF NOT EXISTS last_sign_in_at TIMESTAMPTZ;
 
--- Indeks status aktif pengguna
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.player_progress'::regclass
+      AND conname = 'player_progress_auth_provider_check'
+  ) THEN
+    ALTER TABLE public.player_progress
+      ADD CONSTRAINT player_progress_auth_provider_check
+      CHECK (auth_provider IN ('username', 'google'));
+  END IF;
+END $$;
+
+-- Selaraskan baris Google lama yang sebelumnya memakai user_id = auth.users.id
+UPDATE public.player_progress pp
+SET auth_user_id = pp.user_id,
+    auth_provider = 'google'
+WHERE pp.auth_user_id IS NULL
+  AND EXISTS (
+    SELECT 1 FROM auth.users u
+    WHERE u.id = pp.user_id
+      AND (
+        COALESCE(u.raw_app_meta_data->>'provider', '') = 'google'
+        OR EXISTS (SELECT 1 FROM auth.identities ai WHERE ai.user_id = u.id AND ai.provider = 'google')
+        OR (u.email IS NOT NULL AND u.email NOT LIKE '%@player.astrosphere.app')
+      )
+  );
+
+-- Indeks status aktif & provider pengguna
 CREATE INDEX IF NOT EXISTS idx_player_progress_active
   ON public.player_progress (is_active);
+CREATE INDEX IF NOT EXISTS idx_player_progress_auth_provider
+  ON public.player_progress (auth_provider);
 
 -- Indeks pencarian cepat username (case-insensitive)
 CREATE INDEX IF NOT EXISTS idx_player_progress_username_lower 
@@ -161,43 +223,56 @@ CREATE TRIGGER trg_player_progress_tamper
   EXECUTE FUNCTION public.validate_player_progress_tamper();
 
 -- ----------------------------------------------------------------------------
--- 4. ROW LEVEL SECURITY (RLS) KETAT
+-- 4. ROW LEVEL SECURITY (RLS) & HAK KOLOM KETAT
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.player_progress ENABLE ROW LEVEL SECURITY;
 
--- Pengguna terautentikasi HANYA bisa membaca baris miliknya sendiri (termasuk status is_active)
+-- Pengguna Google terautentikasi HANYA bisa membaca baris miliknya sendiri (auth_user_id / user_id)
 DROP POLICY IF EXISTS "player_select_own" ON public.player_progress;
 CREATE POLICY "player_select_own" ON public.player_progress
   FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id OR auth.uid() = auth_user_id);
 
--- Pengguna terautentikasi HANYA bisa menyisipkan baris aktif untuk dirinya sendiri
+-- Pengguna Google terautentikasi HANYA bisa menyisipkan baris aktif untuk dirinya sendiri
 DROP POLICY IF EXISTS "player_insert_own" ON public.player_progress;
 CREATE POLICY "player_insert_own" ON public.player_progress
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id AND is_active = true);
+  WITH CHECK ((auth.uid() = user_id OR auth.uid() = auth_user_id) AND is_active = true);
 
--- Pengguna terautentikasi HANYA bisa memperbarui baris miliknya selama akun aktif
+-- Pengguna Google terautentikasi HANYA bisa memperbarui baris miliknya selama akun aktif
 DROP POLICY IF EXISTS "player_update_own" ON public.player_progress;
 CREATE POLICY "player_update_own" ON public.player_progress
   FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id AND is_active = true)
-  WITH CHECK (auth.uid() = user_id AND is_active = true);
+  USING ((auth.uid() = user_id OR auth.uid() = auth_user_id) AND is_active = true)
+  WITH CHECK ((auth.uid() = user_id OR auth.uid() = auth_user_id) AND is_active = true);
 
 -- Larang penghapusan baris progres langsung dari REST API klien
 DROP POLICY IF EXISTS "player_delete_own" ON public.player_progress;
 
--- Batasi hak akses hak istimewa: anon dilarang akses langsung; authenticated dilarang DELETE
-REVOKE ALL ON public.player_progress FROM anon, PUBLIC;
-REVOKE DELETE ON public.player_progress FROM authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.player_progress TO authenticated;
+-- Isolasi kolom sensitif (password_hash & session_token): anon nol akses tabel; authenticated dilarang baca/ubah hash & token
+REVOKE ALL ON public.player_progress FROM anon, PUBLIC, authenticated;
+GRANT SELECT (
+  user_id, auth_user_id, auth_provider, username, astro_id, display_name,
+  points, earned, selected_ship, owned_ships, progress_data, game_state,
+  settings_data, is_active, banned_at, banned_reason, last_sign_in_at,
+  created_at, updated_at
+) ON public.player_progress TO authenticated;
+GRANT INSERT (
+  user_id, auth_user_id, auth_provider, username, astro_id, display_name,
+  points, earned, selected_ship, owned_ships, progress_data, game_state,
+  settings_data, is_active, last_sign_in_at
+) ON public.player_progress TO authenticated;
+GRANT UPDATE (
+  username, astro_id, display_name, points, earned, selected_ship,
+  owned_ships, progress_data, game_state, settings_data,
+  last_sign_in_at, updated_at
+) ON public.player_progress TO authenticated;
 
 -- ----------------------------------------------------------------------------
--- 4. FUNGSI AMAN: PENGECEKAN KETERSEDIAAN USERNAME
+-- 5. FUNGSI RPC PEMAIN (USERNAME + PASSWORD TANPA EMAIL)
 -- ----------------------------------------------------------------------------
--- Fungsi ini berjalan dengan hak SECURITY DEFINER dengan search_path terkunci ke public,
--- mengembalikan BOOLEAN agar formulir pendaftaran pemain dapat memvalidasi nama pengguna
--- tanpa mengekspos daftar pemain atau membocorkan data pribadi pemain lain.
+
+-- 5.0 Pengecekan ketersediaan username
 CREATE OR REPLACE FUNCTION public.is_username_available(p_username TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -208,15 +283,11 @@ AS $$
 DECLARE
   clean_username TEXT;
 BEGIN
-  -- Bersihkan spasi dan ubah ke huruf kecil
   clean_username := LOWER(TRIM(COALESCE(p_username, '')));
-
-  -- Validasi pola karakter: huruf kecil, angka, atau garis bawah, panjang 3-20
   IF clean_username !~ '^[a-z0-9_]{3,20}$' THEN
     RETURN FALSE;
   END IF;
 
-  -- Periksa apakah username sudah terdaftar
   RETURN NOT EXISTS (
     SELECT 1 FROM public.player_progress
     WHERE LOWER(username) = clean_username
@@ -224,13 +295,436 @@ BEGIN
 END;
 $$;
 
--- Izin eksekusi fungsi publik untuk pengunjung anonim dan pemain terdaftar
 REVOKE ALL ON FUNCTION public.is_username_available(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_username_available(TEXT) TO anon, authenticated;
 
--- ----------------------------------------------------------------------------
--- 5. FUNGSI RPC: HAPUS AKUN SENDIRI SECARA PERMANEN (Zero-Residual User Deletion)
--- ----------------------------------------------------------------------------
+-- 5.1 Daftar akun baru dengan Username + Password (bcrypt + token sesi acak)
+CREATE OR REPLACE FUNCTION public.player_register_username(
+  p_username TEXT,
+  p_password TEXT,
+  p_astro_id TEXT DEFAULT NULL,
+  p_progress JSONB DEFAULT '{}'::jsonb
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_username TEXT;
+  v_hash TEXT;
+  v_token TEXT;
+  v_astro_id TEXT;
+  v_payload JSONB;
+  v_points INT;
+  v_earned INT;
+  v_ship TEXT;
+  v_owned JSONB;
+  v_progress_data JSONB;
+  v_game_state JSONB;
+  v_settings_data JSONB;
+  v_row public.player_progress%ROWTYPE;
+  v_attempt INT := 0;
+BEGIN
+  v_username := LOWER(TRIM(COALESCE(p_username, '')));
+  IF v_username !~ '^[a-z0-9_]{3,20}$' THEN
+    RAISE EXCEPTION 'INVALID_USERNAME';
+  END IF;
+
+  IF p_password IS NULL OR length(p_password) < 6 THEN
+    RAISE EXCEPTION 'WEAK_PASSWORD';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.player_progress WHERE LOWER(username) = v_username) THEN
+    RAISE EXCEPTION 'USERNAME_TAKEN';
+  END IF;
+
+  v_payload := CASE WHEN jsonb_typeof(p_progress) = 'object' THEN p_progress ELSE '{}'::jsonb END;
+  v_points := LEAST(50000, GREATEST(0, COALESCE(NULLIF(v_payload->>'points', '')::INT, 0)));
+  v_earned := LEAST(50000, GREATEST(v_points, COALESCE(NULLIF(v_payload->>'earned', '')::INT, v_points)));
+  v_ship := CASE WHEN v_payload->>'selected_ship' IN ('astra', 'orion', 'nova') THEN v_payload->>'selected_ship' ELSE 'astra' END;
+  v_owned := CASE WHEN jsonb_typeof(v_payload->'owned_ships') = 'array' THEN v_payload->'owned_ships' ELSE '["astra"]'::jsonb END;
+  IF NOT (v_owned ? v_ship) THEN
+    IF v_owned ? 'astra' THEN
+      v_ship := 'astra';
+    ELSE
+      v_owned := '["astra"]'::jsonb;
+      v_ship := 'astra';
+    END IF;
+  END IF;
+
+  v_progress_data := CASE
+    WHEN jsonb_typeof(v_payload->'progress_data') = 'object' THEN v_payload->'progress_data'
+    WHEN NOT (v_payload ? 'points' OR v_payload ? 'earned' OR v_payload ? 'selected_ship' OR v_payload ? 'owned_ships') THEN v_payload
+    ELSE '{}'::jsonb
+  END;
+  v_game_state := CASE WHEN jsonb_typeof(v_payload->'game_state') = 'object' THEN v_payload->'game_state' ELSE '{}'::jsonb END;
+  v_settings_data := CASE WHEN jsonb_typeof(v_payload->'settings_data') = 'object' THEN v_payload->'settings_data' ELSE '{}'::jsonb END;
+
+  v_hash := crypt(p_password, gen_salt('bf'));
+  v_token := encode(gen_random_bytes(32), 'hex');
+  v_astro_id := NULLIF(TRIM(COALESCE(p_astro_id, '')), '');
+
+  IF v_astro_id IS NULL OR EXISTS (SELECT 1 FROM public.player_progress WHERE astro_id = v_astro_id) THEN
+    v_astro_id := (10000000 + floor(random() * 90000000)::BIGINT)::TEXT || ' (' || to_char(NOW(), 'YYYY') || ')';
+  END IF;
+
+  LOOP
+    BEGIN
+      INSERT INTO public.player_progress (
+        user_id, auth_user_id, auth_provider, username, password_hash, session_token,
+        astro_id, display_name, points, earned, selected_ship, owned_ships,
+        progress_data, game_state, settings_data, is_active, last_sign_in_at
+      )
+      VALUES (
+        gen_random_uuid(), NULL, 'username', v_username, v_hash, v_token,
+        v_astro_id, v_username, v_points, v_earned, v_ship, v_owned,
+        v_progress_data, v_game_state, v_settings_data, true, NOW()
+      )
+      RETURNING * INTO v_row;
+      EXIT;
+    EXCEPTION
+      WHEN unique_violation THEN
+        v_attempt := v_attempt + 1;
+        IF SQLERRM ILIKE '%username%' OR EXISTS (SELECT 1 FROM public.player_progress WHERE LOWER(username) = v_username) THEN
+          RAISE EXCEPTION 'USERNAME_TAKEN';
+        END IF;
+        IF v_attempt >= 5 THEN
+          RAISE;
+        END IF;
+        v_astro_id := (10000000 + floor(random() * 90000000)::BIGINT)::TEXT || ' (' || to_char(NOW(), 'YYYY') || ')';
+    END;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'user_id', v_row.user_id,
+    'username', v_row.username,
+    'astro_id', v_row.astro_id,
+    'display_name', v_row.display_name,
+    'auth_provider', v_row.auth_provider,
+    'points', v_row.points,
+    'earned', v_row.earned,
+    'selected_ship', v_row.selected_ship,
+    'owned_ships', v_row.owned_ships,
+    'progress_data', v_row.progress_data,
+    'game_state', v_row.game_state,
+    'settings_data', v_row.settings_data,
+    'is_active', v_row.is_active,
+    'session_token', v_row.session_token,
+    'last_sign_in_at', v_row.last_sign_in_at,
+    'created_at', v_row.created_at,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.player_register_username(TEXT, TEXT, TEXT, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.player_register_username(TEXT, TEXT, TEXT, JSONB) TO anon, authenticated;
+
+-- 5.2 Masuk akun Username + Password & perbarui token sesi
+CREATE OR REPLACE FUNCTION public.player_login_username(
+  p_username TEXT,
+  p_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_username TEXT;
+  v_token TEXT;
+  v_row public.player_progress%ROWTYPE;
+BEGIN
+  v_username := LOWER(TRIM(COALESCE(p_username, '')));
+  IF v_username = '' OR p_password IS NULL OR p_password = '' THEN
+    RAISE EXCEPTION 'INVALID_CREDENTIALS';
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.player_progress
+  WHERE LOWER(username) = v_username
+    AND password_hash IS NOT NULL
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'INVALID_CREDENTIALS';
+  END IF;
+
+  IF v_row.password_hash <> crypt(p_password, v_row.password_hash) THEN
+    RAISE EXCEPTION 'INVALID_CREDENTIALS';
+  END IF;
+
+  IF v_row.is_active = false THEN
+    RAISE EXCEPTION 'ACCOUNT_DISABLED:%', COALESCE(v_row.banned_reason, '');
+  END IF;
+
+  v_token := encode(gen_random_bytes(32), 'hex');
+
+  UPDATE public.player_progress
+  SET session_token = v_token,
+      auth_provider = 'username',
+      last_sign_in_at = NOW(),
+      updated_at = NOW()
+  WHERE user_id = v_row.user_id
+  RETURNING * INTO v_row;
+
+  RETURN jsonb_build_object(
+    'user_id', v_row.user_id,
+    'username', v_row.username,
+    'astro_id', v_row.astro_id,
+    'display_name', v_row.display_name,
+    'auth_provider', v_row.auth_provider,
+    'points', v_row.points,
+    'earned', v_row.earned,
+    'selected_ship', v_row.selected_ship,
+    'owned_ships', v_row.owned_ships,
+    'progress_data', v_row.progress_data,
+    'game_state', v_row.game_state,
+    'settings_data', v_row.settings_data,
+    'is_active', v_row.is_active,
+    'session_token', v_row.session_token,
+    'last_sign_in_at', v_row.last_sign_in_at,
+    'created_at', v_row.created_at,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.player_login_username(TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.player_login_username(TEXT, TEXT) TO anon, authenticated;
+
+-- 5.3 Sinkronisasi progres & verifikasi sesi token untuk akun Username (p_progress NULL = baca saja)
+CREATE OR REPLACE FUNCTION public.player_sync_username(
+  p_user_id UUID,
+  p_session_token TEXT,
+  p_progress JSONB DEFAULT NULL,
+  p_game_state JSONB DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_row public.player_progress%ROWTYPE;
+  v_points INT;
+  v_earned INT;
+  v_ship TEXT;
+  v_owned JSONB;
+  v_astro TEXT;
+  v_progress_data JSONB;
+  v_settings_data JSONB;
+  v_game_state JSONB;
+BEGIN
+  IF p_user_id IS NULL OR NULLIF(TRIM(COALESCE(p_session_token, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.player_progress
+  WHERE user_id = p_user_id
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  IF v_row.is_active = false THEN
+    RAISE EXCEPTION 'ACCOUNT_DISABLED:%', COALESCE(v_row.banned_reason, '');
+  END IF;
+
+  IF v_row.session_token IS NULL OR v_row.session_token <> p_session_token THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  IF p_progress IS NOT NULL THEN
+    IF jsonb_typeof(p_progress) <> 'object' THEN
+      RAISE EXCEPTION 'INVALID_PAYLOAD';
+    END IF;
+
+    v_points := CASE
+      WHEN p_progress ? 'points' THEN LEAST(50000, GREATEST(0, COALESCE(NULLIF(p_progress->>'points', '')::INT, v_row.points)))
+      ELSE v_row.points
+    END;
+    v_earned := CASE
+      WHEN p_progress ? 'earned' THEN LEAST(50000, GREATEST(v_points, COALESCE(NULLIF(p_progress->>'earned', '')::INT, v_row.earned)))
+      ELSE GREATEST(v_points, v_row.earned)
+    END;
+    v_ship := CASE
+      WHEN (p_progress->>'selected_ship') IN ('astra', 'orion', 'nova') THEN p_progress->>'selected_ship'
+      ELSE v_row.selected_ship
+    END;
+    v_owned := CASE
+      WHEN jsonb_typeof(p_progress->'owned_ships') = 'array' THEN p_progress->'owned_ships'
+      ELSE v_row.owned_ships
+    END;
+    IF NOT (v_owned ? v_ship) THEN
+      IF v_owned ? 'astra' THEN
+        v_ship := 'astra';
+      ELSE
+        v_owned := '["astra"]'::jsonb;
+        v_ship := 'astra';
+      END IF;
+    END IF;
+
+    v_astro := COALESCE(NULLIF(TRIM(COALESCE(p_progress->>'astro_id', '')), ''), v_row.astro_id);
+    v_progress_data := CASE
+      WHEN jsonb_typeof(p_progress->'progress_data') = 'object' THEN p_progress->'progress_data'
+      WHEN NOT (p_progress ? 'points' OR p_progress ? 'earned' OR p_progress ? 'selected_ship' OR p_progress ? 'owned_ships') THEN p_progress
+      ELSE v_row.progress_data
+    END;
+    v_settings_data := CASE
+      WHEN jsonb_typeof(p_progress->'settings_data') = 'object' THEN p_progress->'settings_data'
+      ELSE v_row.settings_data
+    END;
+    v_game_state := CASE
+      WHEN p_game_state IS NOT NULL AND jsonb_typeof(p_game_state) = 'object' THEN p_game_state
+      WHEN jsonb_typeof(p_progress->'game_state') = 'object' THEN p_progress->'game_state'
+      ELSE COALESCE(v_row.game_state, '{}'::jsonb)
+    END;
+
+    UPDATE public.player_progress
+    SET points = v_points,
+        earned = v_earned,
+        selected_ship = v_ship,
+        owned_ships = v_owned,
+        astro_id = v_astro,
+        progress_data = v_progress_data,
+        settings_data = v_settings_data,
+        game_state = v_game_state,
+        updated_at = NOW()
+    WHERE user_id = p_user_id
+    RETURNING * INTO v_row;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'user_id', v_row.user_id,
+    'username', v_row.username,
+    'astro_id', v_row.astro_id,
+    'display_name', v_row.display_name,
+    'auth_provider', v_row.auth_provider,
+    'points', v_row.points,
+    'earned', v_row.earned,
+    'selected_ship', v_row.selected_ship,
+    'owned_ships', v_row.owned_ships,
+    'progress_data', v_row.progress_data,
+    'game_state', v_row.game_state,
+    'settings_data', v_row.settings_data,
+    'is_active', v_row.is_active,
+    'last_sign_in_at', v_row.last_sign_in_at,
+    'created_at', v_row.created_at,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.player_sync_username(UUID, TEXT, JSONB, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.player_sync_username(UUID, TEXT, JSONB, JSONB) TO anon, authenticated;
+
+-- 5.4 Reset progres permainan akun Username dengan verifikasi token sesi
+CREATE OR REPLACE FUNCTION public.player_reset_username(
+  p_user_id UUID,
+  p_session_token TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_row public.player_progress%ROWTYPE;
+BEGIN
+  IF p_user_id IS NULL OR NULLIF(TRIM(COALESCE(p_session_token, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.player_progress
+  WHERE user_id = p_user_id
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  IF v_row.is_active = false THEN
+    RAISE EXCEPTION 'ACCOUNT_DISABLED:%', COALESCE(v_row.banned_reason, '');
+  END IF;
+
+  IF v_row.session_token IS NULL OR v_row.session_token <> p_session_token THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  UPDATE public.player_progress
+  SET points = 0,
+      earned = 0,
+      selected_ship = 'astra',
+      owned_ships = '["astra"]'::jsonb,
+      progress_data = '{"best":{},"attempts":{},"ledger":[],"predict":{},"myths":{},"cards":{},"found":{"matahari":true},"events":{},"missions":{}}'::jsonb,
+      game_state = '{}'::jsonb,
+      settings_data = '{}'::jsonb,
+      updated_at = NOW()
+  WHERE user_id = p_user_id;
+
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.player_reset_username(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.player_reset_username(UUID, TEXT) TO anon, authenticated;
+
+-- 5.5 Hapus akun Username secara permanen dengan verifikasi token sesi
+CREATE OR REPLACE FUNCTION public.player_delete_username(
+  p_user_id UUID,
+  p_session_token TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, extensions
+AS $$
+DECLARE
+  v_row public.player_progress%ROWTYPE;
+  v_auth_uid UUID;
+BEGIN
+  IF p_user_id IS NULL OR NULLIF(TRIM(COALESCE(p_session_token, '')), '') IS NULL THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.player_progress
+  WHERE user_id = p_user_id
+  LIMIT 1;
+
+  IF NOT FOUND OR v_row.session_token IS NULL OR v_row.session_token <> p_session_token THEN
+    RAISE EXCEPTION 'SESSION_INVALID';
+  END IF;
+
+  v_auth_uid := v_row.auth_user_id;
+
+  IF EXISTS (
+    SELECT 1 FROM public.admin_users au
+    WHERE au.user_id = p_user_id OR (v_auth_uid IS NOT NULL AND au.user_id = v_auth_uid)
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN_ADMIN';
+  END IF;
+
+  DELETE FROM public.player_progress WHERE user_id = p_user_id;
+  IF v_auth_uid IS NOT NULL THEN
+    DELETE FROM auth.refresh_tokens WHERE user_id::text = v_auth_uid::text;
+    DELETE FROM auth.sessions WHERE user_id = v_auth_uid;
+    DELETE FROM auth.users WHERE id = v_auth_uid;
+  END IF;
+
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.player_delete_username(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.player_delete_username(UUID, TEXT) TO anon, authenticated;
+
+-- 5.6 Hapus Akun Google Terautentikasi Sendiri Secara Permanen
 CREATE OR REPLACE FUNCTION public.delete_my_account()
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -244,12 +738,11 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: pengguna belum masuk.';
   END IF;
 
-  -- Tolak jika akun adalah administrator whitelist
   IF EXISTS (SELECT 1 FROM public.admin_users WHERE user_id = v_uid) THEN
     RAISE EXCEPTION 'Forbidden: akun administrator tidak dapat dihapus lewat jalur pemain.';
   END IF;
 
-  DELETE FROM public.player_progress WHERE user_id = v_uid;
+  DELETE FROM public.player_progress WHERE user_id = v_uid OR auth_user_id = v_uid;
   DELETE FROM auth.users WHERE id = v_uid;
 
   RETURN TRUE;
@@ -300,15 +793,23 @@ BEGIN
     pp.username,
     COALESCE(pp.astro_id, '')::TEXT AS astro_id,
     pp.display_name,
-    COALESCE(u.email, '')::TEXT AS email,
     CASE
-      WHEN COALESCE(u.raw_app_meta_data->>'provider', '') = 'google'
-        OR EXISTS (SELECT 1 FROM auth.identities ai WHERE ai.user_id = pp.user_id AND ai.provider = 'google')
+      WHEN pp.auth_provider = 'google'
+        OR COALESCE(u.raw_app_meta_data->>'provider', '') = 'google'
+        OR EXISTS (SELECT 1 FROM auth.identities ai WHERE ai.user_id = COALESCE(pp.auth_user_id, pp.user_id) AND ai.provider = 'google')
+        OR (u.email IS NOT NULL AND u.email NOT LIKE '%@player.astrosphere.app')
+      THEN COALESCE(u.email, '')::TEXT
+      ELSE ''::TEXT
+    END AS email,
+    CASE
+      WHEN pp.auth_provider = 'google'
+        OR COALESCE(u.raw_app_meta_data->>'provider', '') = 'google'
+        OR EXISTS (SELECT 1 FROM auth.identities ai WHERE ai.user_id = COALESCE(pp.auth_user_id, pp.user_id) AND ai.provider = 'google')
         OR (u.email IS NOT NULL AND u.email NOT LIKE '%@player.astrosphere.app')
       THEN 'google'
       ELSE 'username'
     END::TEXT AS auth_provider,
-    u.last_sign_in_at,
+    COALESCE(pp.last_sign_in_at, u.last_sign_in_at) AS last_sign_in_at,
     u.banned_until,
     pp.points,
     pp.earned,
@@ -320,7 +821,7 @@ BEGIN
     pp.created_at,
     pp.updated_at
   FROM public.player_progress pp
-  LEFT JOIN auth.users u ON u.id = pp.user_id
+  LEFT JOIN auth.users u ON u.id = COALESCE(pp.auth_user_id, pp.user_id)
   ORDER BY pp.created_at DESC;
 END;
 $$;
@@ -340,6 +841,7 @@ SECURITY DEFINER
 SET search_path = public, auth
 AS $$
 DECLARE
+  v_auth_uid UUID;
   v_target_email TEXT;
 BEGIN
   IF NOT public.is_admin() THEN
@@ -354,13 +856,24 @@ BEGIN
     RAISE EXCEPTION 'Forbidden: administrator tidak dapat mengubah status akunnya sendiri.';
   END IF;
 
-  SELECT lower(trim(u.email)) INTO v_target_email
-  FROM auth.users u
-  WHERE u.id = p_user_id;
+  SELECT COALESCE(pp.auth_user_id, pp.user_id) INTO v_auth_uid
+  FROM public.player_progress pp
+  WHERE pp.user_id = p_user_id;
+
+  IF v_auth_uid = auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: administrator tidak dapat mengubah status akunnya sendiri.';
+  END IF;
+
+  IF v_auth_uid IS NOT NULL THEN
+    SELECT lower(trim(u.email)) INTO v_target_email
+    FROM auth.users u
+    WHERE u.id = v_auth_uid;
+  END IF;
 
   IF EXISTS (
     SELECT 1 FROM public.admin_users au
     WHERE au.user_id = p_user_id
+       OR (v_auth_uid IS NOT NULL AND au.user_id = v_auth_uid)
        OR (v_target_email IS NOT NULL AND lower(trim(au.email)) = v_target_email)
   ) THEN
     RAISE EXCEPTION 'Forbidden: akun administrator tidak dapat dinonaktifkan melalui manajemen pemain.';
@@ -371,6 +884,7 @@ BEGIN
     SET is_active = false,
         banned_at = NOW(),
         banned_reason = COALESCE(p_reason, ''),
+        session_token = NULL,
         updated_at = NOW()
     WHERE user_id = p_user_id;
 
@@ -378,13 +892,15 @@ BEGIN
       RAISE EXCEPTION 'Pengguna tidak ditemukan.';
     END IF;
 
-    UPDATE auth.users
-    SET banned_until = '2999-12-31 23:59:59+00'::timestamptz,
-        updated_at = NOW()
-    WHERE id = p_user_id;
+    IF v_auth_uid IS NOT NULL THEN
+      UPDATE auth.users
+      SET banned_until = '2999-12-31 23:59:59+00'::timestamptz,
+          updated_at = NOW()
+      WHERE id = v_auth_uid;
 
-    DELETE FROM auth.refresh_tokens WHERE user_id::text = p_user_id::text;
-    DELETE FROM auth.sessions WHERE user_id = p_user_id;
+      DELETE FROM auth.refresh_tokens WHERE user_id::text = v_auth_uid::text;
+      DELETE FROM auth.sessions WHERE user_id = v_auth_uid;
+    END IF;
   ELSE
     UPDATE public.player_progress
     SET is_active = true,
@@ -397,10 +913,12 @@ BEGIN
       RAISE EXCEPTION 'Pengguna tidak ditemukan.';
     END IF;
 
-    UPDATE auth.users
-    SET banned_until = NULL,
-        updated_at = NOW()
-    WHERE id = p_user_id;
+    IF v_auth_uid IS NOT NULL THEN
+      UPDATE auth.users
+      SET banned_until = NULL,
+          updated_at = NOW()
+      WHERE id = v_auth_uid;
+    END IF;
   END IF;
 
   RETURN TRUE;
@@ -418,6 +936,7 @@ SECURITY DEFINER
 SET search_path = public, auth
 AS $$
 DECLARE
+  v_auth_uid UUID;
   v_target_email TEXT;
 BEGIN
   IF NOT public.is_admin() THEN
@@ -432,22 +951,37 @@ BEGIN
     RAISE EXCEPTION 'Forbidden: administrator tidak dapat menghapus akunnya sendiri.';
   END IF;
 
-  SELECT lower(trim(u.email)) INTO v_target_email
-  FROM auth.users u
-  WHERE u.id = p_user_id;
+  SELECT COALESCE(pp.auth_user_id, pp.user_id) INTO v_auth_uid
+  FROM public.player_progress pp
+  WHERE pp.user_id = p_user_id;
+
+  IF v_auth_uid = auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: administrator tidak dapat menghapus akunnya sendiri.';
+  END IF;
+
+  IF v_auth_uid IS NOT NULL THEN
+    SELECT lower(trim(u.email)) INTO v_target_email
+    FROM auth.users u
+    WHERE u.id = v_auth_uid;
+  END IF;
 
   IF EXISTS (
     SELECT 1 FROM public.admin_users au
     WHERE au.user_id = p_user_id
+       OR (v_auth_uid IS NOT NULL AND au.user_id = v_auth_uid)
        OR (v_target_email IS NOT NULL AND lower(trim(au.email)) = v_target_email)
   ) THEN
     RAISE EXCEPTION 'Forbidden: akun administrator tidak dapat dihapus melalui manajemen pemain.';
   END IF;
 
-  DELETE FROM auth.refresh_tokens WHERE user_id::text = p_user_id::text;
-  DELETE FROM auth.sessions WHERE user_id = p_user_id;
+  IF v_auth_uid IS NOT NULL THEN
+    DELETE FROM auth.refresh_tokens WHERE user_id::text = v_auth_uid::text;
+    DELETE FROM auth.sessions WHERE user_id = v_auth_uid;
+  END IF;
   DELETE FROM public.player_progress WHERE user_id = p_user_id;
-  DELETE FROM auth.users WHERE id = p_user_id;
+  IF v_auth_uid IS NOT NULL THEN
+    DELETE FROM auth.users WHERE id = v_auth_uid;
+  END IF;
 
   RETURN TRUE;
 END;

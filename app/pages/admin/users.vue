@@ -435,7 +435,7 @@ onMounted(() => {
                 <span class="prov-badge" :class="u.auth_provider === 'google' ? 'google' : 'uname'">
                   {{ u.auth_provider === 'google' ? 'Google' : 'Username' }}
                 </span>
-                <small class="u-email">{{ u.email || `${u.username}@player.astrosphere.app` }}</small>
+                <small class="u-email">{{ u.email || `@${u.username}` }}</small>
               </div>
             </td>
             <td>
