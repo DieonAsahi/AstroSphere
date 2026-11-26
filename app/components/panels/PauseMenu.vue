@@ -131,7 +131,7 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
   .grid{gap:8px}
   .tile-btn{padding:10px 6px;font-size:12.5px}
 }
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
   .pause{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l))}
   .pause-card{width:min(620px,100%);max-height:calc(100dvh - 16px);padding:14px 18px;gap:10px}
   .h2{font-size:18px}

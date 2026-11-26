@@ -742,7 +742,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
   line-height: 1;
 }
 
-@media (max-height: 520px) and (orientation: landscape) {
+@media (max-height: 540px) and (orientation: landscape) {
   .tle-dock {
     top: calc(10px + var(--safe-t));
     padding: 8px 12px;

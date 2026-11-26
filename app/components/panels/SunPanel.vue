@@ -223,9 +223,9 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
   .desc{font-size:13px}
   .btn-foot{font-size:13px;padding:0 10px;gap:6px}
 }
-@media (max-height:520px){
-  .sheet{left:auto !important;right:calc(10px + var(--safe-r)) !important;top:calc(52px + var(--safe-t)) !important;bottom:calc(10px + var(--safe-b)) !important;width:min(360px, 46vw) !important;height:auto !important;border-radius:14px !important;border-bottom:1px solid rgba(148,174,255,.16) !important;padding-bottom:0 !important}
+@media (max-height:540px) and (orientation:landscape){
+  .sheet{left:auto !important;right:calc(10px + var(--safe-r)) !important;top:calc(44px + var(--safe-t)) !important;bottom:calc(10px + var(--safe-b)) !important;width:min(350px, 46vw) !important;height:auto !important;border-radius:14px !important;border-bottom:1px solid rgba(148,174,255,.16) !important;padding-bottom:0 !important}
   .sheet::before{display:none !important}
-  .stage-bottom{bottom:calc(10px + var(--safe-b)) !important;max-width:calc(100vw - min(360px, 46vw) - 30px) !important}
+  .stage-bottom{bottom:calc(10px + var(--safe-b)) !important;max-width:calc(100vw - min(350px, 46vw) - 30px) !important}
 }
 </style>

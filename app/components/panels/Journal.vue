@@ -776,6 +776,27 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
     justify-content:flex-start;
   }
 }
+@media (max-height:540px) and (orientation:landscape){
+  .fc{
+    padding:12px 14px;
+    min-height:auto;
+  }
+  .fc-title{font-size:16px;margin:4px 0}
+  .fc-text{font-size:12.5px;line-height:1.45;margin-bottom:8px}
+  .jr-grid{
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:6px;
+  }
+  .jr-card{
+    min-height:54px;
+    padding:6px 8px;
+    gap:6px;
+  }
+  .jr-name{font-size:12px}
+  .jr-sub{font-size:10px}
+  .j-title{font-size:17px}
+  .j-stat-pill{padding:3px 8px;font-size:11px}
+}
 @media (prefers-reduced-motion:reduce){
   .rw{animation:none}
 }

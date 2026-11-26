@@ -2550,7 +2550,7 @@ const FAQ = computed(() => {
 }
 
 /* Mobile Landscape: header ringkas, kartu tetap 2 kolom agar hemat ruang vertikal */
-@media (max-height: 520px) and (orientation: landscape) {
+@media (max-height: 540px) and (orientation: landscape) {
   .prof {
     padding: calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(18px + var(--safe-b)) calc(14px + var(--safe-l));
   }

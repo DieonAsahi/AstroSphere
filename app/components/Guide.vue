@@ -889,7 +889,7 @@ onBeforeUnmount(() => {
 }
 
 /* Mobile Landscape: pertahankan tata letak 2 kolom ringkas agar muat dalam tinggi 340px–450px */
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
   .guide{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l));overflow:hidden;align-items:stretch}
   .wrap{gap:8px;height:100%;justify-content:space-between}
   .head{padding-bottom:0}

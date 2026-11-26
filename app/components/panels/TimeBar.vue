@@ -87,4 +87,17 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
   .date small{display:none}
   .seg button{padding:0 8px}
 }
+@media (max-height:540px) and (orientation:landscape){
+  .tbar{
+    gap:6px;
+    padding:4px 8px;
+    border-radius:10px !important;
+    max-width:min(420px, calc(100vw - min(350px, 46vw) - 36px));
+  }
+  .date{min-width:0;font-size:12px}
+  .date small{display:none}
+  .seg button{height:26px;padding:0 7px;font-size:11.5px}
+  .ib{width:28px;height:28px}
+  .tg{padding-left:6px;gap:4px}
+}
 </style>

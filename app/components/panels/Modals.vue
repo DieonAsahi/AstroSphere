@@ -568,7 +568,7 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 .acts .btn.line:hover{background:rgba(148,174,255,.14);border-color:rgba(148,163,184,.45);color:#fff;filter:none}
 .acts .btn.primary{background:#3b82f6;color:#ffffff;border:none;box-shadow:0 4px 14px rgba(59,130,246,.35)}
 .acts .btn.primary:hover{background:#2563eb;transform:translateY(-1px);filter:none}
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
   .modal{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l))}
   .box,.box.settings,.box.controls,.box.journal{max-height:calc(100dvh - 16px);padding:14px 18px;gap:10px}
 }

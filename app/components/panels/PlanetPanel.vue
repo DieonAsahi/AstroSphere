@@ -911,13 +911,13 @@ const stageEyebrow = computed(() => {
   .mini{display:none}
 }
 
-@media (max-height: 520px) {
+@media (max-height: 540px) and (orientation: landscape) {
   .sheet {
     left: auto !important;
     right: calc(10px + var(--safe-r)) !important;
-    top: calc(52px + var(--safe-t)) !important;
+    top: calc(44px + var(--safe-t)) !important;
     bottom: calc(10px + var(--safe-b)) !important;
-    width: min(360px, 46vw) !important;
+    width: min(350px, 46vw) !important;
     height: auto !important;
     border-radius: 14px !important;
     border-bottom: 1px solid rgba(148, 174, 255, 0.16) !important;
@@ -928,7 +928,7 @@ const stageEyebrow = computed(() => {
   }
   .stage-bottom {
     bottom: calc(10px + var(--safe-b)) !important;
-    max-width: calc(100vw - min(360px, 46vw) - 30px) !important;
+    max-width: calc(100vw - min(350px, 46vw) - 30px) !important;
   }
 }
 </style>

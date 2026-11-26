@@ -1364,4 +1364,22 @@ function downloadPdf() {
     height: 48px;
   }
 }
+@media (max-height: 540px) and (orientation: landscape) {
+  .stage-title {
+    left: calc(var(--gap) + var(--safe-l)) !important;
+    top: calc(44px + var(--safe-t)) !important;
+    max-width: calc(100vw - min(350px, 46vw) - 30px) !important;
+  }
+  .sheet {
+    left: auto !important;
+    right: calc(10px + var(--safe-r)) !important;
+    top: calc(44px + var(--safe-t)) !important;
+    bottom: calc(10px + var(--safe-b)) !important;
+    width: min(350px, 46vw) !important;
+    height: auto !important;
+    border-radius: 14px !important;
+    border-bottom: 1px solid rgba(148, 174, 255, 0.16) !important;
+    padding-bottom: 0 !important;
+  }
+}
 </style>

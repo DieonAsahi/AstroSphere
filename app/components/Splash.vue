@@ -434,7 +434,7 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
   .form-title{font-size:19.5px}
 }
 @media (max-width:768px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
   .top{padding:calc(10px + var(--safe-t)) calc(18px + var(--safe-r)) 0 calc(18px + var(--safe-l))}
   .brand{font-size:17px;gap:8px}
   .user-pill{padding:3px 10px 3px 4px;gap:7px}
@@ -456,7 +456,7 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
   .form-input,.form-submit-btn,.google-btn,.guest-btn{height:38px;min-height:38px;font-size:13px}
   .eye-btn{top:1px}
 }
-@media (max-width:720px) and (max-height:520px) and (orientation:landscape){
+@media (max-width:720px) and (max-height:540px) and (orientation:landscape){
   .login .formwrap,.register .formwrap{justify-content:center}
 }
 </style>

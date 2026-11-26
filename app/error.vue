@@ -41,7 +41,7 @@ function reloadPage() {
         <span>ASTROSPHERE</span>
       </div>
 
-      <span class="err-code">{{ isNotFound ? '404' : 'GANGGUAN' }}</span>
+      <span v-if="!isNotFound" class="err-code">GANGGUAN</span>
       <h1 class="err-title">{{ titleText }}</h1>
       <p class="err-desc">{{ descText }}</p>
 

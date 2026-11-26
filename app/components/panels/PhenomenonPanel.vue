@@ -575,4 +575,28 @@ const f3 = (v) => (+v).toFixed(3);
     border-radius:16px 16px 0 0 !important;
   }
 }
+@media (max-height:540px) and (orientation:landscape){
+  .sheet{
+    left:auto !important;
+    right:calc(10px + var(--safe-r)) !important;
+    top:calc(44px + var(--safe-t)) !important;
+    bottom:calc(10px + var(--safe-b)) !important;
+    width:min(350px, 46vw) !important;
+    height:auto !important;
+    max-height:none !important;
+    border-radius:14px !important;
+    border-bottom:1px solid rgba(148,174,255,.16) !important;
+    padding-bottom:0 !important;
+  }
+  .stage-title{
+    top:calc(44px + var(--safe-t)) !important;
+    max-width:calc(100vw - min(350px, 46vw) - 30px) !important;
+  }
+  .tlw{
+    right:auto !important;
+    left:calc(var(--gap) + var(--safe-l)) !important;
+    bottom:calc(10px + var(--safe-b)) !important;
+    max-width:calc(100vw - min(350px, 46vw) - 30px) !important;
+  }
+}
 </style>

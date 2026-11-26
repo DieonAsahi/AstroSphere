@@ -195,17 +195,21 @@ onBeforeUnmount(closeMissionMenu);
 .pop-item .p-star{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--star);font-weight:500}
 
 @media (max-width:760px){ .brand b{display:none} .tag{display:none} .mission-top-btn span{display:none} }
-@media (max-height:520px) and (orientation:landscape){
-  .tb{padding:calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 0 calc(12px + var(--safe-l))}
-  .l{height:32px}
-  .brand{font-size:16.5px;gap:7px}
-  .back{height:32px;min-height:32px;max-height:32px;padding:0 11px;font-size:12.5px}
-  .l .tag{height:32px;min-height:32px;font-size:10.5px}
-  .mission-top-btn{height:36px;min-height:36px;padding:0 11px;font-size:12.5px}
-  .r .ib{width:36px;height:36px;min-height:36px}
-  .mission-popover{width:270px;padding:10px;max-height:calc(100dvh - 56px);overflow-y:auto}
+@media (max-height:540px) and (orientation:landscape){
+  .tb{padding:calc(6px + var(--safe-t)) calc(10px + var(--safe-r)) 0 calc(10px + var(--safe-l));gap:8px}
+  .l{height:32px;gap:6px}
+  .brand{font-size:15px;gap:6px}
+  .brand :deep(svg),.brand svg{width:20px;height:20px}
+  .back{height:32px;min-height:32px;max-height:32px;padding:0 10px;font-size:12px;gap:5px}
+  .l .tag{height:32px;min-height:32px;font-size:10px;padding:0 8px}
+  .r{gap:6px}
+  .mission-top-btn{height:32px;min-height:32px;padding:0 9px;font-size:11.5px;gap:4px}
+  .badge-mini{font-size:9.5px;padding:1px 4px}
+  .r .ib{width:32px;height:32px;min-height:32px;border-radius:8px}
+  .r .ib :deep(svg),.r .ib svg{width:16px;height:16px}
+  .mission-popover{width:260px;padding:10px;max-height:calc(100dvh - 48px);overflow-y:auto}
 }
-@media (max-height:520px) and (max-width:640px){
+@media (max-height:540px) and (max-width:640px){
   .brand b{display:none}
   .mission-top-btn span{display:none}
 }

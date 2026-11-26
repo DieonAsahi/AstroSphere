@@ -444,26 +444,27 @@ const teaser = computed(() => {
     margin-bottom:10px;
   }
 }
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
   .ap{
     align-items:center;
-    padding:calc(10px + var(--safe-t)) calc(14px + var(--safe-r)) calc(10px + var(--safe-b)) calc(14px + var(--safe-l));
+    padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l));
   }
   .box{
     margin-top:0;
-    width:min(460px, 100%);
-    max-height:calc(100dvh - 20px);
+    width:min(440px, 94vw);
+    max-height:calc(100dvh - 24px);
     overflow-y:auto;
-    padding:14px 18px;
+    padding:12px 18px;
   }
-  .card-header{margin-bottom:8px}
-  .header-eyebrow-row{margin-bottom:6px}
-  .planet-preview-wrap,.planet-dot{width:38px;height:38px}
-  .saturn-ring-back,.saturn-ring-front{width:58px;height:18px}
-  .planet-title{font-size:18px}
-  .desc{font-size:12.5px;margin-bottom:8px;line-height:1.45}
-  .ph{padding:7px 10px;font-size:12px;margin-bottom:8px}
-  .q{font-size:13.5px;margin-bottom:10px}
-  .btn-action{height:38px;min-height:38px;font-size:13px}
+  .card-header{margin-bottom:6px}
+  .header-eyebrow-row{margin-bottom:4px}
+  .planet-preview-wrap,.planet-dot{width:36px;height:36px}
+  .saturn-ring-back,.saturn-ring-front{width:56px;height:16px}
+  .planet-title{font-size:17px}
+  .desc{font-size:12px;margin-bottom:6px;line-height:1.4}
+  .ph{padding:6px 10px;font-size:11.5px;margin-bottom:6px}
+  .q{font-size:13px;margin-bottom:8px}
+  .btn-action{height:36px;min-height:36px;font-size:12.5px}
+  .keys{margin:10px 0 0 0;padding-top:8px}
 }
 </style>

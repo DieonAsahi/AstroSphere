@@ -587,4 +587,28 @@ onBeforeUnmount(() => {
     display:none;
   }
 }
+@media (max-height:540px) and (orientation:landscape){
+  .hangar-header{
+    left:calc(16px + var(--safe-l));
+    top:calc(42px + var(--safe-t));
+  }
+  .sheet{
+    left:auto !important;
+    right:calc(10px + var(--safe-r)) !important;
+    top:calc(44px + var(--safe-t)) !important;
+    bottom:calc(10px + var(--safe-b)) !important;
+    width:min(350px, 46vw) !important;
+    height:auto !important;
+    border-radius:14px !important;
+    padding-bottom:0 !important;
+  }
+  .hangar-selector-wrap{
+    left:calc(16px + var(--safe-l)) !important;
+    transform:none !important;
+    bottom:calc(10px + var(--safe-b)) !important;
+    width:calc(100vw - min(350px, 46vw) - 40px) !important;
+    max-width:400px !important;
+  }
+  .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
 </style>

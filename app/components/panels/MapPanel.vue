@@ -529,4 +529,36 @@ canvas:active{cursor:grabbing}
   .dtop .planet-dot{--s:42px !important}
   .planet-desc-box{max-height:120px}
 }
+@media (max-height: 540px) and (orientation: landscape) {
+  .map {
+    grid-template-columns: 1fr min(320px, 46vw) !important;
+    grid-template-rows: auto 1fr !important;
+    padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) calc(8px + var(--safe-b)) calc(12px + var(--safe-l)) !important;
+    gap: 10px !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+  .mh {
+    grid-column: 1 / -1;
+  }
+  .mc {
+    min-height: 0;
+    height: 100%;
+  }
+  .det {
+    padding: 12px;
+    gap: 8px;
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto;
+  }
+  .det .chips {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .planet-desc-box {
+    max-height: 90px;
+  }
+}
 </style>

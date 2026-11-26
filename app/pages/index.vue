@@ -426,11 +426,16 @@ onBeforeUnmount(() => { game()?.dispose(); });
     top:calc(var(--top) + 114px + var(--safe-t));
   }
 }
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
+  .compass{top:calc(2px + var(--safe-t)) !important}
+  .touch .compass{top:calc(2px + var(--safe-t)) !important}
   .notify.in-jelajah{
-    top:calc(46px + var(--safe-t));
-    width:min(240px,calc(50vw - 125px - var(--safe-r)));
-    gap:5px;
+    top:calc(38px + var(--safe-t));
+    right:calc(8px + var(--safe-r));
+    width:min(230px,30vw);
+    max-height:calc(100dvh - 170px);
+    overflow-y:auto;
+    gap:4px;
   }
   .box-loader{
     padding:18px 22px;

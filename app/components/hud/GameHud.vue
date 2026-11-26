@@ -727,24 +727,36 @@ function handleQuickStop() {
 }
 
 /* Mobile Landscape: kompak & bebas tumpuk pada tinggi layar terbatas */
-@media (max-height:520px) and (orientation:landscape){
-  .dest{top:calc(var(--top) + 34px + var(--safe-t));padding:3px 5px;gap:4px}
-  .who{min-height:28px;padding:0 8px;gap:6px;font-size:12.5px}
+@media (max-height:540px) and (orientation:landscape){
+  .dest{top:calc(26px + var(--safe-t));padding:2px 5px;gap:4px;border-radius:8px}
+  .who{min-height:24px;padding:0 6px;gap:5px;font-size:11.5px}
   .who small{display:none}
-  .pill{min-height:28px;padding:0 9px;font-size:12px}
-  .pk{top:calc(var(--top) + 70px + var(--safe-t));padding:10px 12px}
-  .pk-l{max-height:min(42dvh,180px)}
-  .approach-green-card{top:calc(var(--top) + 72px + var(--safe-t));padding:4px 10px;gap:8px}
-  .approach-title{font-size:12.5px}
-  .cockpit-stick-wrap{padding:6px 8px;gap:4px}
-  .stick-base{width:76px;height:76px}
-  .stick-label{font-size:10.5px}
-  .cockpit-throttle-wrap{width:122px;padding:7px 8px;gap:4px}
-  .speedo-val{font-size:16px}
+  .dest .nm{font-size:11.5px}
+  .dest .d{font-size:11px}
+  .pill{min-height:24px;padding:0 7px;font-size:11px;gap:3px}
+  .pk{top:calc(56px + var(--safe-t));padding:10px 12px;width:min(320px,calc(100vw - 24px))}
+  .pk-l{max-height:min(44dvh,170px)}
+  .approach-green-card{top:calc(56px + var(--safe-t));padding:3px 10px;gap:7px;border-radius:8px}
+  .approach-title{font-size:12px}
+  .approach-dist{font-size:11px}
+  .badge-green-zone{font-size:9.5px;padding:1px 5px}
+  .cockpit-stick-wrap{padding:5px 7px;gap:3px}
+  .stick-base{width:72px;height:72px}
+  .stick-knob{width:32px;height:32px;margin-left:-16px;margin-top:-16px}
+  .stick-label{font-size:10px}
+  .cockpit-throttle-wrap{width:116px;padding:6px 8px;gap:4px}
+  .speedo-val{font-size:15px}
   .thrust-meter{margin-bottom:2px}
-  .throttle-body{gap:8px}
+  .throttle-body{gap:6px}
+  .throttle-track{width:24px;height:66px}
+  .slot-column{height:66px}
+  .slot-label{font-size:8.5px}
+  .throttle-handle{width:22px;height:16px;margin-left:-11px}
   .throttle-hint-box{display:none}
-  .touch-roll{width:50px;height:50px;border-radius:12px}
-  .touch-pause{min-width:42px;min-height:42px;padding:5px 8px}
+  .touch-roll{width:46px;height:46px;min-width:40px;min-height:40px;border-radius:11px;padding:3px}
+  .touch-roll svg{width:20px;height:20px}
+  .touch-roll-lbl{font-size:9px}
+  .touch-pause{min-width:38px;min-height:38px;padding:4px 6px;border-radius:10px}
+  .touch-pause-lbl{font-size:8.5px}
 }
 </style>

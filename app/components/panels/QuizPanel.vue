@@ -1167,10 +1167,11 @@ const letters = ['A', 'B', 'C', 'D'];
   .kinds{padding:16px 44px 0 16px}
 }
 @media (max-height:540px){
-  .quiz{max-height:calc(100vh - 16px)}
-  .body{padding:12px 16px 12px;gap:10px}
-  .opts-modern{gap:8px}
-  .opt-modern{min-height:48px;padding:8px 12px}
-  .planet-selector-grid{margin:2px 0;gap:6px}
+  .quiz{max-height:calc(100dvh - 16px)}
+  .body{padding:10px 16px 12px;gap:8px;max-height:calc(100dvh - 100px);overflow-y:auto}
+  .opts-modern{gap:6px}
+  .opt-modern{min-height:42px;padding:6px 12px;font-size:13px}
+  .planet-selector-grid{margin:2px 0;gap:5px}
+  .prompt-modern{font-size:14px;line-height:1.4}
 }
 </style>
