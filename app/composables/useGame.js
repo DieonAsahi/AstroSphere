@@ -189,7 +189,8 @@ export const store = reactive({
   ready: false,            // dunia 3D sudah dimuat
   startFromSave: false,
   mode: 'jelajah',         // jelajah | planet | sejarah | fenomena | kuis | hanggar | peta | profil
-  loading: { p: 0, text: '', error: '' },
+  splashLoading: { ready: false, p: 0, text: 'Menyiapkan tampilan awal' },
+  loading: { p: 0, step: 1, totalSteps: 5, text: 'Menyiapkan ruang antariksa & bintang', error: '' },
   hudOff: false,
   hud: {
     hdg: '000°', speed: '0', thr: 0, braking: false, boost: false, limited: false,
@@ -1364,6 +1365,37 @@ export function getActiveShipIds() {
   const liveShips = useSupabaseContent().getShips?.() || {};
   const ids = SHIP_IDS.filter((id) => liveShips[id]?.is_active !== false);
   return ids.length ? ids : [SHIP_IDS[0]];
+}
+
+export const GAME_LOAD_STEPS = [
+  'Menyiapkan ruang antariksa & bintang',
+  'Memuat planet & seluruh armada hanggar',
+  'Membentuk tata surya & lintasan orbit',
+  'Merakit pesawat Astra, Orion & Nova',
+  'Menyelaraskan tampilan jelajah 3D',
+];
+
+const STEP_RANGES = [
+  [0, 0.16],
+  [0.16, 0.64],
+  [0.64, 0.78],
+  [0.78, 0.90],
+  [0.90, 1.0],
+];
+
+export function setGameLoadStep(stepNum = 1, frac = 0, text = '') {
+  const step = Math.min(5, Math.max(1, Math.round(Number(stepNum) || 1)));
+  const [start, end] = STEP_RANGES[step - 1];
+  const f = Math.min(1, Math.max(0, Number(frac) || 0));
+  store.loading.step = step;
+  store.loading.totalSteps = 5;
+  store.loading.p = start + (end - start) * f;
+  store.loading.text = text || GAME_LOAD_STEPS[step - 1];
+}
+
+export function resetGameLoading() {
+  store.loading.error = '';
+  setGameLoadStep(1, 0, GAME_LOAD_STEPS[0]);
 }
 
 export function shouldShowGuide() {

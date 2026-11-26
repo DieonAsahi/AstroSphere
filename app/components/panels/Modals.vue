@@ -1,7 +1,7 @@
 <script setup>
 // Jendela modal: Pengaturan, Jurnal penjelajah, Kontrol, dan konfirmasi Mulai baru.
 import { ref, watch } from 'vue';
-import { store, game, shouldShowGuide } from '~/composables/useGame.js';
+import { store, game, shouldShowGuide, resetGameLoading } from '~/composables/useGame.js';
 
 const pendingSetting = ref(null);
 const hudPreview = ref(store.settings.hudOpacity);
@@ -95,6 +95,7 @@ function cancelPendingSetting() {
 function startNew() {
   close();
   store.startFromSave = false;
+  if (!store.ready) resetGameLoading();
   if (shouldShowGuide()) {
     store.phase = 'guide';
   } else {

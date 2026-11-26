@@ -2,7 +2,7 @@
 // Cangkang AstroSphere. Layar awal (Splash) hanya HTML+gambar; mesin 3D (Three.js) baru diunduh & dijalankan
 // saat pemain masuk ke "Cara terbang" (Tamu Baru) atau langsung lewat muat cepat otomatis (Pemain Lama / Login).
 import { ref, computed, watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
-import { store, setEngine, game } from '~/composables/useGame.js';
+import { store, setEngine, game, resetGameLoading, GAME_LOAD_STEPS } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { useNetworkStatus, OFFLINE_PUBLIC_NOTICE } from '~/utils/networkError.js';
 import { EVENTS } from '~/data/events.js';
@@ -56,6 +56,7 @@ async function ensureEngine() {
 watch(() => store.phase, async (p) => {
   if (p !== 'guide' && p !== 'loading') return;
   try {
+    if (!store.ready) resetGameLoading();
     const e = await ensureEngine();
     await e.boot();
     // Jika fase loading (pemain lama / pengguna login / tamu lewati slide), langsung masuk ke jelajah 3D!
@@ -90,10 +91,33 @@ onBeforeUnmount(() => { game()?.dispose(); });
     <!-- Layar Awal Splash (Beranda / Masuk / Daftar) -->
     <Transition name="fade"><Splash v-if="store.phase === 'splash'" /></Transition>
 
+    <!-- Loading Awal Web (Persiapan Latar Beranda, Masuk, & Daftar) -->
+    <Transition name="fade">
+      <div v-if="store.phase === 'splash' && !store.splashLoading.ready" class="splash-boot-loader" role="status" aria-live="polite">
+        <div class="card box-loader compact">
+          <div class="loader-orbit small">
+            <span class="orbit-glow" />
+            <UiIcon name="logo" :size="34" class="logo-spin" />
+          </div>
+          <div class="loader-texts">
+            <h2 class="loader-title">Menyiapkan AstroSphere</h2>
+            <p class="loader-sub">{{ store.splashLoading.text || 'Menyiapkan tampilan awal' }}</p>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" :style="{ width: Math.round(store.splashLoading.p * 100) + '%' }" />
+          </div>
+          <div class="loader-meta">
+            <span class="pct num">{{ Math.round(store.splashLoading.p * 100) }}%</span>
+            <span class="tag star">Memuat Tampilan Awal</span>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Onboarding 5 Slide (Hanya untuk Tamu Baru yang pertama kali bermain) -->
     <Transition name="fade"><Guide v-if="store.phase === 'guide'" /></Transition>
 
-    <!-- Layar Muat Cepat Otomatis (Untuk Pemain Lama & Pengguna Login yang melewati 5 Slide) -->
+    <!-- Layar Loading 5-Step Masuk Game (Dunia 3D + Semua Pesawat Hanggar) -->
     <Transition name="fade">
       <div v-if="store.phase === 'loading'" class="quick-loader" role="status" aria-live="polite">
         <div class="card box-loader">
@@ -102,8 +126,17 @@ onBeforeUnmount(() => { game()?.dispose(); });
             <UiIcon name="logo" :size="40" class="logo-spin" />
           </div>
           <div class="loader-texts">
+            <span class="step-badge">Tahap {{ store.loading.step || 1 }} dari {{ store.loading.totalSteps || 5 }}</span>
             <h2 class="loader-title">Menyiapkan Tata Surya 3D</h2>
-            <p class="loader-sub">{{ store.loading.text || 'Memuat ruang angkasa...' }}</p>
+            <p class="loader-sub">{{ store.loading.text || GAME_LOAD_STEPS[0] }}</p>
+          </div>
+          <div class="steps-5" aria-hidden="true">
+            <span
+              v-for="idx in 5"
+              :key="idx"
+              class="step-seg"
+              :class="{ done: idx < (store.loading.step || 1), active: idx === (store.loading.step || 1) }"
+            />
           </div>
           <div class="bar-wrap">
             <div class="bar-fill" :style="{ width: Math.round(store.loading.p * 100) + '%' }" />
@@ -412,17 +445,25 @@ onBeforeUnmount(() => { game()?.dispose(); });
 .boundary-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:6px}
 .touch .compass{top:calc(var(--top) + 4px + var(--safe-t))}
 
-/* Layar Muat Cepat Otomatis */
+/* Layar Loading Awal Web & Loading 5-Step Masuk Game */
+.splash-boot-loader{position:fixed;inset:0;z-index:44;display:grid;place-items:center;padding:16px;background:rgba(5,8,20,.96)}
 .quick-loader{position:fixed;inset:0;z-index:42;display:grid;place-items:center;padding:16px;background:rgba(5,8,20,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.box-loader{width:min(440px,100%);padding:32px 28px;border-radius:14px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;background:rgba(11,16,33,.96);border:1px solid rgba(148,163,184,.18);box-shadow:0 20px 50px rgba(0,0,0,.65)}
+.box-loader{width:min(440px,100%);padding:30px 28px;border-radius:14px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;background:rgba(11,16,33,.96);border:1px solid rgba(148,163,184,.18);box-shadow:0 20px 50px rgba(0,0,0,.65)}
+.box-loader.compact{width:min(400px,100%);padding:26px 24px;gap:14px}
 .loader-orbit{position:relative;width:80px;height:80px;display:grid;place-items:center}
+.loader-orbit.small{width:68px;height:68px}
 .orbit-glow{position:absolute;inset:0;border-radius:50%;border:2px dashed rgba(59,108,240,.45);animation:spin 12s linear infinite}
 .logo-spin{color:var(--sky);filter:drop-shadow(0 0 14px rgba(59,108,240,.6))}
-.loader-texts{display:flex;flex-direction:column;gap:6px}
-.loader-title{font-family:var(--display);font-size:20px;font-weight:500;color:var(--text);letter-spacing:-.01em}
-.loader-sub{font-size:14px;color:var(--muted)}
-.bar-wrap{width:100%;height:6px;background:var(--surface-2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
-.bar-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--cyan));border-radius:999px;transition:width .2s ease;box-shadow:0 0 10px rgba(59,108,240,.5)}
+.loader-texts{display:flex;flex-direction:column;align-items:center;gap:6px}
+.step-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.14);border:1px solid rgba(56,189,248,.28);color:#7dd3fc;font-size:11.5px;font-weight:600;letter-spacing:.03em}
+.loader-title{font-family:var(--display);font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.01em;margin:0}
+.loader-sub{font-size:13.5px;color:var(--muted);min-height:20px}
+.steps-5{width:100%;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.step-seg{height:5px;border-radius:4px;background:rgba(148,163,184,.2);transition:background .25s ease,box-shadow .25s ease}
+.step-seg.done{background:var(--sky)}
+.step-seg.active{background:linear-gradient(90deg,var(--sky),var(--cyan));box-shadow:0 0 8px rgba(56,189,248,.45)}
+.bar-wrap{width:100%;height:6px;background:var(--surface-2);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--cyan));border-radius:6px;transition:width .2s ease;box-shadow:0 0 10px rgba(59,108,240,.5)}
 .loader-meta{width:100%;display:flex;align-items:center;justify-content:space-between;font-size:13px}
 .loader-meta .pct{font-weight:500;color:var(--sky)}
 .loader-err{margin-top:8px;font-size:13px;color:var(--coral);display:flex;flex-direction:column;gap:8px;align-items:center}

@@ -310,6 +310,13 @@ async function buildGalaxy(detail) {
       const portrait = W / H < 1;
       camera.position.set(0, 2.4, portrait ? 17 : 12);
       camera.lookAt(0, 0, 0);
+      // Pada desktop/tablet (> 768px), form Daftar berada di kanan sehingga pusat galaksi digeser ke kiri
+      if (W > 768 && !portrait) {
+        const shiftX = Math.min(210, Math.round(W * 0.16));
+        camera.setViewOffset(W, H, shiftX, 0, W, H);
+      } else if (camera.view && camera.view.enabled) {
+        camera.clearViewOffset();
+      }
       camera.updateProjectionMatrix();
     },
     update(t) {
@@ -395,11 +402,29 @@ export function createSplash3D(canvas, onVisible, { quality: q0 = 1 } = {}) {
       .catch((e) => { console.warn('[AstroSphere] latar 3D gagal dimuat:', e); return false; });
     return building[name];
   }
+  async function preloadAll() {
+    if (dead || off) return false;
+    const W = Math.max(2, canvas.clientWidth || innerWidth);
+    const H = Math.max(2, canvas.clientHeight || innerHeight);
+    await Promise.all(['sun', 'galaxy'].map(async (name) => {
+      const ok = await ensure(name);
+      if (!ok || dead || !built[name]) return;
+      const sc = built[name];
+      sc.layout(W, H);
+      sc.update(0.01);
+      try {
+        await renderer.compileAsync(sc.scene, sc.camera);
+      } catch {
+        try { renderer.compile(sc.scene, sc.camera); } catch {}
+      }
+    }));
+    return !dead;
+  }
   async function setScene(name) {
     if (dead || off || want === name) return;
     want = name;
     onVisible(false);
-    if (cur) await wait(420);
+    if (cur) await wait(200);
     if (want !== name || dead) return;
     cur = null;
     if (!name || !(name in SCALE)) return;
@@ -412,6 +437,7 @@ export function createSplash3D(canvas, onVisible, { quality: q0 = 1 } = {}) {
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); dead = true; cur = null; cancelAnimationFrame(raf); onVisible(false); });
   return {
     setScene,
+    preloadAll,
     /** Unduh model lebih awal (mis. saat kursor di atas tombol Masuk/Daftar). */
     prefetch(name) { if (!dead && name in SCALE) ensure(name); },
     dispose() {

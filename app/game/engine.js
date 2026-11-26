@@ -23,7 +23,7 @@ import { resolveKeymap } from '../data/keymap.js';
 import { PHENOMENA } from '../data/phenomena.js';
 import { HISTORY } from '../data/history.js';
 import { useSupabaseContent } from '../composables/useSupabaseContent.js';
-import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent, showToast, getActiveShipIds } from '../composables/useGame.js';
+import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent, showToast, getActiveShipIds, setGameLoadStep, resetGameLoading } from '../composables/useGame.js';
 
 export const TIME_RATE = 0.02;      // hari simulasi per detik (1 hari = 50 dtk) — satu faktor untuk rotasi & revolusi
 export const RMAX = 8500;           // radius navigasi; peringatan mulai 0,8 R (PRD R02)
@@ -244,7 +244,7 @@ export function createEngine(el) {
   const bodyTime = () => (worldMode() === 'observe' ? obsTime : gameTime);
 
   // ---------- Pesawat ----------
-  const ROLL_DUR = 0.72, ROLL_CD = 1.15, ROLL_DODGE_SPEED = 27, ROLL_HELIX_Y = 2.6, CAM_ROLL_MAX = 4.2 * DEG;
+  const ROLL_DUR = 1.02, ROLL_CD = 1.25, ROLL_DODGE_SPEED = 21, ROLL_HELIX_Y = 2.0, CAM_ROLL_MAX = 3.2 * DEG;
   const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, dodging: false, yaw: 0, pitch: 0 };
   const roll = { dir: 0, t: 0, cd: 0 };
   let bankRoll = 0, camRoll = 0, camLagX = 0;
@@ -470,20 +470,22 @@ export function createEngine(el) {
     let barrelAngle = 0, microPitch = 0, microYaw = 0, heaveY = 0, rollFx = 0;
     if (roll.t > 0) {
       const p = 1 - roll.t / ROLL_DUR;
-      // Smootherstep kuintik: akselerasi sudut cepat di tengah, meredam halus saat kembali rata
-      const ep = p * p * p * (p * (6 * p - 15) + 10);
+      // Kurva ease-in-out sinematik: sayap miring perlahan, berbalik halus di udara, lalu kembali rata natural
+      const cosEase = 0.5 - 0.5 * Math.cos(Math.PI * p);
+      const cubEase = p * p * (3 - 2 * p);
+      const ep = 0.5 * cosEase + 0.5 * cubEase;
       const bell = Math.sin(Math.PI * p);
       const spin = Math.sin(Math.PI * 2 * ep);
       barrelAngle = -roll.dir * Math.PI * 2 * ep;
-      microYaw = -roll.dir * 0.085 * bell;
-      microPitch = -0.05 * spin;
-      heaveY = -0.18 * spin;
-      rollFx = 0.34 * bell;
+      microYaw = -roll.dir * 0.068 * bell;
+      microPitch = -0.042 * spin;
+      heaveY = -0.22 * spin;
+      rollFx = 0.28 * bell;
     }
     g.position.set(0, heaveY, 0);
     g.rotation.z = bankRoll + barrelAngle;
-    g.rotation.y = damp(g.rotation.y, microYaw, 14, dt);
-    g.rotation.x = damp(g.rotation.x, ship.rate.x * .05 + microPitch, roll.t > 0 ? 14 : 5, dt);
+    g.rotation.y = damp(g.rotation.y, microYaw, 8, dt);
+    g.rotation.x = damp(g.rotation.x, ship.rate.x * .05 + microPitch, roll.t > 0 ? 9 : 5, dt);
     const thrust = Math.max(0, ship.throttle) + rollFx * .45, b = Math.min(1, ship.boost + rollFx * .25);
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
     const pw = Math.max(idle, Math.max(0, ship.throttle)) + ship.boost * .8 + rollFx;
@@ -584,10 +586,10 @@ export function createEngine(el) {
         ? -roll.dir * CAM_ROLL_MAX * rBell * (camMode === 'cockpit' ? .65 : 1)
         : 0;
       const followLagX = (store.phase === 'playing' && !freeLookMode && roll.t > 0 && camMode !== 'cockpit')
-        ? -roll.dir * .7 * rBell
+        ? -roll.dir * .52 * rBell
         : 0;
-      camRoll = damp(camRoll, followTilt, 8.5, dt);
-      camLagX = damp(camLagX, followLagX, 6.5, dt);
+      camRoll = damp(camRoll, followTilt, 6.2, dt);
+      camLagX = damp(camLagX, followLagX, 5.0, dt);
       lookQ.setFromEuler(_eL.set(look.pitch, look.yaw, 0, 'YXZ'));
       if (camMode === 'cockpit') { tPos.set(0, .45, -1.2).applyQuaternion(ship.quat).add(ship.pos); tQuat.copy(camQ).multiply(lookQ); }
       else {
@@ -1553,25 +1555,31 @@ export function createEngine(el) {
     }
   }
 
-  // ---------- Boot ----------
-  const setLoad = (p, text) => { store.loading.p = p; store.loading.text = text; };
+  // ---------- Boot (5 Tahap Terpadu) ----------
   let booting = null;
   const boot = () => (booting ||= doBoot());
   async function doBoot() {
-    store.loading.error = ''; store.ready = false;
+    resetGameLoading(); store.ready = false;
     try {
-      setLoad(.04, 'Menyiapkan ruang angkasa'); await nextFrame();
+      // Tahap 1/5: Ruang antariksa & taburan bintang
+      setGameLoadStep(1, .2); await nextFrame();
       initRenderer();
       initShipFactory(renderer, U, isTouch);
-      setLoad(.1, 'Menaburkan bintang'); await nextFrame();
+      setGameLoadStep(1, .65); await nextFrame();
       bakeSky();
+      setGameLoadStep(1, 1);
+
+      // Tahap 2/5: Planet inti & seluruh pesawat Hanggar (Astra, Orion, Nova)
       const activeShips = getActiveShipIds();
+      const hangarShips = [...new Set([...SHIP_IDS, ...activeShips].filter((id) => SHIPS[id]))];
       const primaryShip = activeShips.includes(store.progress.selectedShip) ? store.progress.selectedShip : activeShips[0];
       if (primaryShip !== store.progress.selectedShip) store.progress.selectedShip = primaryShip;
-      setLoad(.14, 'Memuat Bumi, Bulan & armada pesawat');
-      models = await loadCoreModels(activeShips, (f) => setLoad(.14 + f * .56, 'Memuat Bumi, Bulan & armada pesawat'));
+      setGameLoadStep(2, 0);
+      models = await loadCoreModels(hangarShips, (f) => setGameLoadStep(2, f));
       setShipModels(models.ships);
-      setLoad(.72, 'Menghitung orbit'); await nextFrame();
+
+      // Tahap 3/5: Tata surya & lintasan orbit
+      setGameLoadStep(3, .2); await nextFrame();
       sys = buildSystem(scene, U, { touch: isTouch, models });
       updateBodies(sys.bodies, sys.byId, gameTime);
       syncBodyVisibility();
@@ -1583,13 +1591,18 @@ export function createEngine(el) {
         shakeBy: (v) => { if (!settings.reduceMotion) shake = Math.max(shake, v); },
         stopAutopilot: () => autopilotOff(false), getLight: () => shipLight, reward: rewardEvent,
       });
-      setLoad(.8, 'Menyiapkan armada pesawat'); await nextFrame();
+      setGameLoadStep(3, 1);
+
+      // Tahap 4/5: Merakit armada pesawat Hanggar & memuat data jelajah
+      setGameLoadStep(4, .1); await nextFrame();
       const warmupExtra = [];
-      for (const id of [...new Set([...activeShips, store.progress.selectedShip].filter((k) => SHIPS[k]))]) {
+      for (let i = 0; i < hangarShips.length; i++) {
+        const id = hangarShips[i];
         if (!shipModels[id] || (shipModels[id].pending && models?.ships?.[id])) {
           shipModels[id] = buildShip(id);
         }
         warmupShipGroup(shipModels[id].group);
+        setGameLoadStep(4, .1 + ((i + 1) / hangarShips.length) * .65);
       }
       setShip(store.progress.selectedShip);
       for (const id of Object.keys(shipModels)) {
@@ -1604,18 +1617,20 @@ export function createEngine(el) {
       if (s) applySave(s); else resetShip(defaultPose());
       if (!target || !isBodyActive(target)) setTarget(pickInitialTargetId(), true);
       buildMarkers(); sizeCompass(); refreshSaveMeta(); syncDiscovered();
-      setLoad(.88, 'Menyiapkan tampilan'); await nextFrame();
+      setGameLoadStep(4, 1);
+
+      // Tahap 5/5: Menyelaraskan tampilan & kesiapan armada 3D
+      setGameLoadStep(5, .2); await nextFrame();
       updateShipVisual(0, 0);
       updateCamera(1, 0);
       camera.position.copy(ship.pos).add(_v.set(Math.sin(menuAngle) * 11, 3, Math.cos(menuAngle) * 11).applyQuaternion(ship.quat));
       camera.lookAt(ship.pos);
-      // pemanasan material seluruh armada: pesawat cadangan dipasang sementara (visible = false) selama kompilasi
       const shipVis = shipRoot.visible; shipRoot.visible = true;
       try { await renderer.compileAsync(scene, camera); await renderer.compileAsync(bgScene, bgCam); } catch (e) { console.warn(e); }
       for (const wg of warmupExtra) { shipRoot.remove(wg); wg.visible = true; }
       shipRoot.visible = shipVis;
       trans.t = 1;
-      setLoad(1, 'Siap terbang');
+      setGameLoadStep(5, 1, 'Siap meluncur ke angkasa');
       store.ready = true;
     } catch (err) {
       console.error(err);

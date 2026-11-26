@@ -747,8 +747,8 @@ onBeforeUnmount(() => {
 .demo-ship-box.down{transform:rotateX(18deg) translateY(10px) scale(.98)}
 .demo-ship-box.left{transform:rotateZ(-16deg) rotateY(-14deg) translateX(-14px)}
 .demo-ship-box.right{transform:rotateZ(16deg) rotateY(14deg) translateX(14px)}
-.demo-ship-box.rollL{animation:demoRollL .55s cubic-bezier(.22,1,.36,1) forwards}
-.demo-ship-box.rollR{animation:demoRollR .55s cubic-bezier(.22,1,.36,1) forwards}
+.demo-ship-box.rollL{animation:demoRollL 1.0s cubic-bezier(.42,0,.58,1) forwards}
+.demo-ship-box.rollR{animation:demoRollR 1.0s cubic-bezier(.42,0,.58,1) forwards}
 @keyframes demoRollL{
   0%{transform:perspective(420px) translateX(0) rotateY(0deg) scale(1)}
   50%{transform:perspective(420px) translateX(-28px) rotateY(-180deg) scale(1.06)}

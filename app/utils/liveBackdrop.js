@@ -134,6 +134,11 @@ export function createLiveBackdrop(canvas, onVisible, { quality: q0 = 1 } = {}) 
   }
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function preload() {
+    if (dead || off) return false;
+    program('earth');
+    return await loadEarth();
+  }
   /** Ganti adegan; null = sembunyikan kanvas (gambar statis yang tampil). */
   async function setScene(name) {
     if (dead || off || want === name) return;
@@ -153,6 +158,7 @@ export function createLiveBackdrop(canvas, onVisible, { quality: q0 = 1 } = {}) 
   canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); dead = true; stopLoop(); });
   return {
     setScene,
+    preload,
     dispose() { dead = true; cancelAnimationFrame(raf); raf = 0; cur = null; try { gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch {} },
   };
 }

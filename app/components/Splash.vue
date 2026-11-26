@@ -5,7 +5,7 @@
 // Gambar statis tampil lebih dulu dan jadi cadangan ("kurangi gerakan", hemat data, atau perangkat lambat).
 // Dunia 3D game baru dimuat setelah pemain menekan "Main".
 import { reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { store, registerUser, loginUser, logoutUser, loginWithGoogle, showToast, shouldShowGuide, getActiveShipIds } from '~/composables/useGame.js';
+import { store, registerUser, loginUser, logoutUser, loginWithGoogle, showToast, shouldShowGuide, getActiveShipIds, resetGameLoading } from '~/composables/useGame.js';
 import { PLANETS } from '~/data/solarSystem.js';
 
 const f = reactive({ name: '', pass: '', show: false, err: '', busy: false, unknown: false });
@@ -16,6 +16,7 @@ function go(screen) { store.screen = screen; f.err = ''; f.pass = ''; f.unknown 
 function play(fromSave) {
   if (!fromSave && store.hasSave) { store.modal = 'confirmNew'; return; }
   store.startFromSave = !!fromSave;
+  if (!store.ready) resetGameLoading();
   if (shouldShowGuide()) {
     store.phase = 'guide';
   } else {
@@ -87,12 +88,79 @@ async function showScreen(s) {
 async function prefetch3d(name) { (await getLive3d())?.prefetch(name); }
 watch(() => store.screen, showScreen);
 
+function preloadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
+}
+
+let bootCancelled = false;
 onMounted(async () => {
   const c = navigator.connection, slowNet = !!(c && (c.saveData || /2g/.test(c.effectiveType || '')));
-  // Unduh model 3D inti di latar saat browser senggang (prioritas rendah) — bukan di koneksi hemat data.
-  if (!slowNet) {
+  const still = store.settings.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const finishSplashBoot = () => {
+    store.splashLoading.p = 1;
+    store.splashLoading.text = 'Siap menjelajah';
+    store.splashLoading.ready = true;
+  };
+
+  if (!store.splashLoading.ready) {
+    store.splashLoading.p = 0.12;
+    store.splashLoading.text = 'Menyiapkan latar semesta';
+
+    const withTimeout = (promise, ms = 12000) => Promise.race([
+      promise,
+      new Promise((r) => setTimeout(r, ms)),
+    ]);
+
+    try {
+      await withTimeout((async () => {
+        const bgPreload = Promise.all([
+          preloadImage('/img/bg-earth.webp'),
+          preloadImage('/img/bg-sun.webp'),
+          preloadImage('/img/bg-galaxy.webp'),
+        ]);
+        if (still || slowNet || !liveEl.value) {
+          await bgPreload;
+          return;
+        }
+        motionOk = true;
+        store.splashLoading.p = 0.28;
+        store.splashLoading.text = 'Memuat visual beranda & masuk';
+        const [liveInst, live3dInst] = await Promise.all([
+          getLive(),
+          getLive3d(),
+          bgPreload,
+        ]);
+        if (bootCancelled || store.phase !== 'splash') return;
+        store.splashLoading.p = 0.56;
+        store.splashLoading.text = 'Menyiapkan animasi Matahari & galaksi';
+        await Promise.all([
+          liveInst?.preload?.() || Promise.resolve(),
+          live3dInst?.preloadAll?.() || Promise.resolve(),
+        ]);
+        if (bootCancelled || store.phase !== 'splash') return;
+        store.splashLoading.p = 0.9;
+        store.splashLoading.text = 'Menyelaraskan tampilan awal';
+        await showScreen(store.screen);
+      })(), 12000);
+    } catch {}
+    finishSplashBoot();
+  } else if (!still && !slowNet && liveEl.value) {
+    motionOk = true;
+    showScreen(store.screen);
+  }
+
+  // Unduh aset jelajah di latar saat browser senggang (prioritas rendah) — bukan di koneksi hemat data.
+  if (!slowNet && !bootCancelled) {
     const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
     idle(() => {
+      if (bootCancelled) return;
       const coreHrefs = [
         '/models/planets/bumi.glb',
         '/models/planets/bulan.glb',
@@ -104,16 +172,12 @@ onMounted(async () => {
       }
     }, { timeout: 4000 });
   }
-  const still = store.settings.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (still || slowNet || !liveEl.value) return;
-  motionOk = true;
-  showScreen(store.screen);
 });
-onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d = null; motionOk = false; });
+onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live3d?.dispose(); live3d = null; motionOk = false; });
 </script>
 
 <template>
-  <div class="splash" :class="store.screen">
+  <div class="splash" :class="[store.screen, { booting: !store.splashLoading.ready }]">
     <div class="bg earth" :class="{ on: store.screen === 'welcome' }" />
     <div class="bg sun" :class="{ on: store.screen === 'login' }" />
     <div class="bg galaxy" :class="{ on: store.screen === 'register' }" />
@@ -273,11 +337,12 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
 
 <style scoped>
 .splash{position:fixed;inset:0;z-index:40;overflow:hidden;background:#05081a}
+.splash.booting .top,.splash.booting .hero,.splash.booting .formwrap{opacity:0;pointer-events:none}
 .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .9s ease}
 .bg.on{opacity:1}
 .earth{background-image:url(/img/bg-earth.webp);background-position:center bottom}
 .sun{background-image:url(/img/bg-sun.webp)}
-.galaxy{background-image:url(/img/bg-galaxy.webp)}
+.galaxy{background-image:url(/img/bg-galaxy.webp);background-position:32% center}
 .live{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .6s ease;pointer-events:none}
 .live.on{opacity:1}
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,26,.55) 0%,rgba(5,8,26,0) 34%)}
@@ -306,18 +371,20 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
 .acct .btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.45);color:#ffffff}
 .btn-icon{flex:none;display:block;opacity:.92}
 .note{font-size:13px;color:rgba(235,241,255,.88);text-shadow:0 2px 12px rgba(4,8,24,.98)}
-.formwrap{position:absolute;inset:0;display:grid;place-items:center;padding:40px 16px;z-index:2;overflow-y:auto}
-.form{position:relative;width:min(420px,100%);padding:28px;display:flex;flex-direction:column;gap:16px;background:rgba(11,16,33,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,.18);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.65)}
-.back-link{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:rgba(170,182,224,.85);cursor:pointer;background:none;border:none;padding:0;margin-bottom:2px;transition:color .15s}
+.formwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(56px + var(--safe-t)) clamp(28px,6vw,84px) 24px;z-index:2;overflow-y:auto}
+.login .formwrap{justify-content:flex-start}
+.register .formwrap{justify-content:flex-end}
+.form{position:relative;width:min(404px,100%);margin:auto 0;padding:22px 24px;display:flex;flex-direction:column;gap:11px;background:rgba(11,16,33,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,.18);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.65)}
+.back-link{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:rgba(170,182,224,.85);cursor:pointer;background:none;border:none;padding:0;margin-bottom:0;transition:color .15s}
 .back-link:hover{color:#f4f7ff}
 .back-arrow{font-size:14px;line-height:1}
-.form-header{display:flex;flex-direction:column;gap:6px;text-align:left}
-.card-eyebrow{font-size:11px;letter-spacing:.08em;color:#38bdf8;font-weight:600;text-transform:uppercase}
-.form-title{font-size:22px;font-weight:600;color:#f4f7ff;line-height:1.2;margin:0}
-.form-subtitle{font-size:13.5px;color:var(--muted);line-height:1.45}
-.form-field{display:flex;flex-direction:column;gap:7px;text-align:left;font-size:13px;font-weight:500;color:#cbd5e1}
-.field-hint{font-size:11.5px;font-weight:400;color:var(--muted);line-height:1.4}
-.form-input{width:100%;height:44px;padding:0 14px;background:#161d36;border:1px solid #2a355c;border-radius:10px;color:#f4f7ff;font-size:14px;transition:border-color .15s,box-shadow .15s}
+.form-header{display:flex;flex-direction:column;gap:4px;text-align:left}
+.card-eyebrow{font-size:10.5px;letter-spacing:.08em;color:#38bdf8;font-weight:600;text-transform:uppercase}
+.form-title{font-size:20.5px;font-weight:600;color:#f4f7ff;line-height:1.2;margin:0}
+.form-subtitle{font-size:13px;color:var(--muted);line-height:1.4}
+.form-field{display:flex;flex-direction:column;gap:5px;text-align:left;font-size:13px;font-weight:500;color:#cbd5e1}
+.field-hint{font-size:11.5px;font-weight:400;color:var(--muted);line-height:1.35}
+.form-input{width:100%;height:40px;padding:0 13px;background:#161d36;border:1px solid #2a355c;border-radius:10px;color:#f4f7ff;font-size:14px;transition:border-color .15s,box-shadow .15s}
 .form-input:focus{outline:none;border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.2)}
 .form-input::placeholder{color:rgba(148,163,184,.65);font-size:13.5px}
 .form-input:-webkit-autofill,
@@ -332,25 +399,25 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
 }
 .pw-box{position:relative;width:100%}
 .pw-box .form-input{padding-right:44px}
-.eye-btn{position:absolute;right:4px;top:4px;width:36px;height:36px;display:grid;place-items:center;color:var(--muted);background:none;border:none;border-radius:8px;cursor:pointer;transition:color .15s}
+.eye-btn{position:absolute;right:4px;top:2px;width:36px;height:36px;display:grid;place-items:center;color:var(--muted);background:none;border:none;border-radius:8px;cursor:pointer;transition:color .15s}
 .eye-btn:hover{color:#f4f7ff}
 .form-err{color:var(--coral);font-size:13px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:8px 12px;border-radius:8px}
-.form-submit-btn{width:100%;height:44px;min-height:44px;margin-top:12px;border-radius:10px;font-weight:500;font-size:14.5px;background:var(--blue);color:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(37,99,235,.4)}
+.form-submit-btn{width:100%;height:40px;min-height:40px;margin-top:4px;border-radius:10px;font-weight:500;font-size:14.5px;background:var(--blue);color:#ffffff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(37,99,235,.4)}
 .form-submit-btn:hover{filter:brightness(1.12)}
-.form-divider{display:flex;align-items:center;gap:12px;margin:2px 0}
+.form-divider{display:flex;align-items:center;gap:12px;margin:0}
 .divider-line{flex:1;height:1px;background:rgba(148,174,255,.18)}
-.divider-text{font-size:11.5px;font-weight:600;letter-spacing:.06em;color:rgba(170,182,224,.75)}
-.google-btn{width:100%;height:44px;min-height:44px;border-radius:10px;font-size:14px;font-weight:500;background:#ffffff;color:#0f172a;border:1px solid rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;transition:background .15s,filter .15s,transform .12s}
+.divider-text{font-size:11px;font-weight:600;letter-spacing:.06em;color:rgba(170,182,224,.75)}
+.google-btn{width:100%;height:40px;min-height:40px;border-radius:10px;font-size:13.5px;font-weight:500;background:#ffffff;color:#0f172a;border:1px solid rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer;transition:background .15s,filter .15s,transform .12s}
 .google-btn:hover{background:#f8fafc;filter:brightness(1.02)}
 .google-btn:active{transform:translateY(1px)}
-.guest-btn{width:100%;height:44px;min-height:44px;border-radius:10px;font-size:14px;font-weight:500;background:rgba(255,255,255,.03);border:1px solid rgba(148,174,255,.22);color:#f4f7ff;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.guest-btn{width:100%;height:40px;min-height:40px;border-radius:10px;font-size:13.5px;font-weight:500;background:rgba(255,255,255,.03);border:1px solid rgba(148,174,255,.22);color:#f4f7ff;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
 .guest-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(148,174,255,.4)}
-.form-switch{text-align:center;font-size:13.5px;color:var(--muted);margin-top:2px}
+.form-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:0}
 .switch-link{color:#38bdf8;font-weight:500;margin-left:4px;cursor:pointer;background:none;border:none;padding:0;transition:color .15s}
 .switch-link:hover{color:#7dd3fc;text-decoration:underline;text-underline-offset:3px}
-.login .shade{background:linear-gradient(90deg,rgba(5,8,26,.35),rgba(5,8,26,0) 55%)}
-.register .shade{background:radial-gradient(ellipse at center,rgba(0,0,0,0),rgba(0,0,0,.35) 80%)}
-@media (max-width:760px){
+.login .shade{background:linear-gradient(90deg,rgba(5,8,26,.42) 0%,rgba(5,8,26,.12) 45%,rgba(5,8,26,0) 72%)}
+.register .shade{background:linear-gradient(270deg,rgba(5,8,26,.42) 0%,rgba(5,8,26,.12) 45%,rgba(5,8,26,0) 72%)}
+@media (max-width:768px){
   .top{padding:calc(12px + var(--safe-t)) 16px 0}
   .brand span{font-size:18px}
   .hero{top:50%;bottom:auto;left:50%;transform:translate(-50%,-52%);gap:14px;width:calc(100vw - 32px)}
@@ -362,9 +429,11 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
   .acct .btn{flex:1;min-width:0}
   .user-pill{padding:3px 10px 3px 4px;gap:7px}
   .user-name{font-size:12.5px}
-  .formwrap{padding:20px 12px}
-  .form{padding:22px 18px;gap:14px}
-  .form-title{font-size:20px}
+  .galaxy{background-position:center center}
+  .formwrap,.login .formwrap,.register .formwrap{justify-content:center;padding:calc(54px + var(--safe-t)) 14px 20px}
+  .login .shade,.register .shade{background:radial-gradient(ellipse at center,rgba(5,8,26,.2),rgba(5,8,26,.55) 85%)}
+  .form{padding:20px 18px;gap:11px}
+  .form-title{font-size:19.5px}
 }
-@media (max-width:760px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
+@media (max-width:768px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
 </style>
