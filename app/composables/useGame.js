@@ -1,7 +1,7 @@
 // State bersama UI ↔ mesin 3D + penyimpanan lokal (localStorage) + Sinkronisasi Awan (Supabase).
 // Alur: splash (Beranda/Masuk/Daftar, tanpa WebGL) → guide (cara bermain + memuat dunia 3D) → playing ⇄ paused.
 import { reactive, watch } from 'vue';
-import { SHIPS } from '../data/ships.js';
+import { SHIPS, SHIP_IDS } from '../data/ships.js';
 import { QUIZ, POINTS_PER_QUESTION, QUIZ_VERSION } from '../data/quiz.js';
 import { NAME_OF } from '../data/solarSystem.js';
 import { sanitizeKeys } from '../data/keymap.js';
@@ -1360,6 +1360,12 @@ export const game = () => engineRef;
  * - HANYA tampil untuk Tamu Baru (!store.account.loggedIn && !store.hasSave && !store.settings.tutorialSeen).
  * - Langsung lewati jika sudah login akun ATAU sudah pernah main (hasSave / tutorialSeen).
  */
+export function getActiveShipIds() {
+  const liveShips = useSupabaseContent().getShips?.() || {};
+  const ids = SHIP_IDS.filter((id) => liveShips[id]?.is_active !== false);
+  return ids.length ? ids : [SHIP_IDS[0]];
+}
+
 export function shouldShowGuide() {
   return !store.account.loggedIn && !store.hasSave && !store.settings.tutorialSeen;
 }

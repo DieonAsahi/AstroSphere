@@ -35,7 +35,7 @@ const eventBanner = computed(() => {
     if (ev.phase === 'warn') return { cls: 'warn', icon: 'matahari', t: eDef.warn, s: ev.safe ? 'Kamu sudah di bayangan — tetap di sana' : `Berlindung di bayangan ${ev.shelterName}`, n: ev.left };
     return { cls: ev.safe ? 'safe' : 'danger', icon: 'matahari', t: eDef.hit, s: ev.safe ? 'Aman di bayangan' : 'Terkena radiasi — cepat ke bayangan!', n: ev.left };
   }
-  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: eDef.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D belok · W/S naik-turun', n: ev.left };
+  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: eDef.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D belok · W/S naik-turun · Q/E guling', n: ev.left };
   return { cls: ev.hits > 3 ? 'danger' : 'warn', icon: 'info', t: eDef.hit, s: ev.hits ? `Tertabrak ${ev.hits} kali` : 'Belum tertabrak', n: ev.left };
 });
 

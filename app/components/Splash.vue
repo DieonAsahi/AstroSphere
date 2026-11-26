@@ -5,9 +5,8 @@
 // Gambar statis tampil lebih dulu dan jadi cadangan ("kurangi gerakan", hemat data, atau perangkat lambat).
 // Dunia 3D game baru dimuat setelah pemain menekan "Main".
 import { reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { store, registerUser, loginUser, logoutUser, loginWithGoogle, showToast, shouldShowGuide } from '~/composables/useGame.js';
+import { store, registerUser, loginUser, logoutUser, loginWithGoogle, showToast, shouldShowGuide, getActiveShipIds } from '~/composables/useGame.js';
 import { PLANETS } from '~/data/solarSystem.js';
-import { SHIP_IDS } from '~/data/ships.js';
 
 const f = reactive({ name: '', pass: '', show: false, err: '', busy: false, unknown: false });
 watch(() => store.oauthError, (msg) => {
@@ -94,7 +93,11 @@ onMounted(async () => {
   if (!slowNet) {
     const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
     idle(() => {
-      const coreHrefs = ['/models/planets/bumi.glb', '/models/planets/bulan.glb', '/models/ships/astra.glb'];
+      const coreHrefs = [
+        '/models/planets/bumi.glb',
+        '/models/planets/bulan.glb',
+        ...getActiveShipIds().map((id) => `/models/ships/${id}.glb`),
+      ];
       for (const href of coreHrefs) {
         if (document.querySelector(`link[href="${href}"]`)) continue;
         const l = document.createElement('link'); l.rel = 'prefetch'; l.href = href; document.head.appendChild(l);

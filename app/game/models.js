@@ -11,71 +11,91 @@ export const PLANET_MODEL_IDS = [...CORE_PLANET_IDS, ...REMAINING_PLANET_IDS];
 export const DECOR_MODEL_IDS = ['black_hole']; // lubang hitam di langit (di luar tata surya), dimuat belakangan
 
 const getLoader = () => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const modelCache = new Map();
+const pendingLoads = new Map();
 
-/**
- * Muat satu model GLB spesifik (planet atau kapal).
- */
-export function loadSingleModel(kind, id) {
-  const loader = getLoader();
-  return new Promise((resolve) => {
-    loader.load(
+function loadCachedModel(kind, id, onProgress) {
+  const key = `${kind}/${id}`;
+  if (modelCache.has(key)) {
+    onProgress?.(1);
+    return Promise.resolve(modelCache.get(key));
+  }
+  if (pendingLoads.has(key)) {
+    return pendingLoads.get(key).then((root) => {
+      onProgress?.(1);
+      return root;
+    });
+  }
+  const job = new Promise((resolve) => {
+    getLoader().load(
       `/models/${kind}/${id}.glb`,
       (gltf) => {
         const root = gltf.scene.children.length === 1 ? gltf.scene.children[0] : gltf.scene;
         root.updateMatrixWorld(true);
+        modelCache.set(key, root);
+        pendingLoads.delete(key);
+        onProgress?.(1);
         resolve(root);
       },
-      undefined,
+      (e) => {
+        if (e.total && onProgress) onProgress(Math.min(.99, e.loaded / e.total));
+      },
       (err) => {
-        console.warn(`[AstroSphere] Model ${kind}/${id} gagal dimuat — memakai versi prosedural.`, err);
+        console.warn(`[AstroSphere] Model ${key} gagal dimuat — memakai versi prosedural.`, err);
+        pendingLoads.delete(key);
+        onProgress?.(1);
         resolve(null);
       }
     );
   });
+  pendingLoads.set(key, job);
+  return job;
 }
 
 /**
- * Pemuatan model inti (Lazy Loading): Hanya Bumi, Bulan, dan pesawat aktif saat boot.
- * Total unduhan awal turun dari ~17 MB menjadi ~2,5 MB.
+ * Muat satu model GLB spesifik (planet atau kapal) dengan cache memori.
  */
-export async function loadCoreModels(selectedShip = 'astra', onProgress = () => {}) {
-  const shipId = SHIP_IDS.includes(selectedShip) ? selectedShip : 'astra';
+export function loadSingleModel(kind, id) {
+  return loadCachedModel(kind, id);
+}
+
+/**
+ * Pemuatan model inti: Bumi, Bulan, dan seluruh pesawat aktif secara paralel di awal permainan.
+ */
+export async function loadCoreModels(shipInput = SHIP_IDS, onProgress = () => {}) {
+  const list = Array.isArray(shipInput) ? shipInput : [shipInput];
+  const shipIds = [...new Set(list.filter((id) => SHIP_IDS.includes(id)))];
+  if (!shipIds.length) shipIds.push(SHIP_IDS[0]);
   const jobs = [
     ['planets', 'bumi'],
     ['planets', 'bulan'],
-    ['ships', shipId]
+    ...shipIds.map((id) => ['ships', id]),
   ];
   const out = { planets: {}, ships: {}, decor: {}, failed: [] };
   const frac = jobs.map(() => 0);
   let done = 0;
   const report = () => onProgress(frac.reduce((a, b) => a + b, 0) / jobs.length, done, jobs.length);
 
-  await Promise.all(jobs.map(([kind, id], i) => new Promise((resolve) => {
-    const finish = () => { frac[i] = 1; done++; report(); resolve(); };
-    getLoader().load(`/models/${kind}/${id}.glb`,
-      (gltf) => {
-        const root = gltf.scene.children.length === 1 ? gltf.scene.children[0] : gltf.scene;
-        root.updateMatrixWorld(true);
-        out[kind][id] = root;
-        finish();
-      },
-      (e) => { if (e.total) { frac[i] = Math.min(.99, e.loaded / e.total); report(); } },
-      (err) => {
-        console.warn(`[AstroSphere] Model ${kind}/${id} gagal dimuat — memakai versi prosedural.`, err);
-        out.failed.push(`${kind}/${id}`);
-        finish();
-      }
-    );
-  })));
+  await Promise.all(jobs.map(async ([kind, id], i) => {
+    const root = await loadCachedModel(kind, id, (f) => {
+      frac[i] = f;
+      report();
+    });
+    if (root) out[kind][id] = root;
+    else out.failed.push(`${kind}/${id}`);
+    frac[i] = 1;
+    done++;
+    report();
+  }));
 
   return out;
 }
 
 /**
- * Kompatibilitas fungsi pemuatan bawaan (secara default mengunduh model inti).
+ * Kompatibilitas fungsi pemuatan bawaan (mengunduh model inti & seluruh pesawat).
  */
 export async function loadModels(onProgress = () => {}) {
-  return loadCoreModels('astra', onProgress);
+  return loadCoreModels(SHIP_IDS, onProgress);
 }
 
 // Dekorasi (mis. lubang hitam) dimuat setelah permainan berjalan agar layar awal tetap ringan.

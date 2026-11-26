@@ -23,7 +23,7 @@ import { resolveKeymap } from '../data/keymap.js';
 import { PHENOMENA } from '../data/phenomena.js';
 import { HISTORY } from '../data/history.js';
 import { useSupabaseContent } from '../composables/useSupabaseContent.js';
-import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent, showToast } from '../composables/useGame.js';
+import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, rewardEvent, showToast, getActiveShipIds } from '../composables/useGame.js';
 
 export const TIME_RATE = 0.02;      // hari simulasi per detik (1 hari = 50 dtk) — satu faktor untuk rotasi & revolusi
 export const RMAX = 8500;           // radius navigasi; peringatan mulai 0,8 R (PRD R02)
@@ -91,14 +91,17 @@ export function createEngine(el) {
     const curId = store.progress.selectedShip;
     const live = sup.getShip(curId);
     if (sup.loadedFromDb.value.ships && live?.is_active === false) {
-      const liveShips = sup.getShips();
-      const nextId = store.progress.owned.find((id) => liveShips[id]?.is_active !== false)
-        || SHIP_IDS.find((id) => liveShips[id]?.is_active !== false)
+      const activeIds = getActiveShipIds();
+      const nextId = store.progress.owned.find((id) => activeIds.includes(id))
+        || activeIds[0]
         || 'astra';
       if (nextId !== curId) {
         store.progress.selectedShip = nextId;
         if (sys) setShip(nextId);
       }
+    }
+    if (sys && models?.ships) {
+      for (const id of getActiveShipIds()) ensureShipModel(id);
     }
   }
   const stopShipWatch = watch(
@@ -241,11 +244,15 @@ export function createEngine(el) {
   const bodyTime = () => (worldMode() === 'observe' ? obsTime : gameTime);
 
   // ---------- Pesawat ----------
-  const ROLL_DUR = 0.55, ROLL_CD = 1.1, ROLL_DODGE_SPEED = 26;
+  const ROLL_DUR = 0.72, ROLL_CD = 1.15, ROLL_DODGE_SPEED = 27, ROLL_HELIX_Y = 2.6, CAM_ROLL_MAX = 4.2 * DEG;
   const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, dodging: false, yaw: 0, pitch: 0 };
   const roll = { dir: 0, t: 0, cd: 0 };
-  let bankRoll = 0;
-  function resetRoll() { roll.dir = 0; roll.t = 0; roll.cd = 0; ship.dodging = false; }
+  let bankRoll = 0, camRoll = 0, camLagX = 0;
+  const _vRollAxis = new THREE.Vector3(0, 0, 1), _qRoll = new THREE.Quaternion();
+  function resetRoll(clearCam = false) {
+    roll.dir = 0; roll.t = 0; roll.cd = 0; ship.dodging = false;
+    if (clearCam) { camRoll = 0; camLagX = 0; }
+  }
   function startRoll(dir) {
     if (worldMode() !== 'jelajah' || store.phase !== 'playing' || store.modal || store.approach.show || store.event.result || store.bannedModal?.show) return;
     if (roll.t > 0 || roll.cd > 0) return;
@@ -288,30 +295,59 @@ export function createEngine(el) {
     ship.yaw = _e.y;
     ship.pitch = clamp(_e.x, -1.35, 1.35);
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
-    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; bankRoll = 0; resetRoll(); ship.brakeHold = false; bankRoll = 0; resetRoll();
+    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false; bankRoll = 0; resetRoll(true);
   }
   // Tampilkan tepat SATU pesawat: semua grup pesawat lain di shipRoot dilepas lebih dulu
   // (mencegah model bertumpuk di hanggar saat unduhan GLB selesai tidak berurutan).
   function showShip(id) {
     for (const c of [...shipRoot.children]) if (c.userData.isShip) shipRoot.remove(c);
     shipModel = shipModels[id]; shownShip = id;
+    shipModel.group.visible = true;
     shipRoot.add(shipModel.group);
+  }
+  function warmupShipGroup(group) {
+    if (!renderer || !group) return;
+    group.traverse((o) => {
+      if (!o.isMesh && !o.isSprite) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (!m) continue;
+        for (const v of Object.values(m)) {
+          if (v && v.isTexture) {
+            try { renderer.initTexture(v); } catch {}
+          }
+        }
+      }
+    });
   }
   const shipLoads = {};
   function ensureShipModel(id) {
-    if (!id || !SHIPS[id] || !models?.ships || models.ships[id]) return;
+    if (!id || !SHIPS[id] || !models?.ships) return Promise.resolve(shipModels[id] || null);
+    if (models.ships[id]) {
+      if (!shipModels[id] || shipModels[id].pending) {
+        shipModels[id] = buildShip(id);
+        warmupShipGroup(shipModels[id].group);
+      }
+      return Promise.resolve(shipModels[id]);
+    }
     shipLoads[id] ||= loadSingleModel('ships', id).then((m) => {
       delete shipLoads[id];
-      if (!m || !models?.ships) return;
+      if (!m || !models?.ships) return null;
       models.ships[id] = m;
       setShipModels(models.ships);
       shipModels[id] = buildShip(id);
+      warmupShipGroup(shipModels[id].group);
       if (shownShip === id) showShip(id); // hanya bila pesawat ini yang sedang tampil
+      return shipModels[id];
     });
+    return shipLoads[id];
   }
   function setShip(id) {
     if (!SHIPS[id]) id = 'astra';
-    if (!shipModels[id] || (shipModels[id].pending && models?.ships?.[id])) shipModels[id] = buildShip(id);
+    if (!shipModels[id] || (shipModels[id].pending && models?.ships?.[id])) {
+      shipModels[id] = buildShip(id);
+      if (!shipModels[id].pending) warmupShipGroup(shipModels[id].group);
+    }
     showShip(id);
     ensureShipModel(id);
   }
@@ -398,9 +434,14 @@ export function createEngine(el) {
     if (roll.t > 0) {
       roll.t = Math.max(0, roll.t - dt);
       const p = 1 - roll.t / ROLL_DUR;
-      const dodgeV = roll.dir * ROLL_DODGE_SPEED * Math.sin(Math.PI * p);
+      const latProfile = Math.pow(Math.sin(Math.PI * p), 1.35);
+      const dodgeV = roll.dir * ROLL_DODGE_SPEED * latProfile;
       _v2.set(1, 0, 0).applyQuaternion(ship.quat);
       ship.pos.addScaledVector(_v2, dodgeV * dt);
+      // Ayunan lintasan heliks tipis di sumbu vertikal lokal (integral = 0, kembali ke elevasi awal)
+      const helixY = -Math.sin(Math.PI * 2 * p) * ROLL_HELIX_Y;
+      _v2.set(0, 1, 0).applyQuaternion(ship.quat);
+      ship.pos.addScaledVector(_v2, helixY * dt);
       ship.dodging = roll.t > 0;
     } else {
       ship.dodging = false;
@@ -423,19 +464,29 @@ export function createEngine(el) {
     shipRoot.position.copy(ship.pos); shipRoot.quaternion.copy(ship.quat);
     if (!shipModel) return;
     const g = shipModel.group, wm = worldMode();
-    // Efek visual miring sayap (banking roll) halus & manuver guling menghindar 360° HANYA pada mesh 3D anak
+    if (g.rotation.order !== 'YXZ') g.rotation.order = 'YXZ';
+    // Efek visual miring sayap (banking roll) & manuver guling menghindar heliks 360° HANYA pada mesh 3D anak
     bankRoll = damp(bankRoll, -input.yaw * .45, 6, dt);
-    let barrelAngle = 0;
+    let barrelAngle = 0, microPitch = 0, microYaw = 0, heaveY = 0, rollFx = 0;
     if (roll.t > 0) {
       const p = 1 - roll.t / ROLL_DUR;
-      const ep = p * p * (3 - 2 * p);
+      // Smootherstep kuintik: akselerasi sudut cepat di tengah, meredam halus saat kembali rata
+      const ep = p * p * p * (p * (6 * p - 15) + 10);
+      const bell = Math.sin(Math.PI * p);
+      const spin = Math.sin(Math.PI * 2 * ep);
       barrelAngle = -roll.dir * Math.PI * 2 * ep;
+      microYaw = -roll.dir * 0.085 * bell;
+      microPitch = -0.05 * spin;
+      heaveY = -0.18 * spin;
+      rollFx = 0.34 * bell;
     }
+    g.position.set(0, heaveY, 0);
     g.rotation.z = bankRoll + barrelAngle;
-    g.rotation.x = damp(g.rotation.x, ship.rate.x * .05, 5, dt);
-    const thrust = Math.max(0, ship.throttle), b = ship.boost;
+    g.rotation.y = damp(g.rotation.y, microYaw, 14, dt);
+    g.rotation.x = damp(g.rotation.x, ship.rate.x * .05 + microPitch, roll.t > 0 ? 14 : 5, dt);
+    const thrust = Math.max(0, ship.throttle) + rollFx * .45, b = Math.min(1, ship.boost + rollFx * .25);
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
-    const pw = Math.max(idle, thrust) + b * .8;
+    const pw = Math.max(idle, Math.max(0, ship.throttle)) + ship.boost * .8 + rollFx;
     updateShipFx(shipModel, pw, thrust, b, time);
     shipRoot.visible = wm !== 'observe' && !(camMode === 'cockpit' && wm === 'jelajah');
   }
@@ -501,6 +552,7 @@ export function createEngine(el) {
   function updateCamera(dt, time) {
     const def = shipDef(), wm = worldMode();
     const tPos = _v, tQuat = _q;
+    if (wm !== 'jelajah') { camRoll = 0; camLagX = 0; }
     if (wm === 'menu' || wm === 'hangar') {
       if (!look.drag && look.touchId === null) menuAngle += dt * (settings.reduceMotion ? .03 : .1);
       const r = def.camZ * 1.05 * look.zoom * (wm === 'hangar' ? 1.15 : 1);
@@ -526,15 +578,29 @@ export function createEngine(el) {
         look.yaw = damp(Math.atan2(Math.sin(look.yaw), Math.cos(look.yaw)), 0, 3.5, dt);
         look.pitch = damp(look.pitch, 0, 3.5, dt);
       }
+      const rp = roll.t > 0 ? 1 - roll.t / ROLL_DUR : 0;
+      const rBell = roll.t > 0 ? Math.sin(Math.PI * rp) : 0;
+      const followTilt = (store.phase === 'playing' && !freeLookMode && roll.t > 0)
+        ? -roll.dir * CAM_ROLL_MAX * rBell * (camMode === 'cockpit' ? .65 : 1)
+        : 0;
+      const followLagX = (store.phase === 'playing' && !freeLookMode && roll.t > 0 && camMode !== 'cockpit')
+        ? -roll.dir * .7 * rBell
+        : 0;
+      camRoll = damp(camRoll, followTilt, 8.5, dt);
+      camLagX = damp(camLagX, followLagX, 6.5, dt);
       lookQ.setFromEuler(_eL.set(look.pitch, look.yaw, 0, 'YXZ'));
       if (camMode === 'cockpit') { tPos.set(0, .45, -1.2).applyQuaternion(ship.quat).add(ship.pos); tQuat.copy(camQ).multiply(lookQ); }
       else {
         const sN = clamp(ship.speed / 300, 0, 1);
         _v2.copy(camOffset(def)); _v2.z += sN * 2 + ship.boost * 2.5;
+        _v2.x += camLagX;
         _v2.multiplyScalar(look.zoom).applyQuaternion(lookQ).applyQuaternion(camQ);
         tPos.copy(ship.pos).add(_v2);
         tQuat.copy(camQ).multiply(lookQ).multiply(LOOK_DOWN);
         if (nearest) { const minD = nearest.radius + 1.2, d = tPos.distanceTo(nearest.pos); if (d < minD) tPos.sub(nearest.pos).setLength(minD).add(nearest.pos); }
+      }
+      if (Math.abs(camRoll) > 1e-4) {
+        tQuat.multiply(_qRoll.setFromAxisAngle(_vRollAxis, camRoll));
       }
     }
     if (trans.t < 1) {
@@ -832,7 +898,7 @@ export function createEngine(el) {
     ship.yaw = (s.rotation && s.rotation.y) || 0;
     ship.pitch = clamp((s.rotation && s.rotation.x) || 0, -1.35, 1.35);
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
-    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; bankRoll = 0; resetRoll();
+    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; bankRoll = 0; resetRoll(true);
     discovered.clear(); discovered.add('matahari');
     if (Array.isArray(s.discovered)) for (const id of s.discovered) if ((sys.byId[id] && isBodyActive(sys.byId[id])) || id === BELT.id) discovered.add(id);
     syncDiscovered();
@@ -852,7 +918,7 @@ export function createEngine(el) {
     if (!snapshot) return;
     const s = snapshot; snapshot = null;
     gameTime = s.gameTime; updateBodies(sys.bodies, sys.byId, gameTime);
-    ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.yaw = s.yaw ?? 0; ship.pitch = s.pitch ?? 0; ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0; bankRoll = 0; resetRoll();
+    ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.yaw = s.yaw ?? 0; ship.pitch = s.pitch ?? 0; ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0; bankRoll = 0; resetRoll(true);
     camQ.copy(ship.quat); camMode = s.camMode;
     clearAllInputs();
   }
@@ -1494,13 +1560,16 @@ export function createEngine(el) {
   async function doBoot() {
     store.loading.error = ''; store.ready = false;
     try {
-      setLoad(.04, 'Menyiapkan mesin grafis'); await nextFrame();
+      setLoad(.04, 'Menyiapkan ruang angkasa'); await nextFrame();
       initRenderer();
       initShipFactory(renderer, U, isTouch);
       setLoad(.1, 'Menaburkan bintang'); await nextFrame();
       bakeSky();
-      setLoad(.14, 'Memuat Bumi, Bulan & pesawat');
-      models = await loadCoreModels(store.progress.selectedShip || 'astra', (f) => setLoad(.14 + f * .56, 'Memuat Bumi, Bulan & pesawat'));
+      const activeShips = getActiveShipIds();
+      const primaryShip = activeShips.includes(store.progress.selectedShip) ? store.progress.selectedShip : activeShips[0];
+      if (primaryShip !== store.progress.selectedShip) store.progress.selectedShip = primaryShip;
+      setLoad(.14, 'Memuat Bumi, Bulan & armada pesawat');
+      models = await loadCoreModels(activeShips, (f) => setLoad(.14 + f * .56, 'Memuat Bumi, Bulan & armada pesawat'));
       setShipModels(models.ships);
       setLoad(.72, 'Menghitung orbit'); await nextFrame();
       sys = buildSystem(scene, U, { touch: isTouch, models });
@@ -1514,8 +1583,23 @@ export function createEngine(el) {
         shakeBy: (v) => { if (!settings.reduceMotion) shake = Math.max(shake, v); },
         stopAutopilot: () => autopilotOff(false), getLight: () => shipLight, reward: rewardEvent,
       });
-      setLoad(.8, 'Merakit pesawat'); await nextFrame();
+      setLoad(.8, 'Menyiapkan armada pesawat'); await nextFrame();
+      const warmupExtra = [];
+      for (const id of [...new Set([...activeShips, store.progress.selectedShip].filter((k) => SHIPS[k]))]) {
+        if (!shipModels[id] || (shipModels[id].pending && models?.ships?.[id])) {
+          shipModels[id] = buildShip(id);
+        }
+        warmupShipGroup(shipModels[id].group);
+      }
       setShip(store.progress.selectedShip);
+      for (const id of Object.keys(shipModels)) {
+        const sm = shipModels[id];
+        if (id !== shownShip && sm && !sm.pending) {
+          sm.group.visible = false;
+          shipRoot.add(sm.group);
+          warmupExtra.push(sm.group);
+        }
+      }
       const s = readGameState();
       if (s) applySave(s); else resetShip(defaultPose());
       if (!target || !isBodyActive(target)) setTarget(pickInitialTargetId(), true);
@@ -1525,9 +1609,10 @@ export function createEngine(el) {
       updateCamera(1, 0);
       camera.position.copy(ship.pos).add(_v.set(Math.sin(menuAngle) * 11, 3, Math.cos(menuAngle) * 11).applyQuaternion(ship.quat));
       camera.lookAt(ship.pos);
-      // pemanasan shader: pesawat aktif tetap di shipRoot (tidak dipindah induk, agar tidak hilang/terduplikasi)
+      // pemanasan material seluruh armada: pesawat cadangan dipasang sementara (visible = false) selama kompilasi
       const shipVis = shipRoot.visible; shipRoot.visible = true;
       try { await renderer.compileAsync(scene, camera); await renderer.compileAsync(bgScene, bgCam); } catch (e) { console.warn(e); }
+      for (const wg of warmupExtra) { shipRoot.remove(wg); wg.visible = true; }
       shipRoot.visible = shipVis;
       trans.t = 1;
       setLoad(1, 'Siap terbang');
