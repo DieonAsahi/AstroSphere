@@ -3,7 +3,7 @@
 // Navigasi Tujuan, serta Pesan Zona Hijau Kedekatan Planet yang bersih & lapang.
 import { computed, ref, reactive, watch, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, isFound } from '~/composables/useGame.js';
-import { COLOR_OF, PLANETS } from '~/data/solarSystem.js';
+import { COLOR_OF, PLANETS, MOONS } from '~/data/solarSystem.js';
 import { fmtDist } from '~/game/util.js';
 import { resolveKeymap, keyLabel } from '~/data/keymap.js';
 import { sanitizeTouchLayout, touchItemStyle } from '~/data/touchLayout.js';
@@ -43,8 +43,8 @@ const status = computed(() => {
   return 'NETRAL';
 });
 
-// Pilih tujuan: daftar Matahari, planet, dan Bulan dengan jarak langsung
-const LIST = ['matahari', ...PLANETS.map((p) => p.id), 'bulan'];
+// Pilih tujuan: daftar Matahari, planet, dan Bulan / Satelit Alami dengan jarak langsung
+const LIST = ['matahari', ...PLANETS.map((p) => p.id), ...MOONS.map((m) => m.id)];
 const pickOpen = ref(false);
 const rows = ref([]);
 let rowsT = 0;

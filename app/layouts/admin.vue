@@ -33,6 +33,7 @@ let idleCheckTimer = null;
 const NAV_ITEMS = [
   { path: '/admin', label: 'Dasbor', icon: 'peta' },
   { path: '/admin/planets', label: 'Planet', icon: 'planet' },
+  { path: '/admin/moons', label: 'Bulan', icon: 'bulan' },
   { path: '/admin/history', label: 'Sejarah', icon: 'sejarah' },
   { path: '/admin/phenomena', label: 'Fenomena', icon: 'fenomena' },
   { path: '/admin/quizzes', label: 'Kuis', icon: 'kuis' },

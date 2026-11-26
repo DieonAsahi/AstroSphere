@@ -25,6 +25,11 @@ export const LOCAL_TO_SUPABASE_PLANET = {
   neptunus: 'neptune',
   matahari: 'sun',
   bulan: 'moon',
+  io: 'io',
+  europa: 'europa',
+  ganymede: 'ganymede',
+  callisto: 'callisto',
+  titan: 'titan',
 };
 
 export const SUPABASE_TO_LOCAL_PLANET = Object.fromEntries(
@@ -51,35 +56,46 @@ export const toLocalShipId = (id) => SUPABASE_TO_LOCAL_SHIP[id] || id;
 // Helper untuk membangun data ilmiah bawaan (fallback jika belum ada di DB)
 function getFallbackScientificData(planetId) {
   const p = PLANETS.find((x) => x.id === planetId);
-  if (!p) return null;
-  const isEarth = p.id === 'bumi';
-  const retro = (p.tilt || 0) > 90;
+  const m = !p ? MOONS.find((x) => x.id === planetId) : null;
+  if (!p && !m) return null;
+  const target = p || m;
+  const isEarth = target.id === 'bumi';
+  const isMoon = !!m;
+  const retro = (target.tilt || 0) > 90;
   const nf = (n, d = 1) => (n != null ? n.toLocaleString('id-ID', { maximumFractionDigits: d }) : '—');
-  const rotText = p.rotationDays < 2 ? `${nf(p.rotationDays * 24)} jam` : `${nf(p.rotationDays, 1)} hari`;
-  const orbText = p.periodYears < 2 ? `${nf(p.periodYears * 365.25, 0)} hari` : `${nf(p.periodYears, 2)} tahun`;
+  const rotText = target.rotationDays < 2 ? `${nf(target.rotationDays * 24)} jam` : `${nf(target.rotationDays, 1)} hari`;
+  const orbText = isMoon
+    ? `${nf(target.orbitDays, 1)} hari`
+    : (target.periodYears < 2 ? `${nf(target.periodYears * 365.25, 0)} hari` : `${nf(target.periodYears, 2)} tahun`);
 
   return {
-    planet_id: toSupabasePlanetId(p.id),
-    local_id: p.id,
-    nama: p.name,
-    urutan_planet: p.order,
-    deskripsi_materi: p.desc,
-    diameter_km: p.radiusKm * 2,
-    perbandingan_bumi: isEarth ? 'Standar acuan (1,00×)' : `${nf((p.radiusKm * 2) / (6371.0084 * 2), 2)}× ukuran Bumi`,
+    planet_id: toSupabasePlanetId(target.id),
+    local_id: target.id,
+    nama: target.name,
+    body_type: isMoon ? 'moon' : 'planet',
+    parent_planet_id: isMoon ? toSupabasePlanetId(target.parent) : null,
+    urutan_planet: target.order || (isMoon ? 8 + MOONS.findIndex((x) => x.id === target.id) + 1 : 1),
+    deskripsi_materi: target.desc,
+    diameter_km: target.radiusKm * 2,
+    perbandingan_bumi: isEarth ? 'Standar acuan (1,00×)' : `${nf((target.radiusKm * 2) / (6371.0084 * 2), 2)}× ukuran Bumi`,
     periode_rotasi: rotText,
-    subteks_rotasi: retro ? 'Rotasi berlawanan arah (retrograd)' : 'Rotasi searah orbit (prograd)',
+    subteks_rotasi: isMoon ? 'Terkunci Pasang Surut' : (retro ? 'Rotasi berlawanan arah (retrograd)' : 'Rotasi searah orbit (prograd)'),
     periode_orbit: orbText,
-    subteks_orbit: `Waktu revolusi mengitari Matahari (${nf(p.periodYears, 2)} tahun)`,
-    kemiringan_sumbu: `${nf(p.tilt, 2)}°`,
-    suhu_rata_c: p.id === 'venus' ? '465 °C' : p.id === 'merkurius' ? '167 °C' : p.id === 'bumi' ? '15 °C' : p.id === 'mars' ? '-65 °C' : '-110 °C',
-    rentang_suhu: p.id === 'merkurius' ? 'Rentang ekstrem −180 °C hingga 430 °C' : p.id === 'venus' ? 'Konstan siang & malam akibat efek rumah kaca' : 'Bervariasi sesuai musim dan letak lintang',
+    subteks_orbit: isMoon
+      ? `Mengelilingi ${target.parent ? target.parent.charAt(0).toUpperCase() + target.parent.slice(1) : 'Planet Induk'}`
+      : `Waktu revolusi mengitari Matahari (${nf(target.periodYears, 2)} tahun)`,
+    kemiringan_sumbu: `${nf(target.tilt || 0, 2)}°`,
+    suhu_rata_c: target.id === 'venus' ? '465 °C' : target.id === 'merkurius' ? '167 °C' : target.id === 'bumi' ? '15 °C' : target.id === 'mars' ? '-65 °C' : target.id === 'bulan' ? '-20 °C' : target.id === 'titan' ? '-179 °C' : '-130 °C',
+    rentang_suhu: target.id === 'bulan' ? 'Rentang ekstrem −130 °C hingga 120 °C' : target.id === 'merkurius' ? 'Rentang ekstrem −180 °C hingga 430 °C' : target.id === 'venus' ? 'Konstan siang & malam akibat efek rumah kaca' : 'Bervariasi sesuai musim dan letak lintang',
     usia_planet: '± 4,5 miliar tahun',
-    subteks_usia: 'Terbentuk bersamaan dengan pembentukan Tata Surya',
-    judul_rotasi: retro ? 'Arah Rotasi Terbalik (Retrograd)' : 'Arah Rotasi Searah (Prograd)',
-    deskripsi_rotasi: retro
-      ? `Karena kemiringan sumbunya mencapai ${nf(p.tilt, 1)}°, planet ini berputar terbalik dibandingkan mayoritas planet lain. Di sini Matahari terbit dari barat.`
-      : `Planet berotasi searah jarum jam relatif terhadap kutub utara ekliptika dengan kemiringan sumbu ${nf(p.tilt, 1)}°.`,
-    sumber_referensi: p.sumber_referensi || 'NASA Planetary Fact Sheet',
+    subteks_usia: 'Terbentuk bersamaan dengan Tata Surya',
+    judul_rotasi: isMoon ? 'Sinkronisasi Pasang Surut' : (retro ? 'Arah Rotasi Terbalik (Retrograd)' : 'Arah Rotasi Searah (Prograd)'),
+    deskripsi_rotasi: isMoon
+      ? 'Rotasi terkunci pasang surut dengan periode rotasi sama dengan periode orbit mengelilingi planet induk.'
+      : (retro
+        ? `Karena kemiringan sumbunya mencapai ${nf(target.tilt, 1)}°, planet ini berputar terbalik dibandingkan mayoritas planet lain. Di sini Matahari terbit dari barat.`
+        : `Planet berotasi searah jarum jam relatif terhadap kutub utara ekliptika dengan kemiringan sumbu ${nf(target.tilt, 1)}°.`),
+    sumber_referensi: target.sumber_referensi || (isMoon ? 'NASA Solar System Exploration' : 'NASA Planetary Fact Sheet'),
   };
 }
 
@@ -422,6 +438,12 @@ function fillPlanetsFallback() {
     const supId = toSupabasePlanetId(p.id);
     if (supId !== p.id) pMap[supId] = item;
   }
+  for (const m of MOONS) {
+    const item = getFallbackScientificData(m.id);
+    pMap[m.id] = item;
+    const supId = toSupabasePlanetId(m.id);
+    if (supId !== m.id) pMap[supId] = item;
+  }
   state.planets = pMap;
 }
 
@@ -595,22 +617,24 @@ export function useSupabaseContent() {
     loadedFromDb: computed(() => state.loadedFromDb),
     getPlanet: (id) => {
       if (!id) return null;
-      const localId = toLocalPlanetId(id);
+      const cleanId = String(id).toLowerCase().trim();
+      const localId = toLocalPlanetId(cleanId);
+      const supId = toSupabasePlanetId(cleanId);
       if (state.loadedFromDb.planets) {
-        const hit = state.planets[localId] || state.planets[id];
+        const hit = state.planets[localId] || state.planets[supId] || state.planets[cleanId];
         if (hit) return hit;
-        if (PLANETS.some((p) => p.id === localId)) {
+        if (PLANETS.some((p) => p.id === localId) || MOONS.some((m) => m.id === localId)) {
           return { ...(getFallbackScientificData(localId) || {}), is_active: false };
         }
       }
-      return state.planets[localId] || state.planets[id] || getFallbackScientificData(localId) || getFallbackScientificData(id) || null;
+      return state.planets[localId] || state.planets[supId] || state.planets[cleanId] || getFallbackScientificData(localId) || getFallbackScientificData(cleanId) || null;
     },
     getHistory: (id) => {
       if (!id) return [];
       const cleanId = String(id).toLowerCase().trim();
       const localId = toLocalPlanetId(cleanId);
       const supId = toSupabasePlanetId(cleanId);
-      if (state.loadedFromDb.history && PLANETS.some((p) => p.id === localId)) {
+      if (state.loadedFromDb.history && (PLANETS.some((p) => p.id === localId) || MOONS.some((m) => m.id === localId))) {
         return state.historyEvents[localId] || state.historyEvents[supId] || state.historyEvents[cleanId] || [];
       }
       return (
@@ -700,17 +724,73 @@ export function useSupabaseContent() {
         };
       }).sort((a, b) => (a.order || 0) - (b.order || 0));
     }),
-    isPlanetActive: (id) => {
+    allMoons: computed(() => {
+      return MOONS.map((fallbackM) => {
+        const supId = toSupabasePlanetId(fallbackM.id);
+        const live = state.planets[fallbackM.id] || state.planets[supId];
+        const active = state.loadedFromDb.planets
+          ? (!!live && live.is_active !== false)
+          : (!live || live.is_active !== false);
+        const data = live || {};
+        return {
+          ...fallbackM,
+          ...data,
+          id: fallbackM.id,
+          name: data.nama || data.name || fallbackM.name,
+          desc: data.deskripsi_materi || data.desc || fallbackM.desc,
+          color: fallbackM.color,
+          sumber_referensi: data.sumber_referensi || fallbackM.sumber_referensi,
+          is_active: active,
+        };
+      });
+    }),
+    isBodyActive: (id) => {
       if (!id) return true;
-      const localId = toLocalPlanetId(String(id).toLowerCase().trim());
-      if (!PLANETS.some((p) => p.id === localId)) return true;
+      const cleanId = String(id).toLowerCase().trim();
+      const localId = toLocalPlanetId(cleanId);
+      const supId = toSupabasePlanetId(cleanId);
       if (state.loadedFromDb.planets) {
-        const hit = state.planets[localId] || state.planets[id];
+        const hit = state.planets[localId] || state.planets[supId] || state.planets[cleanId];
         return hit ? hit.is_active !== false : false;
       }
-      const hit = state.planets[localId] || state.planets[id];
+      const hit = state.planets[localId] || state.planets[supId] || state.planets[cleanId];
       return hit ? hit.is_active !== false : true;
     },
+    isPlanetActive: (id) => {
+      if (!id) return true;
+      const cleanId = String(id).toLowerCase().trim();
+      const localId = toLocalPlanetId(cleanId);
+      const supId = toSupabasePlanetId(cleanId);
+      if (state.loadedFromDb.planets) {
+        const hit = state.planets[localId] || state.planets[supId] || state.planets[cleanId];
+        return hit ? hit.is_active !== false : false;
+      }
+      const hit = state.planets[localId] || state.planets[supId] || state.planets[cleanId];
+      return hit ? hit.is_active !== false : true;
+    },
+    moons: computed(() => {
+      return MOONS.map((fallbackM) => {
+        const supId = toSupabasePlanetId(fallbackM.id);
+        const live = state.planets[fallbackM.id] || state.planets[supId];
+        if (state.loadedFromDb.planets && (!live || live.is_active === false)) {
+          return null;
+        }
+        if (live && live.is_active === false) {
+          return null;
+        }
+        const data = live || {};
+        return {
+          ...fallbackM,
+          ...data,
+          id: fallbackM.id,
+          name: data.nama || data.name || fallbackM.name,
+          desc: data.deskripsi_materi || data.desc || fallbackM.desc,
+          color: fallbackM.color,
+          sumber_referensi: data.sumber_referensi || fallbackM.sumber_referensi,
+          is_active: true,
+        };
+      }).filter(Boolean);
+    }),
     planets: computed(() => {
       return PLANETS.map((fallbackP) => {
         const supId = toSupabasePlanetId(fallbackP.id);

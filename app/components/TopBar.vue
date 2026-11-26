@@ -2,11 +2,15 @@
 // Bilah atas permainan: minimal. Jelajah → logo + misi + profil + menu. Mode belajar → tombol Kembali + menu.
 import { computed, ref, onBeforeUnmount } from 'vue';
 import { store, game, unreadCards } from '~/composables/useGame.js';
+import { MOONS } from '~/data/solarSystem.js';
 const LABEL = { planet: 'Planet', sejarah: 'Sejarah', fenomena: 'Fenomena', hanggar: 'Hanggar' };
 const unread = computed(() => unreadCards());
 const backLabel = computed(() => {
   if (store.mode === 'planet' && store.pheno.on) return 'Selesai';
-  if (store.backTo === 'planet') return 'Ke planet';
+  if (store.backTo === 'planet') {
+    const isMoonFocus = MOONS.some((m) => m.id === store.focus);
+    return isMoonFocus ? 'Ke bulan' : 'Ke planet';
+  }
   if (store.backTo === 'sejarah') return 'Ke sejarah';
   if (store.backTo === 'profil') return 'Kembali ke Profil';
   return 'Terbang lagi';

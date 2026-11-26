@@ -142,7 +142,9 @@ CREATE TABLE IF NOT EXISTS public.planets (
   planet_id TEXT PRIMARY KEY,
   urutan_planet INT NOT NULL UNIQUE CHECK (urutan_planet >= 1),
   nama TEXT NOT NULL,
-  kategori_planet TEXT NOT NULL DEFAULT 'TERRESTRIAL' CHECK (kategori_planet IN ('TERRESTRIAL', 'GAS_GIANT', 'ICE_GIANT')),
+  body_type TEXT NOT NULL DEFAULT 'planet' CHECK (body_type IN ('planet', 'moon')),
+  parent_planet_id TEXT,
+  kategori_planet TEXT NOT NULL DEFAULT 'TERRESTRIAL' CHECK (kategori_planet IN ('TERRESTRIAL', 'GAS_GIANT', 'ICE_GIANT', 'MOON')),
   diameter_km NUMERIC NOT NULL,
   perbandingan_bumi TEXT NOT NULL DEFAULT '',
   periode_rotasi TEXT NOT NULL DEFAULT '',
@@ -161,6 +163,27 @@ CREATE TABLE IF NOT EXISTS public.planets (
   is_active BOOLEAN NOT NULL DEFAULT true,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Blok Migrasi Otomatis Kolom Baru Satelit / Bulan pada Tabel planets
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'planets' AND column_name = 'body_type'
+  ) THEN
+    ALTER TABLE public.planets ADD COLUMN body_type TEXT NOT NULL DEFAULT 'planet' CHECK (body_type IN ('planet', 'moon'));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'planets' AND column_name = 'parent_planet_id'
+  ) THEN
+    ALTER TABLE public.planets ADD COLUMN parent_planet_id TEXT;
+  END IF;
+
+  ALTER TABLE public.planets DROP CONSTRAINT IF EXISTS planets_kategori_planet_check;
+  ALTER TABLE public.planets ADD CONSTRAINT planets_kategori_planet_check CHECK (kategori_planet IN ('TERRESTRIAL', 'GAS_GIANT', 'ICE_GIANT', 'MOON'));
+END $$;
 
 -- 2.3 Tabel Peristiwa Sejarah & Point of Interest (POI) (A03 - Sesuai PLY-03 & PLY-04)
 -- Blok Migrasi Aman untuk Kolom Baru & Pembersihan Koordinat Usang

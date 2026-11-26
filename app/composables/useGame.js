@@ -243,7 +243,7 @@ export const store = reactive({
   autopilot: false,
   backTo: null,            // mode tujuan tombol Kembali (mis. Sejarah → Planet)
   capturing: false,        // Profil → Kontrol sedang merekam tombol baru
-  approach: { show: false, id: '', name: '', kind: '', color: '', desc: '', pheno: '' },
+  approach: { show: false, id: '', name: '', kind: '', color: '', desc: '', pheno: '', isMoon: false, parent: null },
   pheno: { on: false, id: '', playing: true, line1: '', line2: '', state: '' },
   mission: { id: 'apollo13', alt: 0, amd: 0, pred: 0, fixK: 0, step: 'brief', u: 0, clock: 0, dist: 0, o2: 100, power: 100, co2: 4, cold: false, blackout: false, note: '', firstTry: {}, stars: 0, reward: 0 },
   event: { kind: '', phase: '', left: 0, shelterName: '', safe: false, shield: 100, damaged: false, hits: 0, expo: 0, flash: 0, result: null },

@@ -39,14 +39,20 @@ const importText = ref('');
 const importError = ref('');
 
 const PLANET_OPTIONS = [
-  { id: 'earth', name: 'Bumi' },
-  { id: 'mars', name: 'Mars' },
-  { id: 'venus', name: 'Venus' },
-  { id: 'mercury', name: 'Merkurius' },
-  { id: 'jupiter', name: 'Jupiter' },
-  { id: 'saturn', name: 'Saturnus' },
-  { id: 'uranus', name: 'Uranus' },
-  { id: 'neptune', name: 'Neptunus' },
+  { id: 'earth', name: 'Bumi', group: 'Planet' },
+  { id: 'mars', name: 'Mars', group: 'Planet' },
+  { id: 'venus', name: 'Venus', group: 'Planet' },
+  { id: 'mercury', name: 'Merkurius', group: 'Planet' },
+  { id: 'jupiter', name: 'Jupiter', group: 'Planet' },
+  { id: 'saturn', name: 'Saturnus', group: 'Planet' },
+  { id: 'uranus', name: 'Uranus', group: 'Planet' },
+  { id: 'neptune', name: 'Neptunus', group: 'Planet' },
+  { id: 'moon', name: 'Bulan (Bumi)', group: 'Satelit' },
+  { id: 'io', name: 'Io (Jupiter)', group: 'Satelit' },
+  { id: 'europa', name: 'Europa (Jupiter)', group: 'Satelit' },
+  { id: 'ganymede', name: 'Ganymede (Jupiter)', group: 'Satelit' },
+  { id: 'callisto', name: 'Callisto (Jupiter)', group: 'Satelit' },
+  { id: 'titan', name: 'Titan (Saturnus)', group: 'Satelit' },
 ];
 
 const EARTH_6_ZAMAN = [
@@ -548,8 +554,8 @@ onMounted(() => {
       <div class="filter-field">
         <label>Filter Planet</label>
         <select v-model="selectedPlanet" class="adm-select" @change="selectedEra = 'all'">
-          <option value="all">Semua Planet ({{ events.length }})</option>
-          <option v-for="p in PLANET_OPTIONS" :key="p.id" :value="p.id">Planet {{ p.name }}</option>
+          <option value="all">Semua Benda Langit ({{ events.length }})</option>
+          <option v-for="p in PLANET_OPTIONS" :key="p.id" :value="p.id">{{ p.group === 'Satelit' ? 'Satelit ' + p.name : 'Planet ' + p.name }}</option>
         </select>
       </div>
 
@@ -677,9 +683,9 @@ onMounted(() => {
           </div>
           <div class="grid-2">
             <label class="field">
-              <span>Target Planet</span>
+              <span>Target Benda Langit (Planet / Bulan)</span>
               <select v-model="formData.planet_id" class="adm-select" required>
-                <option v-for="p in PLANET_OPTIONS" :key="p.id" :value="p.id">Planet {{ p.name }}</option>
+                <option v-for="p in PLANET_OPTIONS" :key="p.id" :value="p.id">{{ p.group === 'Satelit' ? 'Satelit ' + p.name : 'Planet ' + p.name }}</option>
               </select>
             </label>
             <label class="field">

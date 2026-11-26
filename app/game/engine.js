@@ -18,7 +18,7 @@ import { createHazards } from './hazards.js';
 import { createMission } from './mission.js';
 import { createMcoMission } from './missionMco.js';
 import { SHIPS, SHIP_IDS } from '../data/ships.js';
-import { BELT, PLANETS } from '../data/solarSystem.js';
+import { BELT, PLANETS, MOONS } from '../data/solarSystem.js';
 import { resolveKeymap } from '../data/keymap.js';
 import { PHENOMENA } from '../data/phenomena.js';
 import { HISTORY } from '../data/history.js';
@@ -28,6 +28,7 @@ import { store, saveSettings, readGameState, writeGameState, refreshSaveInfo, re
 export const TIME_RATE = 0.02;      // hari simulasi per detik (1 hari = 50 dtk) — satu faktor untuk rotasi & revolusi
 export const RMAX = 8500;           // radius navigasi; peringatan mulai 0,8 R (PRD R02)
 const PLANET_IDS = new Set(PLANETS.map((p) => p.id));
+const MOON_IDS = new Set(MOONS.map((m) => m.id));
 
 export function createEngine(el) {
   const isTouch = isTouchDevice();
@@ -52,8 +53,12 @@ export function createEngine(el) {
   function isBodyActive(b) {
     if (!b) return false;
     if (b.isSun) return true;
-    if (b.isMoon && b.parent) return sup.isPlanetActive(b.parent);
-    if (PLANET_IDS.has(b.id)) return sup.isPlanetActive(b.id);
+    if (b.isMoon) {
+      const moonActive = sup.isBodyActive ? sup.isBodyActive(b.id) : sup.isPlanetActive(b.id);
+      const parentActive = b.parent ? (sup.isBodyActive ? sup.isBodyActive(b.parent) : sup.isPlanetActive(b.parent)) : true;
+      return moonActive && parentActive;
+    }
+    if (PLANET_IDS.has(b.id)) return sup.isBodyActive ? sup.isBodyActive(b.id) : sup.isPlanetActive(b.id);
     return true;
   }
   function pickInitialTargetId() {
@@ -77,7 +82,7 @@ export function createEngine(el) {
       if (store.autopilot) autopilotOff(false);
       setTarget(pickInitialTargetId(), true);
     }
-    if (store.approach.show && store.approach.id && !sup.isPlanetActive(store.approach.id)) {
+    if (store.approach.show && store.approach.id && !(sup.isBodyActive ? sup.isBodyActive(store.approach.id) : sup.isPlanetActive(store.approach.id))) {
       store.approach.show = false;
     }
   }
@@ -851,7 +856,7 @@ export function createEngine(el) {
     if (isNew) sfx.chime(); else sfx.approach();
     if (hazards && hazards.onApproach(b)) { if (isNew) toast(`<b>Penemuan baru</b> · ${b.name} — kartu baru di Jurnal`, 3000); return; }
     // saat terbang otomatis, hanya planet tujuan yang menghentikan pesawat
-    if ((PLANET_IDS.has(b.id) || b.isSun) && !(store.autopilot && target && target !== b)) { arrive(b, isNew); return; }
+    if ((PLANET_IDS.has(b.id) || MOON_IDS.has(b.id) || b.isSun) && !(store.autopilot && target && target !== b)) { arrive(b, isNew); return; }
     if (isNew) toast(`<b>Penemuan baru</b> · ${b.name} — kartu baru di Jurnal`, 3000);
   }
   // Mendekati planet: pesawat berhenti sendiri dan menawarkan tampilan planet (Ya → mode Planet, Tidak → lanjut terbang)
@@ -862,9 +867,20 @@ export function createEngine(el) {
     clearAllInputs();
     ship.throttle = 0; ship.braking = true;
     approachShownAt = performance.now();
-    const rawPh = sup.getPhenomenon(b.id) || ((!PLANET_IDS.has(b.id) || !sup.loadedFromDb?.value?.phenomena) ? PHENOMENA[b.id] : null);
+    const rawPh = b.isMoon ? null : (sup.getPhenomenon(b.id) || ((!PLANET_IDS.has(b.id) || !sup.loadedFromDb?.value?.phenomena) ? PHENOMENA[b.id] : null));
     const ph = rawPh && rawPh.is_active !== false ? rawPh : null;
-    Object.assign(store.approach, { show: true, id: b.id, name: b.name, kind: b.kind, color: b.color, desc: (b.desc || '').split('. ')[0].replace(/\.$/, '') + '.', pheno: ph ? ph.title : '', isNew });
+    Object.assign(store.approach, {
+      show: true,
+      id: b.id,
+      name: b.name,
+      kind: b.kind,
+      color: b.color,
+      desc: (b.desc || '').split('. ')[0].replace(/\.$/, '') + '.',
+      pheno: ph ? ph.title : '',
+      isNew,
+      isMoon: !!b.isMoon,
+      parent: b.parent || null
+    });
   }
   function autopilotOff(manual) { if (!store.autopilot) return; store.autopilot = false; if (manual) toast('Kemudi manual', 1300); }
   function flyTo(id) {
@@ -950,7 +966,7 @@ export function createEngine(el) {
     store.backTo = opts.backTo !== undefined
       ? opts.backTo
       : (m === 'sejarah'
-        ? (PLANET_IDS.has(opts.body || store.sejarah.body) ? 'planet' : null)
+        ? ((PLANET_IDS.has(opts.body || store.sejarah.body) || MOON_IDS.has(opts.body || store.sejarah.body)) ? 'planet' : null)
         : (prev === 'profil'
           ? 'profil'
           : (learn && m !== 'jelajah' && m !== 'planet' ? prev : null)));
@@ -1007,7 +1023,7 @@ export function createEngine(el) {
   function back() {
     if (store.mode === 'planet' && pheno.id) { stopPheno(); return; }
     const to = store.backTo;
-    if (to === 'planet') setMode('planet', { body: store.mode === 'sejarah' && PLANET_IDS.has(store.sejarah.body) ? store.sejarah.body : store.focus });
+    if (to === 'planet') setMode('planet', { body: store.mode === 'sejarah' && (PLANET_IDS.has(store.sejarah.body) || MOON_IDS.has(store.sejarah.body)) ? store.sejarah.body : store.focus });
     else if (to) setMode(to);
     else setMode('jelajah');
   }

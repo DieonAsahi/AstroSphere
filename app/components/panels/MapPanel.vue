@@ -4,7 +4,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, isFound } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
-import { PLANETS } from '~/data/solarSystem.js';
+import { PLANETS, MOONS } from '~/data/solarSystem.js';
 import { fmtDist, fmtEta } from '~/game/util.js';
 
 const cv = ref(null), wrap = ref(null);
@@ -12,11 +12,34 @@ const sel = ref(store.hud.target.id && store.hud.target.id !== 'matahari' ? stor
 const hover = ref(null);
 const live = ref({}); // jarak & perkiraan waktu per planet (diperbarui 4×/detik)
 
-const { getPlanet, allPlanets } = useSupabaseContent();
-const planetList = computed(() => (allPlanets.value?.length ? allPlanets.value : PLANETS.map((p) => ({ ...p, is_active: true }))));
-const selP = computed(() => planetList.value.find((p) => p.id === sel.value) || planetList.value[0] || PLANETS[3]);
+const { getPlanet, allPlanets, allMoons, isBodyActive } = useSupabaseContent();
+
+const planetList = computed(() => (allPlanets.value?.length ? allPlanets.value : PLANETS.map((p) => ({ ...p, is_active: true, body_type: 'planet' }))));
+const moonList = computed(() => (allMoons.value?.length ? allMoons.value : MOONS.map((m) => ({ ...m, is_active: true, body_type: 'moon' }))));
+
+const targetList = computed(() => {
+  const pls = planetList.value.map((p) => ({
+    ...p,
+    isMoon: false,
+    parentName: '',
+    is_active: p.is_active !== false && isBodyActive(p.id),
+  }));
+  const mns = moonList.value.map((m) => {
+    const parent = pls.find((p) => p.id === m.parent);
+    const parentActive = parent ? parent.is_active !== false : true;
+    return {
+      ...m,
+      isMoon: true,
+      parentName: parent?.name || (m.parent ? m.parent.toUpperCase() : ''),
+      is_active: m.is_active !== false && parentActive && isBodyActive(m.id),
+    };
+  });
+  return [...pls, ...mns];
+});
+
+const selP = computed(() => targetList.value.find((p) => p.id === sel.value) || targetList.value[0] || PLANETS[3]);
 const isSelActive = computed(() => selP.value?.is_active !== false);
-const planetActiveMap = computed(() => Object.fromEntries(planetList.value.map((p) => [p.id, p.is_active !== false])));
+const bodyActiveMap = computed(() => Object.fromEntries(targetList.value.map((p) => [p.id, p.is_active !== false])));
 const planetDesc = computed(() => {
   const sp = getPlanet(sel.value);
   return sp?.deskripsi_materi || selP.value?.desc || '';
@@ -110,7 +133,7 @@ function draw() {
   raf = requestAnimationFrame(draw);
   const g = game(), c = cv.value, w = wrap.value; if (!g || !c || !w) return;
   const d = g.mapData(); if (!d) return;
-  const activeMap = planetActiveMap.value;
+  const activeMap = bodyActiveMap.value;
   if (++tick % 4 === 1) live.value = Object.fromEntries(d.bodies.map((b) => [b.id, { d: b.d, eta: b.d / (d.cruise * .8) }]));
   const W = w.clientWidth, H = w.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
   if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
@@ -174,16 +197,18 @@ function draw() {
   x.arc(cx, cy, 26, 0, 7);
   x.fill();
 
-  // Planet & Label
+  // Planet, Bulan & Label
   hits = [];
   const boxes = [];
-  const pls = d.bodies.filter((b) => !b.isMoon && !b.isSun);
-  pls.sort((a, b) => (a.id === sel.value ? -1 : b.id === sel.value ? 1 : 0));
+  const allMapBodies = d.bodies.filter((b) => !b.isSun);
+  allMapBodies.sort((a, b) => (a.id === sel.value ? -1 : b.id === sel.value ? 1 : 0));
 
-  for (const b of pls) {
+  for (const b of allMapBodies) {
     const isAct = activeMap[b.id] !== false && b.active !== false;
     const [px, py] = P(b.x, b.z);
-    const r = Math.max(5, Math.min(11, 4 + Math.sqrt(b.r) * .55));
+    const r = b.isMoon
+      ? Math.max(3.5, Math.min(6, 2 + Math.sqrt(b.r) * .35))
+      : Math.max(5, Math.min(11, 4 + Math.sqrt(b.r) * .55));
 
     if (b.id === sel.value) {
       x.strokeStyle = isAct ? '#ffffff' : '#f59e0b';
@@ -226,11 +251,11 @@ function draw() {
     }
     x.restore();
 
-    hits.push({ id: b.id, x: px, y: py, r: r + 12 });
+    hits.push({ id: b.id, x: px, y: py, r: b.isMoon ? r + 8 : r + 12 });
 
     // Label cerdas yang otomatis balik ke kiri bila mepet tepi kanan
     const labelText = isAct ? b.name : `${b.name} (Perbaikan)`;
-    x.font = '500 12.5px Poppins, sans-serif';
+    x.font = b.isMoon ? '500 11px Poppins, sans-serif' : '500 12.5px Poppins, sans-serif';
     const tw = x.measureText(labelText).width;
     let bx = px + r + 8;
     if (bx + tw + 12 > W) {
@@ -290,17 +315,20 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       </button>
     </header>
 
-    <nav class="list" aria-label="Daftar planet">
+    <nav class="list" aria-label="Daftar objek tata surya">
       <button
-        v-for="p in planetList"
+        v-for="p in targetList"
         :key="p.id"
         class="li"
-        :class="{ on: p.id === sel, maint: p.is_active === false }"
+        :class="{ on: p.id === sel, maint: p.is_active === false, 'is-moon': p.isMoon }"
         @click="sel = p.id"
       >
         <span class="planet-dot" :style="{ '--c': p.color, '--s': '28px' }" />
         <span class="n">
-          <b>{{ p.name }}</b>
+          <span class="name-row">
+            <b>{{ p.name }}</b>
+            <span v-if="p.isMoon" class="moon-parent-pill">{{ p.parentName }}</span>
+          </span>
           <span v-if="p.is_active === false" class="maint-pill">Sedang Perbaikan</span>
           <small v-else>{{ live[p.id] ? fmtDist(live[p.id].d) : '' }}</small>
         </span>
@@ -331,7 +359,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
     <aside class="det card flat">
       <div class="hscroll chips">
         <button
-          v-for="p in planetList"
+          v-for="p in targetList"
           :key="p.id"
           class="chip"
           :class="{ on: p.id === sel, maint: p.is_active === false }"
@@ -339,6 +367,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
         >
           <span class="dot" :style="{ background: p.color }" />
           {{ p.name }}
+          <span v-if="p.isMoon" class="chip-moon">({{ p.parentName }})</span>
           <span v-if="p.is_active === false" class="chip-maint">Perbaikan</span>
         </button>
       </div>
@@ -346,7 +375,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
         <span class="planet-dot" :class="{ 'is-maint': !isSelActive }" :style="{ '--c': selP.color, '--s': '56px' }" />
         <div class="dtop-info">
           <h3 class="dtop-name">{{ selP.name }}</h3>
-          <p class="dtop-kind">{{ selP.kind }}</p>
+          <p class="dtop-kind">{{ selP.isMoon ? `Satelit Alami · ${selP.parentName || selP.parent}` : selP.kind }}</p>
           <span v-if="!isSelActive" class="maint-badge">
             <UiIcon name="kunci" :size="12" /> Sedang Perbaikan
           </span>
@@ -375,13 +404,13 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
             class="btn primary map-fly-btn is-disabled"
             disabled
             aria-disabled="true"
-            title="Planet sedang dalam perbaikan"
+            title="Objek sedang dalam perbaikan"
           >
             <UiIcon name="kunci" :size="18" />Sedang Perbaikan — Terkunci
           </button>
           <div class="maint-notice">
             <UiIcon name="kunci" :size="16" />
-            <span>Planet <b>{{ selP.name }}</b> sedang dalam perbaikan sehingga objek 3D disembunyikan sementara dan rute terbang otomatis dinonaktifkan.</span>
+            <span>{{ selP.isMoon ? 'Satelit alami' : 'Planet' }} <b>{{ selP.name }}</b> sedang dalam perbaikan sehingga objek 3D disembunyikan sementara dan rute terbang otomatis dinonaktifkan.</span>
           </div>
         </template>
       </div>
@@ -420,6 +449,9 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 .li.maint.on{opacity:.9;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.1)}
 .li.maint .planet-dot{filter:grayscale(.55) brightness(.8)}
 .li .n{flex:1;display:flex;flex-direction:column;line-height:1.25}
+.name-row{display:flex;align-items:center;gap:6px}
+.moon-parent-pill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:500;color:#38bdf8;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);line-height:1.2}
+.chip-moon{font-size:11px;color:#38bdf8;margin-left:2px}
 .li b{font-family:var(--display);font-weight:500;font-size:15px;color:var(--text)}
 .li small{font-size:12px;color:var(--faint);margin-top:2px}
 .maint-pill{display:inline-block;width:fit-content;margin-top:3px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:600;color:#fbbf24;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.3)}

@@ -6,11 +6,27 @@ import { store, game, isFound } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT } from '~/data/learning.js';
+import { PLANETS, MOONS } from '~/data/solarSystem.js';
 
 const { getPlanet, getPhenomenon, loadedFromDb } = useSupabaseContent();
 
+const isMoon = computed(() => !!store.approach.isMoon || MOONS.some((m) => m.id === store.approach.id));
+const parentPlanet = computed(() => {
+  if (!isMoon.value) return null;
+  const parentId = store.approach.parent || MOONS.find((m) => m.id === store.approach.id)?.parent;
+  return PLANETS.find((p) => p.id === parentId);
+});
+const eyebrowText = computed(() => {
+  if (isMoon.value) {
+    const parentName = parentPlanet.value?.name || (store.approach.parent ? store.approach.parent.toUpperCase() : 'BUMI');
+    return `SATELIT ALAMI ${parentName.toUpperCase()}`;
+  }
+  return 'OBJEK TERDETEKSI';
+});
+
 const planetData = computed(() => getPlanet(store.approach.id));
 const phenomenonData = computed(() => {
+  if (isMoon.value) return null;
   const item = getPhenomenon(store.approach.id) || (loadedFromDb.value.phenomena ? null : PHENOMENA[store.approach.id]);
   return item && item.is_active !== false ? item : null;
 });
@@ -24,6 +40,20 @@ const approachDesc = computed(() => {
   }
   return store.approach.desc;
 });
+
+function openHistory() {
+  store.approach.show = false;
+  store.sejarah.era = 'semua';
+  game()?.setMode('sejarah', { body: store.approach.id });
+}
+
+function openQuiz() {
+  store.approach.show = false;
+  store.quiz.planet = store.approach.id;
+  store.quiz.kind = 'planet';
+  store.quiz.stage = 'intro';
+  game()?.setMode('kuis');
+}
 
 // Status penemuan baru & jarak terkini
 const isNewObject = computed(() => store.approach.isNew || !isFound(store.approach.id));
@@ -55,7 +85,7 @@ const teaser = computed(() => {
     <div class="card box">
       <div class="card-header">
         <div class="header-eyebrow-row">
-          <span class="eyebrow">OBJEK TERDETEKSI</span>
+          <span class="eyebrow">{{ eyebrowText }}</span>
           <div class="top-status-badge" :class="{ 'is-new': isNewObject }">
             <UiIcon v-if="isNewObject" name="bintang" :size="12" />
             <UiIcon v-else name="cek" :size="12" />
@@ -85,21 +115,35 @@ const teaser = computed(() => {
             <div class="title-row">
               <h2 id="ap-t" class="planet-title">{{ approachName }}</h2>
             </div>
-            <p class="planet-kind">{{ store.approach.kind }}</p>
+            <p class="planet-kind">{{ isMoon ? `Satelit Alami · ${parentPlanet?.name || 'Tata Surya'}` : store.approach.kind }}</p>
           </div>
         </div>
       </div>
 
       <p class="desc">{{ approachDesc }}</p>
 
-      <div v-if="teaser" class="ph">
+      <div v-if="!isMoon && teaser" class="ph">
         <UiIcon name="fenomena" :size="16" />
         <span>{{ teaser.label }}: <b>{{ teaser.text }}</b></span>
       </div>
 
-      <p class="q">{{ store.approach.id === 'matahari' ? 'Lihat Matahari dari dekat?' : 'Lihat planet ini dari dekat?' }}</p>
+      <p class="q">{{ isMoon ? `Lihat ${approachName} dari dekat?` : (store.approach.id === 'matahari' ? 'Lihat Matahari dari dekat?' : 'Lihat planet ini dari dekat?') }}</p>
 
-      <div class="acts">
+      <div v-if="isMoon" class="acts-moon-grid">
+        <button class="btn-action primary" @click="game()?.approachYes()">
+          <UiIcon name="mata" :size="18" />Detail
+        </button>
+        <button class="btn-action line" @click="openHistory">
+          <UiIcon name="sejarah" :size="18" />Sejarah
+        </button>
+        <button class="btn-action gold" @click="openQuiz">
+          <UiIcon name="bintang" :size="18" />★ Kuis
+        </button>
+        <button class="btn-action ghost" @click="game()?.approachNo()">
+          Tidak, lanjut terbang
+        </button>
+      </div>
+      <div v-else class="acts">
         <button class="btn-action primary" @click="game()?.approachYes()">
           <UiIcon name="mata" :size="18" />Ya, lihat
         </button>
@@ -363,6 +407,31 @@ const teaser = computed(() => {
   display:flex;
   gap:10px;
   flex-wrap:wrap;
+}
+.acts-moon-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.acts-moon-grid .ghost{
+  grid-column:1 / -1;
+  background:rgba(148, 174, 255, 0.04);
+  border:1px solid rgba(148, 174, 255, 0.16);
+  color:var(--muted);
+}
+.acts-moon-grid .ghost:hover{
+  background:rgba(148, 174, 255, 0.10);
+  color:#fff;
+}
+.btn-action.gold{
+  background:linear-gradient(135deg, #f59e0b, #d97706);
+  color:#ffffff;
+  border:1px solid transparent;
+  box-shadow:0 4px 14px rgba(245, 158, 11, 0.35);
+}
+.btn-action.gold:hover{
+  background:linear-gradient(135deg, #d97706, #b45309);
+  transform:translateY(-1px);
 }
 .btn-action{
   flex:1 1 160px;

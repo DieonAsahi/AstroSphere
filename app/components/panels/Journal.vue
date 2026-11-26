@@ -9,10 +9,14 @@ import { SUN, PLANETS, MOONS, BELT, COLOR_OF } from '~/data/solarSystem.js';
 import { FACTS, CARD_REWARD } from '~/data/learning.js';
 
 const emit = defineEmits(['close']);
-const { planets: livePlanets, getFacts, loadAll } = useSupabaseContent();
+const { planets: livePlanets, isBodyActive, getFacts, loadAll } = useSupabaseContent();
 
-const activePlanetIds = computed(() => new Set((livePlanets.value || []).map((p) => p.id)));
-const bodies = computed(() => [SUN, ...PLANETS.filter((p) => activePlanetIds.value.has(p.id)), ...MOONS, BELT]);
+const bodies = computed(() => [
+  SUN,
+  ...PLANETS.filter((p) => isBodyActive(p.id)),
+  ...MOONS.filter((m) => isBodyActive(m.id)),
+  BELT,
+]);
 const found = (id) => store.discovered.includes(id) || !!store.progress.cards[id];
 const fresh = (id) => found(id) && getFacts(id).length > 0 && !store.progress.cards[id];
 const nFound = computed(() => bodies.value.filter((b) => found(b.id)).length);

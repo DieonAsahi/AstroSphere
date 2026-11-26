@@ -141,5 +141,95 @@ export const QUIZ = {
         ['Karena ditemukan oleh astronot yang mendarat di sana', 'Karena merupakan planet pertama yang posisinya ditemukan lewat perhitungan rumus matematika sebelum diamati teleskop', 'Karena terlihat sebesar Bulan dengan mata telanjang', 'Karena menabrak planet Mars'], 1,
         'Urbain Le Verrier dan John Couch Adams menghitung posisi Neptunus secara matematis dari gangguan gravitasi pada orbit Uranus sebelum diamati Johann Galle.')
     ]
+  },
+  bulan: {
+    topic: 'Satelit Alami Bumi & Eksplorasi Apollo',
+    questions: [
+      q('Mengapa dari Bumi kita selalu melihat sisi permukaan Bulan yang sama sepanjang waktu?',
+        ['Karena Bulan tidak berputar sama sekali', 'Karena rotasi Bulan terkunci pasang surut (tidal lock) dengan periode rotasi sama persis dengan periode orbitnya', 'Karena sisi belakang Bulan selalu gelap gulita', 'Karena gravitasi Matahari menghentikan putaran Bulan'], 1,
+        'Periode rotasi poros Bulan dan periode revolusinya mengitari Bumi persis sama (27,3 hari), fenomena yang dinamakan penguncian pasang surut (tidal locking).'),
+      q('Berapakah rasio perbandingan gravitasi di permukaan Bulan jika dibandingkan dengan gravitasi Bumi?',
+        ['Sama persis dengan gravitasi Bumi', 'Sekitar 1/6 (seperenam) dari gravitasi Bumi', 'Sekitar 3 kali lebih kuat dari Bumi', 'Nol (tidak ada gravitasi sama sekali)'], 1,
+        'Gravitasi permukaan Bulan adalah sekitar 1,62 m/s² atau seperenam gravitasi Bumi, memungkinkan astronaut melompat tinggi meski mengenakan pakaian antariksa berbobot 80 kg.'),
+      q('Apakah sebutan bagi dataran luas berwarna gelap di permukaan Bulan yang terbentuk dari aliran lava basal purba?',
+        ['Terrae', 'Mare (Lautan Bulan)', 'Rilles', 'Kawah Tumbukan'], 1,
+        'Dataran gelap di Bulan disebut Mare (bahasa Latin untuk laut). Daerah ini terbentuk ketika magma basal purba keluar dan menggenangi cekungan-cekungan kawah raksasa.'),
+      q('Misi antariksa NASA manakah yang pada Juli 1969 pertama kali berhasil mendaratkan manusia di permukaan Bulan?',
+        ['Apollo 8', 'Apollo 11', 'Apollo 13', 'Gemini 4'], 1,
+        'Apollo 11 berhasil mendaratkan modul Lunar Module Eagle di Mare Tranquillitatis pada 20 Juli 1969, dengan Neil Armstrong dan Buzz Aldrin sebagai manusia pertama di Bulan.')
+    ]
+  },
+  io: {
+    topic: 'Vulkanisme Ekstrem & Pasang Surut Gravitasi',
+    questions: [
+      q('Apa faktor utama yang membuat Io menjadi benda langit paling aktif secara vulkanik di seluruh Tata Surya?',
+        ['Jaraknya sangat dekat dengan panas Matahari', 'Gesekan gravitasi pasang surut (tidal heating) akibat tarikan kuat Jupiter, Europa, dan Ganymede', 'Reaksi fusi nuklir di permukaannya', 'Tumbukan komet setiap hari'], 1,
+        'Resonansi orbit Laplace antara Io, Europa, dan Ganymede membuat orbit Io agak lonjong, sehingga gaya gravitasi pasang surut Jupiter terus meremas dan melelehkan bagian dalamnya.'),
+      q('Mineral utama apakah yang menyembur dari ratusan gunung berapi di Io dan memberi warna kuning-jingga khas pada permukaannya?',
+        ['Kristal es air murni', 'Belerang (sulfur) dan gas belerang dioksida', 'Garam dapur', 'Oksida besi karat'], 1,
+        'Semburan vulkanik Io kaya akan senyawa belerang dan sulfur dioksida yang membeku dan melapisi seluruh permukaan Io dengan warna kuning, jingga, dan hitam.'),
+      q('Mengapa di permukaan bulan Io hampir tidak ditemukan kawah tumbukan meteorit purba?',
+        ['Karena Io dilindungi perisai medan magnet khusus', 'Karena letusan lava vulkanik yang terus-menerus selalu melapisi dan memperbarui permukaannya', 'Karena meteor selalu hancur ditarik Jupiter', 'Karena permukaannya berupa cairan gas'], 1,
+        'Aktivitas vulkanik Io yang sangat tinggi terus mengubur kawah tumbukan baru dengan lapisan lava segar, menjadikannya permukaan geologis termuda di Tata Surya.')
+    ]
+  },
+  europa: {
+    topic: 'Kerak Es & Samudra Air Asin Bawah Tanah',
+    questions: [
+      q('Kondisi geologis istimewa apakah yang tersimpan di balik lapisan kerak es tebal bulan Europa?',
+        ['Danau lava belerang cair', 'Samudra air asin cair global sedalam 60–150 km', 'Gurun pasir kuarsa panas', 'Rongga hampa udara total'], 1,
+        'Di bawah kerak es Europa setebal 15–25 km terdapat samudra air cair asin yang diperkirakan memiliki volume dua kali lipat seluruh samudra di Bumi.'),
+      q('Apakah yang menyebabkan garis-garis retakan kemerahan (lineae) terbentuk di seluruh permukaan es Europa?',
+        ['Gaya pasang surut gravitasi Jupiter yang meregangkan dan meretakkan kerak es', 'Goresan roda wahana antariksa', 'Aliran sungai air tawar di permukaan', 'Petir atmosferik'], 0,
+        'Tarikan pasang surut Jupiter meregangkan kerak es Europa secara berkala, menciptakan retakan-retakan panjang tempat air bawah tanah dan mineral garam naik ke permukaan.'),
+      q('Mengapa Europa menjadi salah satu target utama para astrobiolog dalam mencari potensi kehidupan di luar Bumi?',
+        ['Karena memiliki hutan tumbuhan hijau', 'Karena memiliki air cair melimpah, energi hidrotermal, dan unsur kimia organik di dasar laut bawah esnya', 'Karena suhunya hangat seperti khatulistiwa Bumi', 'Karena atmosfernya kaya akan gas oksigen padat'], 1,
+        'Kombinasi samudra air cair yang stabil, ventilasi hidrotermal di dasar samudra berbatu, dan garam organik menjadikan Europa lingkungan paling menjanjikan bagi mikroba ekstremofil.')
+    ]
+  },
+  ganymede: {
+    topic: 'Satelit Raksasa & Medan Magnet Internal',
+    questions: [
+      q('Bulan manakah yang memegang rekor sebagai satelit alami terbesar di seluruh Tata Surya, bahkan mengungguli planet Merkurius?',
+        ['Titan', 'Ganymede', 'Callisto', 'Bulan (Bumi)'], 1,
+        'Ganymede memiliki diameter 5.268 km, menjadikannya lebih besar daripada planet Merkurius (4.879 km) dan planet kerdil Pluto (2.376 km).'),
+      q('Keunikan magnetik langka apakah yang hanya dimiliki oleh Ganymede di antara seluruh satelit di Tata Surya?',
+        ['Tidak memiliki gravitasi sama sekali', 'Memiliki medan magnet internalnya sendiri berkat inti besi cair yang aktif', 'Memancarkan gelombang radio radioaktif', 'Membalikkan medan magnet Jupiter'], 1,
+        'Ganymede adalah satu-satunya satelit alami yang diketahui memiliki magnetosfer sendiri yang dibangkitkan oleh konveksi inti besi cair di dalamnya.'),
+      q('Misi antariksa milik ESA yang diluncurkan pada tahun 2023 untuk meneliti potensi kelayakhunian Ganymede dan bulan-bulan es Jupiter adalah...',
+        ['Voyager 1', 'JUICE (Jupiter Icy Moons Explorer)', 'New Horizons', 'Cassini-Huygens'], 1,
+        'Wahana JUICE diluncurkan pada April 2023 dan dijadwalkan tiba di sistem Jupiter pada 2031 untuk memasuki orbit khusus mengelilingi Ganymede.')
+    ]
+  },
+  callisto: {
+    topic: 'Kerak Es Purba & Cekungan Valhalla',
+    questions: [
+      q('Mengapa permukaan bulan Callisto dijuluki sebagai salah satu bentang alam tertua di Tata Surya?',
+        ['Karena terbentuk dari debu galaksi lain', 'Karena permukaannya dipenuhi kawah purba yang nyaris tidak berubah selama 4 miliar tahun tanpa aktivitas tektonik', 'Karena dilapisi batu bara fosil', 'Karena permukaannya selalu tertutup awan gas'], 1,
+        'Callisto tidak memiliki aktivitas geologis atau lempeng tektonik internal, sehingga kawah tumbukan purba dari masa awal Tata Surya tetap terjaga utuh tanpa terkikis.'),
+      q('Apa nama cekungan kawah tumbukan multiring raksasa selebar 3.800 km yang membentang di permukaan Callisto?',
+        ['Cekungan Caloris', 'Cekungan Kawah Valhalla', 'Kawah Gale', 'Olympus Mons'], 1,
+        'Cekungan Valhalla adalah salah satu struktur tumbukan multiring terbesar di Tata Surya dengan pola lingkaran cincin konsentris yang membentang hingga radius ribuan kilometer.'),
+      q('Dibandingkan dengan 3 satelit Galileo lainnya (Io, Europa, Ganymede), keuntungan apa yang dimiliki Callisto untuk misi eksplorasi masa depan?',
+        ['Memiliki atmosfer yang bisa langsung dihirup manusia', 'Terletak di orbit paling luar sehingga tingkat radiasi mematikan dari Jupiter jauh lebih rendah', 'Memiliki suhu permukaan yang hangat', 'Memiliki lautan air terbuka di permukaan'], 1,
+        'Karena berada di orbit terluar satelit Galilea, Callisto berada di luar sabuk radiasi intens Jupiter, menjadikannya lokasi paling aman untuk pangkalan riset masa depan.')
+    ]
+  },
+  titan: {
+    topic: 'Atmosfer Nitrogen & Danau Metana Cair',
+    questions: [
+      q('Unsur gas apakah yang mendominasi sekitar 95% dari atmosfer tebal bulan Titan milik Saturnus?',
+        ['Oksigen', 'Nitrogen', 'Karbon monoksida', 'Helium'], 1,
+        'Atmosfer tebal Titan didominasi oleh gas nitrogen (sekitar 95%) dengan tekanan permukaan 1,5 kali atmosfer Bumi, serta kandungan metana sekitar 5%.'),
+      q('Cairan apakah yang mengisi danau, sungai, dan laut alami (seperti Kraken Mare) di permukaan bulan Titan?',
+        ['Air tawar murni', 'Metana dan etana hidrokarbon cair', 'Asam sulfat pekat', 'Merkuri (raksa) cair'], 1,
+        'Pada suhu -179°C di Titan, air membeku menjadi batu es padat, sementara gas metana dan etana mengembun menjadi cairan yang mengalir di sungai dan danau.'),
+      q('Wahana pendarat antariksa (probe) manakah yang mencatat sejarah sebagai benda buatan manusia pertama yang mendarat di permukaan Titan pada tahun 2005?',
+        ['Viking 1', 'Huygens (bagian misi Cassini-Huygens)', 'Curiosity', 'Philae'], 1,
+        'Probe Huygens milik ESA dilepaskan dari pengorbit Cassini dan mendarat dengan parasut di dataran kerikil es Titan pada 14 Januari 2005.'),
+      q('Meskipun suhunya membeku hingga -179°C, mengapa Titan dianggap sangat mirip dengan kondisi Bumi purba?',
+        ['Karena memiliki gurun pasir panas dan gunung berapi aktif', 'Karena memiliki atmosfer tebal, siklus hujan fluida cuaca, dan senyawa kimia prebiotik organik kompleks', 'Karena jaraknya sama ke Matahari seperti Bumi', 'Karena ukuran dan massanya persis sama dengan planet Bumi'], 1,
+        'Titan kaya akan molekul organik kompleks (tholin) dan siklus cairan aktif, menghadirkan laboratorium alami untuk mempelajari kimiawi prebiotik sebelum kehidupan muncul di Bumi.')
+    ]
   }
 };

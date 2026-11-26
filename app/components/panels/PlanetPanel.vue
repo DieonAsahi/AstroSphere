@@ -13,9 +13,16 @@ import { PREDICT, FACTS } from '~/data/learning.js';
 
 const { getPlanet, getPhenomenon, getHistory, getFacts, loadedFromDb } = useSupabaseContent();
 const p = computed(() => PLANETS.find((x) => x.id === store.focus) || MOONS.find((x) => x.id === store.focus) || PLANETS[2]);
+const isMoon = computed(() => !!p.value.parent || MOONS.some((m) => m.id === p.value.id));
+const parentPlanet = computed(() => {
+  if (!isMoon.value) return null;
+  const parentId = p.value.parent || planetData.value?.parent_planet_id;
+  return PLANETS.find((x) => x.id === parentId);
+});
 const planetData = computed(() => getPlanet(p.value.id));
 const bodyFacts = computed(() => getFacts(p.value.id));
 const ph = computed(() => {
+  if (isMoon.value) return null;
   const item = getPhenomenon(p.value.id) || (loadedFromDb.value.phenomena ? null : PHENOMENA[p.value.id]);
   return item && item.is_active !== false ? item : null;
 });
@@ -40,7 +47,9 @@ const scientificBoxes = computed(() => {
   const x = p.value;
   const retro = (x.tilt || 0) > 90;
   const rotDay = x.rotationDays < 2 ? `${nf(x.rotationDays * 24)} jam` : `${nf(x.rotationDays, 1)} hari`;
-  const orbYr = x.periodYears < 2 ? `${nf(x.periodYears * 365.25, 0)} hari` : `${nf(x.periodYears, 2)} tahun`;
+  const orbYr = isMoon.value
+    ? (x.orbitDays ? `${nf(x.orbitDays, 1)} hari` : pd.periode_orbit || '—')
+    : (x.periodYears < 2 ? `${nf(x.periodYears * 365.25, 0)} hari` : `${nf(x.periodYears, 2)} tahun`);
 
   return [
     {
@@ -56,12 +65,12 @@ const scientificBoxes = computed(() => {
     {
       k: 'Periode Orbit',
       v: pd.periode_orbit || orbYr,
-      sub: pd.subteks_orbit || 'Waktu revolusi mengitari Matahari',
+      sub: pd.subteks_orbit || (isMoon.value ? `Waktu revolusi mengitari ${parentPlanet.value?.name || 'planet induk'}` : 'Waktu revolusi mengitari Matahari'),
     },
     {
       k: 'Kemiringan Sumbu',
       v: pd.kemiringan_sumbu || `${nf(x.tilt, 2)}°`,
-      sub: 'Miring terhadap bidang orbit',
+      sub: isMoon.value ? 'Miring terhadap bidang orbit induk' : 'Miring terhadap bidang orbit',
     },
     {
       k: 'Suhu Rata-Rata',
@@ -69,7 +78,7 @@ const scientificBoxes = computed(() => {
       sub: pd.rentang_suhu || 'Rentang suhu permukaan',
     },
     {
-      k: 'Usia Planet',
+      k: isMoon.value ? 'Usia Objek' : 'Usia Planet',
       v: pd.usia_planet || '± 4,5 miliar th',
       sub: pd.subteks_usia || 'Sejak pembentukan tata surya',
     },
@@ -120,11 +129,15 @@ const runTitle = computed(() => (guessing.value && !revealed.value ? pq.value?.q
 const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'matahari', dingin: 'bulan', tipis: 'planet', selesai: 'cek' }[store.pheno.state] || 'fenomena'));
 
 const stageEyebrow = computed(() => {
+  if (isMoon.value) {
+    const parentName = parentPlanet.value?.name || (p.value.parent ? p.value.parent.toUpperCase() : 'BUMI');
+    return `SATELIT ALAMI ${parentName.toUpperCase()}`;
+  }
   const order = planetData.value?.urutan_planet || p.value.order;
   if (order) {
     return `Planet ke-${order} di Tata Surya`;
   }
-  return `${p.value.kind} · ${p.value.id === 'matahari' ? 'Bintang Pusat' : p.value.id === 'bulan' ? 'Satelit Alami' : p.value.kind}`;
+  return `${p.value.kind} · ${p.value.id === 'matahari' ? 'Bintang Pusat' : p.value.kind}`;
 });
 </script>
 
@@ -150,9 +163,9 @@ const stageEyebrow = computed(() => {
 
         <!-- INFO PLANET -->
         <div v-else-if="!store.pheno.on" key="info" class="sheet-body sheet-scroll sbody scroll">
-          <!-- 1. BLOK RINGKASAN PLANET -->
+          <!-- 1. BLOK RINGKASAN PLANET / BULAN -->
           <div class="summary-card">
-            <span class="section-label">RINGKASAN PLANET</span>
+            <span class="section-label">{{ isMoon ? 'RINGKASAN BULAN' : 'RINGKASAN PLANET' }}</span>
             <p class="desc">{{ planetData?.deskripsi_materi || p.desc }}</p>
           </div>
 
@@ -221,7 +234,7 @@ const stageEyebrow = computed(() => {
           </div>
 
           <!-- 4. KARTU INTERAKTIF FENOMENA -->
-          <button v-if="ph && ph.is_active !== false" class="phc" :class="{ ask: pq && !predicted }" @click="phenomenon">
+          <button v-if="!isMoon && ph && ph.is_active !== false" class="phc" :class="{ ask: pq && !predicted }" @click="phenomenon">
             <span class="ic"><UiIcon :name="pq && !predicted ? 'kuis' : 'fenomena'" :size="20" /></span>
             <span class="t">
               <small>{{ pq && !predicted ? 'Tebak dulu' : 'Fenomena' }}</small>
@@ -260,7 +273,7 @@ const stageEyebrow = computed(() => {
           <button class="btn-foot line block" @click="resetGuess"><UiIcon name="kembali" :size="18" />Kembali</button>
         </template>
         <template v-else-if="!store.pheno.on">
-          <button v-if="ph && ph.is_active !== false" class="btn-foot primary block" @click="phenomenon">
+          <button v-if="!isMoon && ph && ph.is_active !== false" class="btn-foot primary block" @click="phenomenon">
             <UiIcon name="fenomena" :size="18" />Fenomena
           </button>
           <div class="row2">

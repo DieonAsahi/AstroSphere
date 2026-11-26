@@ -1,14 +1,14 @@
 <script setup>
 // Kuis planet ala game modern: pilih jawaban → langsung dinilai + pembahasan singkat → hasil berupa bintang.
 // Urutan pilihan diacak tiap percobaan. Hadiah = maks(0, skor baru − skor terbaik) (PRD §11.2); salah tidak mengurangi.
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { store, game, submitQuiz, quizMax, isFound } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { QUIZ, POINTS_PER_QUESTION } from '~/data/quiz.js';
-import { PLANETS } from '~/data/solarSystem.js';
+import { PLANETS, MOONS } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
 
-const { getQuiz, loadAll, planets: livePlanets, getShips } = useSupabaseContent();
+const { getQuiz, loadAll, planets: livePlanets, moons: liveMoons, getShips } = useSupabaseContent();
 
 onMounted(() => {
   loadAll();
@@ -16,7 +16,21 @@ onMounted(() => {
 
 const Q = store.quiz;
 const planetList = computed(() => (livePlanets.value?.length ? livePlanets.value : PLANETS));
-const planet = computed(() => planetList.value.find((p) => p.id === Q.planet) || PLANETS.find((p) => p.id === Q.planet) || planetList.value[0] || PLANETS[2]);
+const moonList = computed(() => (liveMoons.value?.length ? liveMoons.value : MOONS));
+const allBodies = computed(() => [...planetList.value, ...moonList.value]);
+
+const bodyCategory = ref('planet');
+watch(() => Q.planet, (newId) => {
+  if (moonList.value.some((m) => m.id === newId)) {
+    bodyCategory.value = 'moon';
+  } else if (planetList.value.some((p) => p.id === newId)) {
+    bodyCategory.value = 'planet';
+  }
+}, { immediate: true });
+
+const activeSelectionList = computed(() => (bodyCategory.value === 'moon' ? moonList.value : planetList.value));
+const planet = computed(() => allBodies.value.find((p) => p.id === Q.planet) || PLANETS.find((p) => p.id === Q.planet) || MOONS.find((m) => m.id === Q.planet) || planetList.value[0] || PLANETS[2]);
+const isMoon = computed(() => MOONS.some((m) => m.id === planet.value?.id) || planet.value?.body_type === 'moon');
 const set = computed(() => getQuiz(Q.planet) || QUIZ[Q.planet]);
 const questionCount = computed(() => set.value?.questions?.length ?? 0);
 const maxScore = computed(() => (set.value?.questions?.length ? set.value.questions.reduce((sum, q) => sum + (Number(q.points) || POINTS_PER_QUESTION), 0) : 0));
@@ -45,7 +59,7 @@ const shuffle = (n) => { const a = [...Array(n).keys()]; for (let i = n - 1; i >
 function pickPlanet(id) { Q.planet = id; game()?.click(); }
 // Kuis planet terbuka setelah planetnya ditemukan — supaya pemain menjelajah dulu.
 const open = computed(() => isFound(Q.planet));
-const nOpen = computed(() => planetList.value.filter((p) => isFound(p.id)).length);
+const nOpen = computed(() => activeSelectionList.value.filter((p) => isFound(p.id)).length);
 function flyThere() { game()?.flyTo(Q.planet); }
 function start() {
   if (!open.value || !set.value?.questions?.length) return;
@@ -132,7 +146,7 @@ const letters = ['A', 'B', 'C', 'D'];
             />
           </div>
           <div class="header-info">
-            <span class="eyebrow-label">EVALUASI PENGETAHUAN</span>
+            <span class="eyebrow-label">{{ isMoon ? 'EVALUASI PENGETAHUAN · SATELIT ALAMI' : 'EVALUASI PENGETAHUAN · PLANET' }}</span>
             <h2 class="quiz-title">Kuis {{ planet.name }}</h2>
           </div>
         </div>
@@ -142,7 +156,7 @@ const letters = ['A', 'B', 'C', 'D'];
             <template v-if="questionCount > 0">
               <b class="num text-sky">{{ questionCount }} soal</b> · <UiIcon name="bintang" :size="15" class="si" /> {{ questionPointsLabel }}
             </template>
-            <span v-else>Soal kuis untuk planet ini belum tersedia.</span>
+            <span v-else>Soal kuis untuk objek ini belum tersedia.</span>
           </p>
           <div class="starrow" :aria-label="`Skor terbaik ${stars(best)} dari ${questionCount} bintang`">
             <UiIcon
@@ -158,10 +172,32 @@ const letters = ['A', 'B', 'C', 'D'];
           Kuis ini terkunci. Jelajahi dan terbang mendekati <b>{{ planet.name }}</b> untuk membukanya.
         </p>
 
-        <!-- Grid 4x2 Kartu Selektor Planet Modern -->
-        <div class="planet-selector-grid" role="tablist" aria-label="Pilih planet">
+        <!-- Pilihan Kategori: 8 Planet / 6 Bulan -->
+        <div class="category-toggle" role="tablist" aria-label="Kategori kuis">
           <button
-            v-for="p in planetList"
+            type="button"
+            class="cat-btn"
+            :class="{ active: bodyCategory === 'planet' }"
+            @click="bodyCategory = 'planet'"
+          >
+            <UiIcon name="planet" :size="14" />
+            <span>8 Planet</span>
+          </button>
+          <button
+            type="button"
+            class="cat-btn"
+            :class="{ active: bodyCategory === 'moon' }"
+            @click="bodyCategory = 'moon'"
+          >
+            <UiIcon name="bulan" :size="14" />
+            <span>6 Bulan</span>
+          </button>
+        </div>
+
+        <!-- Grid Kartu Selektor Objek Modern -->
+        <div class="planet-selector-grid" role="tablist" :aria-label="bodyCategory === 'moon' ? 'Pilih bulan' : 'Pilih planet'">
+          <button
+            v-for="p in activeSelectionList"
             :key="p.id"
             class="planet-card-btn"
             role="tab"
@@ -203,7 +239,7 @@ const letters = ['A', 'B', 'C', 'D'];
         </div>
 
         <p class="fine-note">
-          {{ nOpen }} dari {{ planetList.length }} planet terbuka · Jawaban salah tidak mengurangi bintang.
+          {{ nOpen }} dari {{ activeSelectionList.length }} {{ bodyCategory === 'moon' ? 'bulan' : 'planet' }} terbuka · Jawaban salah tidak mengurangi bintang.
         </p>
       </div>
 
@@ -575,7 +611,43 @@ const letters = ['A', 'B', 'C', 'D'];
 .starrow{display:flex;gap:6px;color:var(--line-2)}
 .starrow .got{color:var(--star)}
 
-/* GRID 4x2 SELEKTOR PLANET MODERN */
+/* TOGGLE KATEGORI PLANET / BULAN */
+.category-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:rgba(15, 23, 42, 0.6);
+  border:1px solid rgba(148, 174, 255, 0.14);
+  border-radius:10px;
+  padding:4px;
+  margin:4px 0 2px 0;
+  width:fit-content;
+}
+.cat-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 14px;
+  border-radius:7px;
+  font-family:var(--display);
+  font-size:12px;
+  font-weight:500;
+  color:#94a3b8;
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.cat-btn:hover{
+  color:#ffffff;
+}
+.cat-btn.active{
+  color:#ffffff;
+  background:rgba(59, 130, 246, 0.35);
+  box-shadow:0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* GRID SELEKTOR PLANET & BULAN MODERN */
 .planet-selector-grid{
   display:grid;
   grid-template-columns:repeat(4,minmax(0,1fr));

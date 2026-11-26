@@ -62,7 +62,8 @@ async function loadPlanets() {
       .order('urutan_planet', { ascending: true });
 
     if (fetchErr) throw fetchErr;
-    planets.value = data || [];
+    // Filter hanya menampilkan 8 planet (bukan bulan/satelit)
+    planets.value = (data || []).filter((p) => !p.body_type || p.body_type === 'planet');
   } catch (err) {
     error.value = formatSupabaseError(err, 'Tidak bisa memuat data planet.');
   } finally {

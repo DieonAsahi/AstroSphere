@@ -95,7 +95,28 @@ export const HISTORY = {
     ev('nep-1846b', 1846, 'William Lassell', 'Penemuan', 'observation', 'Penemuan Triton', 'Triton, satelit terbesar Neptunus, ditemukan beberapa minggu setelah Neptunus.', 'Triton mengorbit berlawanan arah rotasi Neptunus.'),
     ev('nep-1989', 1989, 'Voyager 2 (NASA)', 'Lintas terbang', 'flyby', 'Lintas Terbang dan Bintik Gelap Besar', 'Voyager 2 memotret badai Bintik Gelap Besar dan geiser nitrogen di Triton.', 'Satu-satunya wahana yang pernah mengunjungi Neptunus.'),
   ],
+  io: [
+    ev('io-1610', 1610, 'Galileo Galilei', 'Penemuan', 'observation', 'Penemuan Satelit Io', 'Galileo menemukan Io mengitari Jupiter dengan teleskop buatannya.', 'Membuktikan tidak semua benda langit berputar mengitari Bumi.'),
+    ev('io-1979', 1979, 'Voyager 1 (NASA)', 'Lintas terbang', 'flyby', 'Letusan Vulkanik Gunung Api Pele', 'Voyager 1 memotret semburan gas dan belerang setinggi 300 km dari gunung api Pele.', 'Bukti pertama vulkanisme aktif di luar planet Bumi.'),
+  ],
+  europa: [
+    ev('eur-1979', 1979, 'Voyager 2 (NASA)', 'Lintas terbang', 'flyby', 'Pemetaan Retakan Lineae Europa', 'Voyager 2 memotret jaringan fraktur garis kemerahan pada kerak es Europa.', 'Mengindikasikan adanya kerak es dinamis yang terapung di atas cairan.'),
+    ev('eur-1997', 1997, 'Galileo (NASA)', 'Orbit', 'orbit', 'Deteksi Samudra Air Asin Cair Bawah Es', 'Pengorbit Galileo mendeteksi medan magnet induksi dari samudra air asin cair global.', 'Samudra Europa diperkirakan memiliki volume dua kali lipat seluruh lautan Bumi.'),
+  ],
+  ganymede: [
+    ev('gan-1996', 1996, 'Galileo (NASA)', 'Orbit', 'orbit', 'Penemuan Medan Magnetik Intrinsik', 'Wahana Galileo mencatat Ganymede memiliki medan magnet internal dan magnetosfer sendiri.', 'Satu-satunya bulan di Tata Surya yang membangkitkan medan magnet dipol mandiri.'),
+    ev('gan-2023', 2023, 'JUICE (ESA)', 'Peluncuran', 'orbit', 'Peluncuran Misi Penjelajah JUICE', 'Badan Antariksa Eropa meluncurkan wahana JUICE menuju orbit Ganymede.', 'Dirancang untuk meneliti kelayakhunian samudra bawah tanah Ganymede.'),
+  ],
+  callisto: [
+    ev('cal-1979', 1979, 'Voyager 1 (NASA)', 'Lintas terbang', 'flyby', 'Pemetaan Cekungan Kawah Valhalla', 'Voyager 1 memotret kawah multiring raksasa Valhalla selebar 3.800 km.', 'Pola cincin konsentris dari tumbukan asteroid purba 4 miliar tahun lalu.'),
+    ev('cal-1998', 1998, 'Galileo (NASA)', 'Orbit', 'orbit', 'Konfirmasi Kerak Fosil Purba', 'Wahana Galileo mengonfirmasi permukaan Callisto tidak pernah mengalami pembaharuan tektonik.', 'Menjadi fosil geologis Tata Surya paling utuh.'),
+  ],
+  titan: [
+    ev('tit-1655', 1655, 'Christiaan Huygens', 'Penemuan', 'observation', 'Penemuan Satelit Berkabut Titan', 'Huygens menemukan satelit terbesar Saturnus yang berotasi setiap 16 hari.', 'Satu-satunya satelit di Tata Surya dengan atmosfer tebal.'),
+    ev('tit-2005', 2005, 'Huygens (ESA)', 'Pendaratan', 'surface', 'Pendaratan Bersejarah Probe Huygens', 'Probe Huygens mendarat dengan parasut menembus awan tebal Titan ke hamparan kerikil es.', 'Pendaratan terjauh di Tata Surya luar, membuktikan adanya sungai dan danau metana.'),
+    ev('tit-2007', 2007, 'Cassini (NASA/ESA)', 'Orbit', 'orbit', 'Pemetaan Lautan Metana Kraken Mare', 'Radar Cassini memetakan laut hidrokarbon cair Kraken Mare seluas 400.000 km².', 'Menyingkap siklus hidrologis berbasis metana cair yang mirip dengan air di Bumi.'),
+  ],
 };
 
-export const HISTORY_BODIES = ['merkurius', 'venus', 'bumi', 'bulan', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
+export const HISTORY_BODIES = ['merkurius', 'venus', 'bumi', 'bulan', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus', 'io', 'europa', 'ganymede', 'callisto', 'titan'];
 export const LOCATION_LABEL = { surface: 'Permukaan', flyby: 'Lintas terbang', orbit: 'Orbit', observation: 'Pengamatan', atmosphere: 'Atmosfer', moon: 'Di satelit', memorial: 'Kenangan' };
