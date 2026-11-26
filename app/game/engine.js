@@ -241,7 +241,17 @@ export function createEngine(el) {
   const bodyTime = () => (worldMode() === 'observe' ? obsTime : gameTime);
 
   // ---------- Pesawat ----------
-  const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, yaw: 0, pitch: 0 };
+  const ROLL_DUR = 0.55, ROLL_CD = 1.1, ROLL_DODGE_SPEED = 26;
+  const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, dodging: false, yaw: 0, pitch: 0 };
+  const roll = { dir: 0, t: 0, cd: 0 };
+  let bankRoll = 0;
+  function resetRoll() { roll.dir = 0; roll.t = 0; roll.cd = 0; ship.dodging = false; }
+  function startRoll(dir) {
+    if (worldMode() !== 'jelajah' || store.phase !== 'playing' || store.modal || store.approach.show || store.event.result || store.bannedModal?.show) return;
+    if (roll.t > 0 || roll.cd > 0) return;
+    if (store.autopilot) autopilotOff(true);
+    roll.dir = dir; roll.t = ROLL_DUR; roll.cd = ROLL_CD; ship.dodging = true; sfx.whoosh();
+  }
   const shipRoot = new THREE.Group();
   let shipModel = null, shownShip = null; const shipModels = {};
   let camMode = 'chase', target = null, nearest = null;
@@ -278,7 +288,7 @@ export function createEngine(el) {
     ship.yaw = _e.y;
     ship.pitch = clamp(_e.x, -1.35, 1.35);
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
-    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false;
+    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; bankRoll = 0; resetRoll(); ship.brakeHold = false; bankRoll = 0; resetRoll();
   }
   // Tampilkan tepat SATU pesawat: semua grup pesawat lain di shipRoot dilepas lebih dulu
   // (mencegah model bertumpuk di hanggar saat unduhan GLB selesai tidak berurutan).
@@ -307,7 +317,7 @@ export function createEngine(el) {
   }
   function readInput(dt) {
     const t = hold;
-    // Kontrol Yaw: Tombol belok (A/D, Q/E, panah kiri/kanan) atau analog jempol horizontal
+    // Kontrol Yaw: Tombol belok (A/D atau panah kiri/kanan) atau analog jempol horizontal (Q/E khusus manuver guling)
     const turnL = act('turnL') || act('left') || !!t.turnL;
     const turnR = act('turnR') || act('right') || !!t.turnR;
     let yaw = (turnR ? 1 : 0) - (turnL ? 1 : 0) + dead(joy.x, .12);
@@ -321,10 +331,9 @@ export function createEngine(el) {
     input.boost = act('turbo') || !!t.boost;
     input.align = !!keys.KeyG;
 
-    const fwd = act('forward') || !!t.gas, back = act('back'), brake = act('brake') || !!t.brake;
-    if (store.autopilot && (input.yaw || input.pitch || back || brake)) autopilotOff(true);
+    const fwd = act('forward') || !!t.gas, brake = act('brake') || !!t.brake;
+    if (store.autopilot && (input.yaw || input.pitch || brake)) autopilotOff(true);
     if (fwd) { ship.throttle = Math.min(1, ship.throttle + dt * .8); ship.braking = false; }
-    if (back) { ship.throttle = Math.max(-.3, ship.throttle - dt * .8); ship.braking = false; }
     ship.brakeHold = brake;
     if (brake) ship.throttle = damp(ship.throttle, 0, 4, dt);
   }
@@ -385,6 +394,17 @@ export function createEngine(el) {
       if (vn > 0) ship.vel.addScaledVector(_v2, -vn * smooth(RMAX * .8, RMAX, R) * Math.min(1, dt * 6));
       if (R > RMAX) { ship.pos.setLength(lerp(R, RMAX * .98, Math.min(1, dt * 1.5))); flashMsg('Batas navigasi — kembali ke zona aman'); }
     }
+    roll.cd = Math.max(0, roll.cd - dt);
+    if (roll.t > 0) {
+      roll.t = Math.max(0, roll.t - dt);
+      const p = 1 - roll.t / ROLL_DUR;
+      const dodgeV = roll.dir * ROLL_DODGE_SPEED * Math.sin(Math.PI * p);
+      _v2.set(1, 0, 0).applyQuaternion(ship.quat);
+      ship.pos.addScaledVector(_v2, dodgeV * dt);
+      ship.dodging = roll.t > 0;
+    } else {
+      ship.dodging = false;
+    }
     ship.pos.addScaledVector(ship.vel, dt);
     for (const b of sys.bodies) {
       if (!isBodyActive(b)) continue;
@@ -403,8 +423,15 @@ export function createEngine(el) {
     shipRoot.position.copy(ship.pos); shipRoot.quaternion.copy(ship.quat);
     if (!shipModel) return;
     const g = shipModel.group, wm = worldMode();
-    // Efek visual miring sayap (banking roll) halus saat memutar moncong kiri/kanan HANYA pada mesh 3D anak
-    g.rotation.z = damp(g.rotation.z, -input.yaw * .45, 6, dt);
+    // Efek visual miring sayap (banking roll) halus & manuver guling menghindar 360° HANYA pada mesh 3D anak
+    bankRoll = damp(bankRoll, -input.yaw * .45, 6, dt);
+    let barrelAngle = 0;
+    if (roll.t > 0) {
+      const p = 1 - roll.t / ROLL_DUR;
+      const ep = p * p * (3 - 2 * p);
+      barrelAngle = -roll.dir * Math.PI * 2 * ep;
+    }
+    g.rotation.z = bankRoll + barrelAngle;
     g.rotation.x = damp(g.rotation.x, ship.rate.x * .05, 5, dt);
     const thrust = Math.max(0, ship.throttle), b = ship.boost;
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
@@ -454,6 +481,7 @@ export function createEngine(el) {
     stick.x = stick.y = 0;
     look.rmb = false;
     look.drag = false;
+    resetRoll();
     exitFreeLook();
   }
   function beginCamTransition() { trans.t = 0; trans.fromPos.copy(camera.position); trans.fromQuat.copy(camera.quaternion); }
@@ -804,7 +832,7 @@ export function createEngine(el) {
     ship.yaw = (s.rotation && s.rotation.y) || 0;
     ship.pitch = clamp((s.rotation && s.rotation.x) || 0, -1.35, 1.35);
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
-    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false;
+    ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; bankRoll = 0; resetRoll();
     discovered.clear(); discovered.add('matahari');
     if (Array.isArray(s.discovered)) for (const id of s.discovered) if ((sys.byId[id] && isBodyActive(sys.byId[id])) || id === BELT.id) discovered.add(id);
     syncDiscovered();
@@ -824,7 +852,7 @@ export function createEngine(el) {
     if (!snapshot) return;
     const s = snapshot; snapshot = null;
     gameTime = s.gameTime; updateBodies(sys.bodies, sys.byId, gameTime);
-    ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.yaw = s.yaw ?? 0; ship.pitch = s.pitch ?? 0; ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0;
+    ship.pos.copy(s.pos); ship.quat.copy(s.quat); ship.yaw = s.yaw ?? 0; ship.pitch = s.pitch ?? 0; ship.vel.copy(s.vel); ship.throttle = s.throttle; ship.rate.set(0, 0, 0); ship.boost = 0; bankRoll = 0; resetRoll();
     camQ.copy(ship.quat); camMode = s.camMode;
     clearAllInputs();
   }
@@ -1099,7 +1127,7 @@ export function createEngine(el) {
   // Keyboard memakai pemetaan aksi (data/keymap.js, bisa diubah pemain). Mouse hanya untuk melihat sekeliling.
   const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable);
   const isAct = (id, code) => (keymap[id] || []).includes(code);
-  const FLY = ['forward', 'back', 'left', 'right', 'turnL', 'turnR', 'up', 'down', 'turbo', 'brake', 'stop', 'map', 'cam', 'target'];
+  const FLY = ['forward', 'left', 'right', 'turnL', 'turnR', 'rollL', 'rollR', 'up', 'down', 'turbo', 'brake', 'stop', 'map', 'cam', 'target'];
   on(window, 'keydown', (e) => {
     if (store.bannedModal?.show) {
       if (e.code === 'Escape') {
@@ -1123,8 +1151,10 @@ export function createEngine(el) {
         // agar tombol gas Enter yang sedang ditahan tidak langsung memicu pilihan secara tak sengaja
         if (performance.now() - approachShownAt < 350 || e.repeat) return;
         if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'KeyY') { keys[e.code] = false; api.approachYes(); return; }
-        if (e.code === 'Escape' || e.code === 'KeyN' || isAct('back', e.code)) { api.approachNo(); return; }
+        if (e.code === 'Escape' || e.code === 'KeyN') { api.approachNo(); return; }
       }
+      if (isAct('rollL', e.code)) { startRoll(-1); return; }
+      if (isAct('rollR', e.code)) { startRoll(1); return; }
       if (isAct('stop', e.code)) { stop(); return; }
       if (isAct('map', e.code)) { setMode('peta'); return; }
       if (isAct('target', e.code)) { cycleTarget(e.shiftKey ? -1 : 1); return; }
@@ -1296,7 +1326,7 @@ export function createEngine(el) {
   function toggleCam() { camMode = camMode === 'chase' ? 'cockpit' : 'chase'; store.camMode = camMode; toast(camMode === 'chase' ? 'Kamera: pandangan belakang' : 'Kamera: kokpit', 1500); }
   function stop() {
     if (store.mode !== 'jelajah') setMode('jelajah');
-    autopilotOff(); ship.throttle = 0; ship.braking = true; flashMsg('Berhenti');
+    autopilotOff(); ship.throttle = 0; ship.braking = true; resetRoll(); flashMsg('Berhenti');
   }
 
   // Lapisan latar (langit + bintang + lubang hitam) dulu, lalu tata surya di atasnya dengan depth dibersihkan.

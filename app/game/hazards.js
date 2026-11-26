@@ -2,7 +2,7 @@
 // 1) Badai Matahari: peringatan 30 dtk → badai 22 dtk. Aman bila pesawat berada di bayangan planet/satelit
 //    (faktor cahaya dihitung mesin dari garis pesawat → Matahari). Penanda "Berlindung" menunjuk sisi malam benda terdekat.
 // 2) Sampah antariksa: di sekitar orbit Bumi, serpihan satelit melintas & mengarah ke pesawat selama 18 dtk;
-//    hindari dengan geser (A/D), putar (Q/E), atau naik/turun. Tiap tabrakan mengurangi perisai.
+//    hindari dengan berbelok (A/D), naik/turun (W/S), atau manuver guling menghindar (Q/E). Tiap tabrakan mengurangi perisai.
 // Perisai 0 → pesawat rusak (turbo mati, gas maks 60%) sampai mendekati planet/satelit mana pun.
 import * as THREE from 'three';
 import { fmtDist } from './util.js';
@@ -73,7 +73,7 @@ export function createHazards({ scene, camera, ship, sys, store, sfx, markersEl,
     clearPieces(); mk.style.display = 'none';
     const r = ok ? (reward?.(c.kind) || 0) : 0;
     const miss = c.kind === 'badai' ? 'Kamu terlalu lama terkena radiasi. Lain kali, langsung terbang ke penanda bayangan.'
-      : `Kamu tertabrak ${c.hits} kali. Coba bergeser lebih cepat dengan A/D atau naik-turun.`;
+      : `Kamu tertabrak ${c.hits} kali. Coba menghindar dengan manuver guling Q/E atau belok lebih cepat.`;
     ev.result = { kind: c.kind, ok, title: ok ? 'Selamat!' : c.broke ? 'Pesawat rusak' : 'Hampir saja', text: ok ? E.ok : c.broke ? E.fail : miss, fact: E.facts[factI++ % E.facts.length], reward: r, hits: c.hits };
     if (ok) sfx.chime(); else sfx.wrong?.();
     if (c.kind === 'badai') nextStorm = flight + rnd(300, 460); else nextDebris = flight + rnd(240, 320);
@@ -110,7 +110,7 @@ export function createHazards({ scene, camera, ship, sys, store, sfx, markersEl,
       p.life += dt; p.pos.addScaledVector(p.vel, dt);
       p.q.multiply(_q.setFromAxisAngle(p.axis, p.w * dt));
       const d = p.pos.distanceTo(ship.pos);
-      if (!p.hit && d < HIT_R + p.r) {
+      if (!p.hit && !ship.dodging && d < HIT_R + p.r) {
         p.hit = true; cur.hits++; ev.hits = cur.hits; ev.flash++;
         ev.shield = Math.max(0, ev.shield - DEB_DMG);
         sfx.hit?.(); shakeBy(.7);

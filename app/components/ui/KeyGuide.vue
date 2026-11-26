@@ -156,7 +156,44 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
         </div>
       </section>
 
-      <!-- 3. KAMERA & SUDUT PANDANG -->
+      <!-- 3. MANUVER MENGHINDAR -->
+      <section class="kg-card kg-wide">
+        <div class="kg-card-head">
+          <UiIcon name="pesawat" :size="16" class="head-ic" />
+          <span class="head-title">Manuver Menghindar (Sampah Antariksa)</span>
+        </div>
+        <div class="kg-list two-col">
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('rollL') }}</b>
+              <template v-if="hasSecondKey('rollL')">
+                <span class="sep">/</span>
+                <b class="kbd">{{ k('rollL', 1) }}</b>
+              </template>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Guling Kiri</b>
+              <small class="kg-sub">Putar guling &amp; geser kiri menghindari rintangan</small>
+            </div>
+          </div>
+
+          <div class="kg-item">
+            <div class="kg-keys">
+              <b class="kbd">{{ k('rollR') }}</b>
+              <template v-if="hasSecondKey('rollR')">
+                <span class="sep">/</span>
+                <b class="kbd">{{ k('rollR', 1) }}</b>
+              </template>
+            </div>
+            <div class="kg-info">
+              <b class="kg-act">Guling Kanan</b>
+              <small class="kg-sub">Putar guling &amp; geser kanan menghindari rintangan</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. KAMERA & SUDUT PANDANG -->
       <section class="kg-card">
         <div class="kg-card-head">
           <UiIcon name="mata" :size="16" class="head-ic" />
@@ -195,7 +232,7 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
         </div>
       </section>
 
-      <!-- 4. NAVIGASI & MENU -->
+      <!-- 5. NAVIGASI & MENU -->
       <section class="kg-card">
         <div class="kg-card-head">
           <UiIcon name="orbit" :size="16" class="head-ic" />
@@ -330,6 +367,14 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
   background:rgba(11,16,36,.65);
   border:1px solid rgba(148,174,255,.14);
 }
+.kg-card.kg-wide{
+  grid-column:1 / -1;
+}
+.kg-list.two-col{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px 16px;
+}
 .kg-card-head{
   display:flex;
   align-items:center;
@@ -458,7 +503,8 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
 .tl b{color:var(--text);font-weight:600}
 
 @media (max-width:760px){
-  .kg-grid{
+  .kg-grid,
+  .kg-list.two-col{
     grid-template-columns:1fr;
     gap:10px;
   }

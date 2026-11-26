@@ -12,6 +12,7 @@ const slide = ref(1);
 
 const km = computed(() => resolveKeymap(store.settings.keys));
 const k = (id) => keyLabel(km.value[id]?.[0]);
+const isActKey = (id, code) => (km.value[id] || []).includes(code);
 
 // Data Slide 1 - 4: Briefing Game 2 Kolom
 const SLIDES = [
@@ -171,6 +172,12 @@ function setAction(act) {
     case 'right':
       actionStatus.value = 'Belok Kanan (D / Panah Kanan) — Yaw & Banking Roll';
       break;
+    case 'rollL':
+      actionStatus.value = `Manuver Guling Kiri (${k('rollL')}) — Hindari rintangan & sampah antariksa`;
+      break;
+    case 'rollR':
+      actionStatus.value = `Manuver Guling Kanan (${k('rollR')}) — Hindari rintangan & sampah antariksa`;
+      break;
     default:
       actionStatus.value = 'Siap Menerima Input — Tekan tombol keyboard atau klik kontrol di kanan';
   }
@@ -242,6 +249,8 @@ function onKeyDown(e) {
     else if (e.code === 'KeyS' || e.code === 'ArrowDown') { e.preventDefault(); setAction('down'); }
     else if (e.code === 'KeyA' || e.code === 'ArrowLeft') { e.preventDefault(); setAction('left'); }
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') { e.preventDefault(); setAction('right'); }
+    else if (isActKey('rollL', e.code)) { e.preventDefault(); setAction('rollL'); }
+    else if (isActKey('rollR', e.code)) { e.preventDefault(); setAction('rollR'); }
   }
 }
 
@@ -255,6 +264,8 @@ function onKeyUp(e) {
     else if (e.code === 'KeyS' || e.code === 'ArrowDown') clearAction('down');
     else if (e.code === 'KeyA' || e.code === 'ArrowLeft') clearAction('left');
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') clearAction('right');
+    else if (isActKey('rollL', e.code)) clearAction('rollL');
+    else if (isActKey('rollR', e.code)) clearAction('rollR');
   }
 }
 
@@ -418,7 +429,7 @@ onBeforeUnmount(() => {
               <!-- Bar Status Aksi Aktif -->
               <div class="stage-status" :class="activeAction">
                 <span class="status-ic">
-                  <UiIcon :name="activeAction === 'turbo' ? 'kilat' : activeAction === 'brake' ? 'silang' : activeAction === 'stop' ? 'tutup' : 'target'" :size="16" />
+                  <UiIcon :name="activeAction === 'turbo' ? 'kilat' : activeAction === 'brake' ? 'silang' : activeAction === 'stop' ? 'tutup' : (activeAction === 'rollL' || activeAction === 'rollR') ? 'pesawat' : 'target'" :size="16" />
                 </span>
                 <span class="status-text">{{ actionStatus }}</span>
               </div>
@@ -432,11 +443,23 @@ onBeforeUnmount(() => {
             <p class="briefing-lead">Tekan tombol pada keyboard nyata atau klik tombol di bawah untuk menguji respons fisik pesawat demo sebelum meluncur.</p>
 
             <div class="ctrl-testing-panel">
-              <!-- Baris Arah Hidung -->
+              <!-- Baris Arah Hidung & Manuver Guling -->
               <div class="ctrl-subgroup">
-                <span class="ctrl-sublabel">Arah Hidung (Pitch &amp; Yaw)</span>
+                <span class="ctrl-sublabel">Arah Hidung &amp; Manuver Guling (Hindari Rintangan)</span>
                 <div class="wasd-layout">
-                  <div class="key-center">
+                  <div class="key-row">
+                    <button
+                      type="button"
+                      class="test-key dodge"
+                      :class="{ active: activeAction === 'rollL' }"
+                      title="Manuver guling menghindar ke kiri (sampah antariksa)"
+                      @pointerdown="setAction('rollL')"
+                      @pointerup="clearAction('rollL')"
+                      @pointerleave="clearAction('rollL')"
+                    >
+                      <b class="kbd">{{ k('rollL') }}</b>
+                      <small>Guling Kiri</small>
+                    </button>
                     <button
                       type="button"
                       class="test-key"
@@ -447,6 +470,18 @@ onBeforeUnmount(() => {
                     >
                       <b class="kbd">{{ k('up') }}</b>
                       <small>Naik</small>
+                    </button>
+                    <button
+                      type="button"
+                      class="test-key dodge"
+                      :class="{ active: activeAction === 'rollR' }"
+                      title="Manuver guling menghindar ke kanan (sampah antariksa)"
+                      @pointerdown="setAction('rollR')"
+                      @pointerup="clearAction('rollR')"
+                      @pointerleave="clearAction('rollR')"
+                    >
+                      <b class="kbd">{{ k('rollR') }}</b>
+                      <small>Guling Kanan</small>
                     </button>
                   </div>
                   <div class="key-row">
@@ -712,6 +747,18 @@ onBeforeUnmount(() => {
 .demo-ship-box.down{transform:rotateX(18deg) translateY(10px) scale(.98)}
 .demo-ship-box.left{transform:rotateZ(-16deg) rotateY(-14deg) translateX(-14px)}
 .demo-ship-box.right{transform:rotateZ(16deg) rotateY(14deg) translateX(14px)}
+.demo-ship-box.rollL{animation:demoRollL .55s cubic-bezier(.22,1,.36,1) forwards}
+.demo-ship-box.rollR{animation:demoRollR .55s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes demoRollL{
+  0%{transform:perspective(420px) translateX(0) rotateY(0deg) scale(1)}
+  50%{transform:perspective(420px) translateX(-28px) rotateY(-180deg) scale(1.06)}
+  100%{transform:perspective(420px) translateX(-18px) rotateY(-360deg) scale(1)}
+}
+@keyframes demoRollR{
+  0%{transform:perspective(420px) translateX(0) rotateY(0deg) scale(1)}
+  50%{transform:perspective(420px) translateX(28px) rotateY(180deg) scale(1.06)}
+  100%{transform:perspective(420px) translateX(18px) rotateY(360deg) scale(1)}
+}
 .demo-ship-box.forward{transform:translateY(-4px) scale(1.02)}
 .demo-ship-box.turbo{transform:translateY(-8px) scale(1.06)}
 .demo-ship-box.brake{transform:translateY(4px) scale(.98)}
@@ -739,9 +786,11 @@ onBeforeUnmount(() => {
 /* Bar status panggung */
 .stage-status{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
 .stage-status.forward,.stage-status.turbo{color:#93c5fd}
+.stage-status.rollL,.stage-status.rollR{color:#7dd3fc}
 .stage-status.brake{color:#fca5a5}
 .stage-status.stop{color:#fde047}
 .status-ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:rgba(59,130,246,.2);color:var(--sky);flex:none}
+.stage-status.rollL .status-ic,.stage-status.rollR .status-ic{background:rgba(56,189,248,.22);color:#38bdf8}
 .stage-status.brake .status-ic{background:rgba(239,68,68,.2);color:#f87171}
 .stage-status.turbo .status-ic{background:rgba(234,179,8,.2);color:var(--star)}
 
@@ -754,6 +803,7 @@ onBeforeUnmount(() => {
 .key-row{display:flex;gap:6px}
 
 .test-key{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 12px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line-2);border-bottom-width:3px;cursor:pointer;transition:transform .08s,background .12s}
+.test-key.dodge{border-color:rgba(56,189,248,.35)}
 .test-key:hover{background:rgba(59,130,246,.2)}
 .test-key:active,.test-key.active{transform:translateY(2px);background:var(--blue);border-color:var(--blue-d);color:#fff}
 .test-key .kbd{font-size:13.5px;min-width:30px;height:22px;border:none;background:transparent;box-shadow:none}
