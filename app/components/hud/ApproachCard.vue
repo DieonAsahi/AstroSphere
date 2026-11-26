@@ -426,4 +426,26 @@ const teaser = computed(() => {
     margin-bottom:10px;
   }
 }
+@media (max-height:520px) and (orientation:landscape){
+  .ap{
+    align-items:center;
+    padding:calc(10px + var(--safe-t)) calc(14px + var(--safe-r)) calc(10px + var(--safe-b)) calc(14px + var(--safe-l));
+  }
+  .box{
+    margin-top:0;
+    width:min(460px, 100%);
+    max-height:calc(100dvh - 20px);
+    overflow-y:auto;
+    padding:14px 18px;
+  }
+  .card-header{margin-bottom:8px}
+  .header-eyebrow-row{margin-bottom:6px}
+  .planet-preview-wrap,.planet-dot{width:38px;height:38px}
+  .saturn-ring-back,.saturn-ring-front{width:58px;height:18px}
+  .planet-title{font-size:18px}
+  .desc{font-size:12.5px;margin-bottom:8px;line-height:1.45}
+  .ph{padding:7px 10px;font-size:12px;margin-bottom:8px}
+  .q{font-size:13.5px;margin-bottom:10px}
+  .btn-action{height:38px;min-height:38px;font-size:13px}
+}
 </style>

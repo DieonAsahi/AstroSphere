@@ -275,11 +275,14 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
     <!-- TAB LAYAR SENTUH -->
     <div v-else class="tc">
       <div class="phone" aria-hidden="true">
+        <div class="pause-mock"><span>⏸</span><small>Jeda</small></div>
         <div class="stick-mock">
           <div class="grid-ring" />
           <i class="knob" />
-          <span>Analog Kemudi</span>
+          <span>Kemudi Analog</span>
         </div>
+        <div class="roll-mock left">↺<small>Kiri</small></div>
+        <div class="roll-mock right">↻<small>Kanan</small></div>
         <div class="throttle-mock">
           <div class="mock-speedo">
             <span class="mock-speedo-val">0 <small>km/s</small></span>
@@ -297,10 +300,11 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
         </div>
       </div>
       <ul class="tl">
-        <li><b>Kemudi Analog (Kiri)</b> — seret stik analog di kiri bawah untuk mengarahkan haluan moncong pesawat (belok kiri/kanan &amp; naik/turun).</li>
-        <li><b>Tuas Dorong &amp; Speedometer (Kanan)</b> — geser tuas dorong ke atas untuk <b>Maju / Turbo</b>, ke <b>Netral</b> untuk berhenti, atau ke bawah untuk <b>Rem</b>.</li>
-        <li><b>Kamera Bebas &amp; Lihat Sekeliling</b> — ketuk 1× di area tengah layar lalu geser jari untuk melihat 360°, atau ketuk 2× untuk meluruskan kamera kembali ke depan.</li>
-        <li><b>Peta &amp; Menu</b> — ketuk tombol Menu di pojok kanan atas untuk membuka Peta Tata Surya, Misi, dan Hanggar.</li>
+        <li><b>Kemudi Analog (Kiri)</b> — seret stik analog di kiri bawah untuk mengarahkan moncong pesawat (belok kiri/kanan &amp; naik/turun).</li>
+        <li><b>Tuas Kecepatan (Kanan)</b> — geser tuas dorong ke atas untuk <b>Maju / Turbo</b>, tengah untuk <b>Netral</b>, atau bawah untuk <b>Rem</b>.</li>
+        <li><b>Tombol Guling Kiri &amp; Kanan</b> — ketuk tombol panah guling di kanan bawah untuk bermanuver menghindari sampah antariksa.</li>
+        <li><b>Tombol Jeda</b> — ketuk ikon <b>Jeda</b> di layar untuk membuka Menu Jeda, Peta Tata Surya, Misi, dan Hanggar.</li>
+        <li><b>Sentuh &amp; Seret Kamera</b> — sentuh dan geser area tengah layar untuk melihat sekeliling ruang angkasa 360°.</li>
       </ul>
     </div>
   </div>
@@ -475,17 +479,19 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
 }
 
 /* TAB LAYAR SENTUH */
-:global(.kg.tab-sentuh + .small.c),
-:global(.mb:has(.kg.tab-sentuh) > .small.c) {
-  display: none !important;
-}
-.tc{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;padding:8px 0}
-.phone{position:relative;width:290px;height:154px;border-radius:26px;border:3px solid var(--line-2);background:linear-gradient(160deg,#141d45,#0b1130);flex:none;overflow:hidden}
-.stick-mock{position:absolute;left:20px;bottom:22px;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle,rgba(22,33,70,.85) 0%,rgba(10,16,38,.95) 100%);border:2px solid rgba(143,176,255,.25);display:grid;place-items:center}
+.tc{display:flex;gap:22px;align-items:center;flex-wrap:wrap;justify-content:center;padding:6px 0}
+.phone{position:relative;width:300px;height:158px;border-radius:22px;border:3px solid var(--line-2);background:linear-gradient(160deg,#141d45,#0b1130);flex:none;overflow:hidden}
+.pause-mock{position:absolute;left:14px;top:12px;display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:7px;background:rgba(16,23,58,.9);border:1px solid rgba(143,176,255,.26);font-size:9px;color:#e2e8f0}
+.pause-mock span{font-size:8px}
+.roll-mock{position:absolute;width:30px;height:30px;border-radius:8px;background:rgba(16,23,58,.9);border:1px solid rgba(143,176,255,.26);color:#93c5fd;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;line-height:1}
+.roll-mock small{font-size:7px;color:var(--muted)}
+.roll-mock.left{right:92px;bottom:14px}
+.roll-mock.right{right:86px;bottom:48px}
+.stick-mock{position:absolute;left:16px;bottom:22px;width:66px;height:66px;border-radius:50%;background:radial-gradient(circle,rgba(22,33,70,.85) 0%,rgba(10,16,38,.95) 100%);border:2px solid rgba(143,176,255,.25);display:grid;place-items:center}
 .stick-mock .grid-ring{position:absolute;inset:12px;border-radius:50%;border:1px dashed rgba(143,176,255,.2)}
-.stick-mock .knob{position:relative;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b6cf0 0%,#1e3a8a 100%);box-shadow:0 0 10px rgba(59,108,240,.5)}
-.stick-mock span{position:absolute;bottom:-20px;font-size:10px;font-weight:500;color:var(--muted);white-space:nowrap}
-.throttle-mock{position:absolute;right:18px;bottom:16px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;background:rgba(16,23,58,.88);border:1px solid rgba(143,176,255,.2)}
+.stick-mock .knob{position:relative;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#3b6cf0 0%,#1e3a8a 100%);box-shadow:0 0 10px rgba(59,108,240,.5)}
+.stick-mock span{position:absolute;bottom:-18px;font-size:9.5px;font-weight:500;color:var(--muted);white-space:nowrap}
+.throttle-mock{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 8px;border-radius:10px;background:rgba(16,23,58,.88);border:1px solid rgba(143,176,255,.2)}
 .mock-speedo{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
 .mock-speedo-val{font-family:var(--display);font-size:10.5px;font-weight:600;color:#fff;line-height:1}
 .mock-speedo-val small{font-size:8px;font-weight:500;color:#38bdf8}
@@ -497,9 +503,9 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
 .throttle-mock .slot.hot{color:#f59e0b}
 .throttle-mock .slot.act{color:#60a5fa}
 .throttle-mock .slot.warn{color:#f87171}
-.throttle-mock .rail{position:relative;width:5px;height:52px;border-radius:999px;background:rgba(10,16,38,.9);border:1px solid rgba(143,176,255,.25);overflow:hidden}
+.throttle-mock .rail{position:relative;width:5px;height:50px;border-radius:999px;background:rgba(10,16,38,.9);border:1px solid rgba(143,176,255,.25);overflow:hidden}
 .throttle-mock .lever{position:absolute;left:0;right:0;top:16px;height:10px;border-radius:999px;background:#60a5fa;box-shadow:0 0 6px #60a5fa}
-.tl{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:360px;font-size:13.5px;color:var(--muted);line-height:1.45}
+.tl{list-style:none;display:flex;flex-direction:column;gap:8px;max-width:380px;font-size:13px;color:var(--muted);line-height:1.42}
 .tl b{color:var(--text);font-weight:600}
 
 @media (max-width:760px){
@@ -508,5 +514,11 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
     grid-template-columns:1fr;
     gap:10px;
   }
+}
+@media (max-height:520px) and (orientation:landscape){
+  .kg{gap:10px}
+  .tc{flex-wrap:nowrap;gap:16px;padding:2px 0}
+  .phone{width:240px;height:132px;border-radius:18px}
+  .tl{font-size:12px;gap:5px;max-width:none}
 }
 </style>

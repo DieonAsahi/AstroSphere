@@ -6,6 +6,7 @@ import {
   game,
   saveProgress,
   saveSettings,
+  saveTouchLayout,
   showToast,
   registerUser,
   loginUser,
@@ -15,6 +16,7 @@ import {
   resetAllGameData,
   deleteUserAccount,
 } from '~/composables/useGame.js';
+import { TOUCH_ELEMENTS, defaultTouchLayout, sanitizeTouchLayout } from '~/data/touchLayout.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PLANETS, NAME_OF } from '~/data/solarSystem.js';
 import { SHIPS, SHIP_IDS } from '~/data/ships.js';
@@ -182,6 +184,23 @@ onBeforeUnmount(endCapture);
 function setting(k, v) {
   store.settings[k] = v;
   game()?.applySettings();
+}
+
+// ---- Tata Letak Kontrol Sentuh ----
+const editingTouchLayout = ref(false);
+const showMobileKeyboard = ref(false);
+const currentTouchLayout = computed(() => sanitizeTouchLayout(store.settings.touchLayout));
+const touchHiddenCount = computed(() => (
+  TOUCH_ELEMENTS.filter((el) => currentTouchLayout.value[el.id]?.hidden).length
+));
+
+function openTouchEditor() {
+  editingTouchLayout.value = true;
+}
+
+function resetTouchLayoutDefault() {
+  saveTouchLayout(defaultTouchLayout());
+  showToast('Tata letak kontrol sentuh dikembalikan ke bawaan.', 2400);
 }
 
 // ---- Autentikasi Akun ----
@@ -557,19 +576,149 @@ const FAQ = computed(() => {
 
         <!-- TAB 3: KONTROL -->
         <section v-else-if="tab === 'kontrol'" class="tab-pane">
+          <!-- KONTROL LAYAR SENTUH & EDITOR TATA LETAK (TAMPIL DI ATAS PADA PERANGKAT SENTUH) -->
+          <div v-if="store.touch" class="control-panel touch-editor-panel">
+            <div class="panel-section-header">
+              <div class="header-titles">
+                <h3 class="section-title">Tata Letak Kontrol Sentuh</h3>
+                <p class="section-sub">Geser posisi, ubah ukuran, atau sembunyikan tombol kemudi sentuh sesuai kenyamanan tanganmu.</p>
+              </div>
+              <button type="button" class="btn-subtle" @click="resetTouchLayoutDefault">
+                <UiIcon name="ulang" :size="14" />
+                <span>Reset Default</span>
+              </button>
+            </div>
+            <div class="touch-editor-actions">
+              <div class="editor-status-copy">
+                <span class="action-label">Kustomisasi HUD Kokpit Mobile</span>
+                <span class="action-sub">
+                  {{ touchHiddenCount ? `${touchHiddenCount} tombol sedang disembunyikan` : 'Seluruh 5 kontrol sentuh aktif di layar' }}
+                </span>
+              </div>
+              <button type="button" class="btn-open-editor" @click="openTouchEditor">
+                <UiIcon name="edit" :size="16" />
+                <span>Atur Tata Letak Kontrol</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-panel" :class="{ 'touch-first': store.touch }">
+            <div class="panel-section-header">
+              <div class="header-titles">
+                <h3 class="section-title">Panduan Kontrol Layar Sentuh</h3>
+                <p v-if="store.touch" class="section-sub">Kelima kendali layar sentuh berikut tersedia saat menjelajah tata surya dalam mode lanskap.</p>
+              </div>
+            </div>
+            <div class="touch-cards-grid">
+              <div class="touch-tile">
+                <UiIcon name="target" :size="20" />
+                <span class="touch-title">Kemudi Analog</span>
+                <p class="touch-desc">Sentuh stik analog di kiri bawah untuk mengarahkan moncong pesawat.</p>
+              </div>
+              <div class="touch-tile">
+                <UiIcon name="gas" :size="20" />
+                <span class="touch-title">Tuas Kecepatan</span>
+                <p class="touch-desc">Tarik tuas dorong di kanan bawah untuk Maju, Turbo, Netral, dan Rem.</p>
+              </div>
+              <div class="touch-tile">
+                <UiIcon name="pesawat" :size="20" />
+                <span class="touch-title">Tombol Guling Kiri &amp; Kanan</span>
+                <p class="touch-desc">Ketuk tombol panah guling di kanan bawah untuk bermanuver menghindari sampah antariksa.</p>
+              </div>
+              <div class="touch-tile">
+                <UiIcon name="jeda" :size="20" />
+                <span class="touch-title">Tombol Jeda</span>
+                <p class="touch-desc">Ketuk ikon Jeda pada HUD untuk membuka Menu Jeda, Peta, Hanggar, atau Pengaturan.</p>
+              </div>
+              <div class="touch-tile">
+                <UiIcon name="mata" :size="20" />
+                <span class="touch-title">Sentuh &amp; Seret Kamera</span>
+                <p class="touch-desc">Sentuh dan geser area tengah layar untuk melihat sekeliling angkasa 360&deg;.</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="!store.touch" class="control-panel touch-editor-panel">
+            <div class="panel-section-header">
+              <div class="header-titles">
+                <h3 class="section-title">Tata Letak Kontrol Sentuh</h3>
+                <p class="section-sub">Atur posisi dan ukuran tombol sentuh (Kemudi Analog, Tuas Kecepatan, Guling Kiri/Kanan, dan Tombol Jeda) untuk perangkat layar sentuh.</p>
+              </div>
+              <button type="button" class="btn-subtle" @click="resetTouchLayoutDefault">
+                <UiIcon name="ulang" :size="14" />
+                <span>Reset Default</span>
+              </button>
+            </div>
+            <div class="touch-editor-actions">
+              <div class="editor-status-copy">
+                <span class="action-label">Kustomisasi HUD Layar Sentuh</span>
+                <span class="action-sub">
+                  {{ touchHiddenCount ? `${touchHiddenCount} tombol sedang disembunyikan` : 'Seluruh 5 kontrol sentuh aktif' }}
+                </span>
+              </div>
+              <button type="button" class="btn-open-editor" @click="openTouchEditor">
+                <UiIcon name="edit" :size="16" />
+                <span>Atur Tata Letak Kontrol</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SENSITIVITAS & INVERT Y -->
+          <div class="control-panel slider-panel">
+            <div class="slider-row">
+              <div class="slider-label-col">
+                <span class="action-label">Kepekaan Lihat Sekeliling</span>
+                <span class="action-sub">Mengatur kecepatan rotasi kamera mouse dan sentuhan</span>
+              </div>
+              <div class="slider-ctrl">
+                <input
+                  type="range"
+                  min="0.3"
+                  max="2.5"
+                  step="0.1"
+                  :value="store.settings.sensitivity"
+                  @input="setting('sensitivity', +$event.target.value)"
+                />
+                <span class="slider-val">{{ store.settings.sensitivity.toFixed(1) }}×</span>
+              </div>
+            </div>
+            <div class="card-divider" />
+            <UiToggle
+              :model-value="store.settings.invertY"
+              label="Balik Arah Naik / Turun"
+              sub="Saat diaktifkan, dorong ke atas = hidung pesawat menukik ke bawah"
+              @update:model-value="setting('invertY', $event)"
+            />
+          </div>
+
+          <!-- KONFIGURASI KEYBOARD (UTAMA DI DESKTOP, OPSIONAL DI MOBILE) -->
           <div class="control-panel">
             <div class="panel-section-header">
               <div class="header-titles">
                 <h3 class="section-title">Konfigurasi Keyboard</h3>
-                <p class="section-sub">Tekan "Ubah", lalu tekan tombol baru pada keyboard. Tekan Esc untuk batal.</p>
+                <p class="section-sub">
+                  {{ store.touch
+                    ? 'Opsional: tersedia bila memakai keyboard eksternal.'
+                    : 'Tekan "Ubah", lalu tekan tombol baru pada keyboard. Tekan Esc untuk batal.' }}
+                </p>
               </div>
-              <button type="button" class="btn-subtle" @click="resetKeys">
-                <UiIcon name="ulang" :size="14" />
-                <span>Bawaan</span>
-              </button>
+              <div class="kb-head-actions">
+                <button
+                  v-if="store.touch"
+                  type="button"
+                  class="btn-subtle"
+                  @click="showMobileKeyboard = !showMobileKeyboard"
+                >
+                  <span>{{ showMobileKeyboard ? 'Tutup' : 'Tampilkan' }}</span>
+                </button>
+                <button v-if="!store.touch || showMobileKeyboard" type="button" class="btn-subtle" @click="resetKeys">
+                  <UiIcon name="ulang" :size="14" />
+                  <span>Bawaan</span>
+                </button>
+              </div>
             </div>
 
-            <div class="keys-table">
+            <div v-if="!store.touch || showMobileKeyboard" class="keys-table">
               <div
                 v-for="a in ACTIONS.filter(x => !['turnL', 'turnR'].includes(x.id))"
                 :key="a.id"
@@ -621,59 +770,6 @@ const FAQ = computed(() => {
                 <span />
               </div>
             </div>
-          </div>
-
-          <!-- KONTROL LAYAR SENTUH & SENSITIVITAS -->
-          <div class="control-panel">
-            <div class="panel-section-header">
-              <div class="header-titles">
-                <h3 class="section-title">Navigasi Layar Sentuh</h3>
-              </div>
-            </div>
-            <div class="touch-cards-grid">
-              <div class="touch-tile">
-                <UiIcon name="target" :size="20" />
-                <span class="touch-title">Kemudi Analog</span>
-                <p class="touch-desc">Sentuh stik analog di kiri bawah untuk mengarahkan moncong pesawat.</p>
-              </div>
-              <div class="touch-tile">
-                <UiIcon name="gas" :size="20" />
-                <span class="touch-title">Tuas Dorong &amp; Rem</span>
-                <p class="touch-desc">Tarik tuas dorong di kanan bawah untuk akselerasi, turbo, dan deselerasi.</p>
-              </div>
-              <div class="touch-tile">
-                <UiIcon name="mata" :size="20" />
-                <span class="touch-title">Lihat Sekeliling</span>
-                <p class="touch-desc">Geser area tengah layar dengan tetikus atau sentuhan untuk menatap angkasa.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="control-panel slider-panel">
-            <div class="slider-row">
-              <div class="slider-label-col">
-                <span class="action-label">Kepekaan Lihat Sekeliling</span>
-                <span class="action-sub">Mengatur kecepatan rotasi kamera mouse dan sentuhan</span>
-              </div>
-              <div class="slider-ctrl">
-                <input
-                  type="range"
-                  min="0.3"
-                  max="2.5"
-                  step="0.1"
-                  :value="store.settings.sensitivity"
-                  @input="setting('sensitivity', +$event.target.value)"
-                />
-                <span class="slider-val">{{ store.settings.sensitivity.toFixed(1) }}×</span>
-              </div>
-            </div>
-            <div class="card-divider" />
-            <UiToggle
-              :model-value="store.settings.invertY"
-              label="Balik Arah Naik / Turun"
-              sub="Saat diaktifkan, dorong ke atas = hidung pesawat menukik ke bawah"
-              @update:model-value="setting('invertY', $event)"
-            />
           </div>
         </section>
 
@@ -927,6 +1023,11 @@ const FAQ = computed(() => {
           </div>
         </div>
       </div>
+    </Transition>
+
+    <!-- EDITOR TATA LETAK KONTROL SENTUH INTERAKTIF -->
+    <Transition name="fade">
+      <PanelsTouchLayoutEditor v-if="editingTouchLayout" @close="editingTouchLayout = false" />
     </Transition>
   </div>
 </template>
@@ -1748,9 +1849,47 @@ const FAQ = computed(() => {
   background: rgba(148, 174, 255, 0.12);
   border-color: rgba(148, 174, 255, 0.4);
 }
+.touch-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.editor-status-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.btn-open-editor {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: #3b82f6;
+  border: none;
+  color: #ffffff;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(59, 130, 246, 0.35);
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.btn-open-editor:hover {
+  background: #2563eb;
+}
+.kb-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .touch-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
 }
 .touch-tile {
@@ -2407,6 +2546,82 @@ const FAQ = computed(() => {
   .btn-danger-outline,
   .btn-danger-solid {
     width: 100%;
+  }
+}
+
+/* Mobile Landscape: header ringkas, kartu tetap 2 kolom agar hemat ruang vertikal */
+@media (max-height: 520px) and (orientation: landscape) {
+  .prof {
+    padding: calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(18px + var(--safe-b)) calc(14px + var(--safe-l));
+  }
+  .wrap {
+    gap: 10px;
+  }
+  .prof-header {
+    padding: 4px 2px;
+  }
+  .btn-back-nav {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+  .hero-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .hero-card {
+    padding: 12px 14px;
+  }
+  .profile-identity {
+    margin-top: 8px;
+    gap: 10px;
+  }
+  .avatar-box {
+    width: 40px;
+    height: 40px;
+  }
+  .pilot-name {
+    font-size: 16px;
+  }
+  .card-divider {
+    margin: 10px 0 8px;
+  }
+  .star-number {
+    font-size: 26px;
+  }
+  .star-icon {
+    font-size: 20px;
+  }
+  .stats-footnote {
+    margin-top: 8px;
+    padding-top: 6px;
+  }
+  .segmented-bar {
+    padding: 3px;
+  }
+  .seg-item {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+  .quiz-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .quiz-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .touch-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .control-panel {
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .touch-tile {
+    padding: 10px 12px;
   }
 }
 </style>

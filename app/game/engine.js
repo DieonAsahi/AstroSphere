@@ -773,10 +773,13 @@ export function createEngine(el) {
     if (el.boostFx) el.boostFx.style.opacity = (ship.boost * .9).toFixed(2);
     if (msgTimer > 0) { msgTimer -= dt; if (msgTimer <= 0) store.msg.show = false; }
 
-    // Sinkronisasi analog stick kemudi ke HUD pada 60 FPS (mulus tanpa lag)
+    // Sinkronisasi analog stick kemudi & status manuver guling ke HUD pada 60 FPS (mulus tanpa lag)
     if (!store.hud.stick) store.hud.stick = { x: 0, y: 0 };
     store.hud.stick.x = damp(store.hud.stick.x, input.yaw, 18, dt);
     store.hud.stick.y = damp(store.hud.stick.y, input.pitch, 18, dt);
+    store.hud.dodging = !!ship.dodging;
+    store.hud.rollDir = roll.t > 0 ? roll.dir : 0;
+    store.hud.rollCd = roll.cd > 0 ? Math.min(1, roll.cd / ROLL_CD) : 0;
 
     if (!slow) return;
     const h = store.hud;
@@ -1666,6 +1669,7 @@ export function createEngine(el) {
     setBoost(onOff) { hold.boost = !!onOff; },
     setBrake(onOff) { hold.brake = !!onOff; if (onOff) ship.braking = true; },
     setSteer(x, y) { joy.x = clamp(x, -1, 1); joy.y = clamp(y, -1, 1); },
+    startRoll(dir) { startRoll(dir > 0 ? 1 : -1); },
     get throttle() { return ship.throttle; },
     // Misi kisah nyata (Apollo 13)
     mission: {

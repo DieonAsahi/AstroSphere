@@ -191,4 +191,18 @@ onBeforeUnmount(closeMissionMenu);
 .pop-item .p-star{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:var(--star);font-weight:500}
 
 @media (max-width:760px){ .brand b{display:none} .tag{display:none} .mission-top-btn span{display:none} }
+@media (max-height:520px) and (orientation:landscape){
+  .tb{padding:calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) 0 calc(12px + var(--safe-l))}
+  .l{height:32px}
+  .brand{font-size:16.5px;gap:7px}
+  .back{height:32px;min-height:32px;max-height:32px;padding:0 11px;font-size:12.5px}
+  .l .tag{height:32px;min-height:32px;font-size:10.5px}
+  .mission-top-btn{height:36px;min-height:36px;padding:0 11px;font-size:12.5px}
+  .r .ib{width:36px;height:36px;min-height:36px}
+  .mission-popover{width:270px;padding:10px;max-height:calc(100dvh - 56px);overflow-y:auto}
+}
+@media (max-height:520px) and (max-width:640px){
+  .brand b{display:none}
+  .mission-top-btn span{display:none}
+}
 </style>

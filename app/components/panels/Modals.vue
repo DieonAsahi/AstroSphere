@@ -182,7 +182,7 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
           <PanelsJournal @close="close" />
         </div>
 
-        <div v-else-if="store.modal === 'controls'" class="mb"><UiKeyGuide compact /><p class="small c">Tombol bisa diubah di Profil → Kontrol.</p></div>
+        <div v-else-if="store.modal === 'controls'" class="mb"><UiKeyGuide compact /><p class="small c">{{ store.touch ? 'Posisi & ukuran tombol sentuh bisa diatur di Profil → Kontrol.' : 'Tombol bisa diubah di Profil → Kontrol.' }}</p></div>
 
         <div v-else-if="store.modal === 'confirmNew'" class="mb confirm-body">
           <p class="confirm-text">Posisi pesawat dan jurnal akan dimulai ulang dari orbit Bumi. Bintang, skor kuis, dan pesawatmu tetap aman.</p>
@@ -568,4 +568,8 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 .acts .btn.line:hover{background:rgba(148,174,255,.14);border-color:rgba(148,163,184,.45);color:#fff;filter:none}
 .acts .btn.primary{background:#3b82f6;color:#ffffff;border:none;box-shadow:0 4px 14px rgba(59,130,246,.35)}
 .acts .btn.primary:hover{background:#2563eb;transform:translateY(-1px);filter:none}
+@media (max-height:520px) and (orientation:landscape){
+  .modal{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l))}
+  .box,.box.settings,.box.controls,.box.journal{max-height:calc(100dvh - 16px);padding:14px 18px;gap:10px}
+}
 </style>

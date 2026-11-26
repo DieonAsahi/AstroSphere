@@ -6,6 +6,7 @@ import { store, game, isFound } from '~/composables/useGame.js';
 import { COLOR_OF, PLANETS } from '~/data/solarSystem.js';
 import { fmtDist } from '~/game/util.js';
 import { resolveKeymap, keyLabel } from '~/data/keymap.js';
+import { sanitizeTouchLayout, touchItemStyle } from '~/data/touchLayout.js';
 
 const hint = ref(false);
 let t1, t2;
@@ -21,6 +22,17 @@ onBeforeUnmount(() => {
 
 const km = computed(() => resolveKeymap(store.settings.keys));
 const k = (id) => keyLabel(km.value[id]?.[0]);
+
+const touchLayout = computed(() => sanitizeTouchLayout(store.settings.touchLayout));
+const hudPosStyle = (id) => (store.touch ? touchItemStyle(touchLayout.value[id]) : undefined);
+
+function onRollTap(dir) {
+  game()?.startRoll?.(dir);
+}
+
+function onPauseTap() {
+  game()?.pause?.();
+}
 
 // Status tuas dan pendorong
 const status = computed(() => {
@@ -83,6 +95,7 @@ const stickState = reactive({
   pointerId: null,
   startX: 0,
   startY: 0,
+  scale: 1,
   dragX: 0,
   dragY: 0,
 });
@@ -92,10 +105,10 @@ function onStickPointerDown(e) {
   stickState.pointerId = e.pointerId;
   e.currentTarget.setPointerCapture(e.pointerId);
   const rect = e.currentTarget.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  stickState.startX = centerX;
-  stickState.startY = centerY;
+  const baseW = e.currentTarget.offsetWidth || rect.width || 1;
+  stickState.scale = rect.width > 0 ? rect.width / baseW : 1;
+  stickState.startX = rect.left + rect.width / 2;
+  stickState.startY = rect.top + rect.height / 2;
   stickState.dragging = true;
 
   updateStickPosition(e.clientX, e.clientY);
@@ -107,8 +120,9 @@ function onStickPointerMove(e) {
 }
 
 function updateStickPosition(clientX, clientY) {
-  let dx = clientX - stickState.startX;
-  let dy = clientY - stickState.startY;
+  const sc = stickState.scale || 1;
+  let dx = (clientX - stickState.startX) / sc;
+  let dy = (clientY - stickState.startY) / sc;
   const dist = Math.hypot(dx, dy);
   if (dist > STICK_R) {
     dx = (dx / dist) * STICK_R;
@@ -159,6 +173,7 @@ const throttleState = reactive({
   dragging: false,
   pointerId: null,
   trackRect: null,
+  scale: 1,
   dragY: NEUTRAL_Y,
 });
 const trackRef = ref(null);
@@ -167,7 +182,10 @@ function onTrackPointerDown(e) {
   if (throttleState.pointerId !== null) return;
   throttleState.pointerId = e.pointerId;
   e.currentTarget.setPointerCapture(e.pointerId);
-  throttleState.trackRect = e.currentTarget.getBoundingClientRect();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const baseH = e.currentTarget.offsetHeight || TRACK_HEIGHT;
+  throttleState.trackRect = rect;
+  throttleState.scale = rect.height > 0 ? rect.height / baseH : 1;
   throttleState.dragging = true;
   updateThrottleFromPointer(e.clientY);
 }
@@ -180,7 +198,8 @@ function onTrackPointerMove(e) {
 function updateThrottleFromPointer(clientY) {
   const rect = throttleState.trackRect || trackRef.value?.getBoundingClientRect();
   if (!rect) return;
-  const rawY = clientY - rect.top;
+  const sc = throttleState.scale || 1;
+  const rawY = (clientY - rect.top) / sc;
   const relY = Math.max(0, Math.min(MAX_TRAVEL, rawY - HANDLE_HEIGHT / 2));
   throttleState.dragY = relY;
 
@@ -322,7 +341,12 @@ function handleQuickStop() {
     <!-- -------------------------------------------------------- -->
 
     <!-- 1. KEMUDI ANALOG (KIRI BAWAH) -->
-    <div class="cockpit-stick-wrap hud-el" :class="{ engaged: isStickEngaged }">
+    <div
+      v-if="!store.touch || !touchLayout.stick.hidden"
+      class="cockpit-stick-wrap hud-el"
+      :class="{ engaged: isStickEngaged, 'custom-pos': store.touch }"
+      :style="hudPosStyle('stick')"
+    >
       <div
         class="stick-base"
         @pointerdown="onStickPointerDown"
@@ -345,7 +369,12 @@ function handleQuickStop() {
     </div>
 
     <!-- 2. SPEEDOMETER KOKPIT & TUAS DORONG VERTIKAL (KANAN BAWAH) -->
-    <div class="cockpit-throttle-wrap hud-el">
+    <div
+      v-if="!store.touch || !touchLayout.throttle.hidden"
+      class="cockpit-throttle-wrap hud-el"
+      :class="{ 'custom-pos': store.touch }"
+      :style="hudPosStyle('throttle')"
+    >
       <!-- Mini Speedometer Digital & Bar Daya Dorong (Atas) -->
       <div class="mini-speedo">
         <div class="speedo-readout">
@@ -399,10 +428,70 @@ function handleQuickStop() {
       </div>
 
       <!-- Keterangan Cepat Ringkas (Bawah) -->
-      <div class="throttle-hint-box">
-        <small v-if="!store.touch" class="throttle-keys">Enter Gas · Ctrl Rem</small>
+      <div v-if="!store.touch" class="throttle-hint-box">
+        <small class="throttle-keys">Enter Gas · Ctrl Rem</small>
       </div>
     </div>
+
+    <!-- 3. TOMBOL SENTUH MANUVER GULING KIRI & KANAN (KHUSUS PERANGKAT SENTUH) -->
+    <button
+      v-if="store.touch && store.phase === 'playing' && !touchLayout.rollLeft.hidden"
+      type="button"
+      class="touch-roll left hud-el custom-pos"
+      :class="{
+        active: store.hud.dodging && store.hud.rollDir < 0,
+        cooling: store.hud.rollCd > 0 && !(store.hud.dodging && store.hud.rollDir < 0),
+      }"
+      :style="hudPosStyle('rollLeft')"
+      aria-label="Manuver Guling Kiri"
+      title="Guling Kiri"
+      @pointerdown.stop.prevent="onRollTap(-1)"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 7H4V2" />
+        <path d="M4.5 7A8.5 8.5 0 1 1 5.6 17.6" />
+        <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+      </svg>
+      <span class="touch-roll-lbl">Kiri</span>
+      <span v-if="store.hud.rollCd > 0" class="roll-cd-bar"><i :style="{ width: `${Math.round((1 - store.hud.rollCd) * 100)}%` }" /></span>
+    </button>
+
+    <button
+      v-if="store.touch && store.phase === 'playing' && !touchLayout.rollRight.hidden"
+      type="button"
+      class="touch-roll right hud-el custom-pos"
+      :class="{
+        active: store.hud.dodging && store.hud.rollDir > 0,
+        cooling: store.hud.rollCd > 0 && !(store.hud.dodging && store.hud.rollDir > 0),
+      }"
+      :style="hudPosStyle('rollRight')"
+      aria-label="Manuver Guling Kanan"
+      title="Guling Kanan"
+      @pointerdown.stop.prevent="onRollTap(1)"
+    >
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 7h5V2" />
+        <path d="M19.5 7A8.5 8.5 0 1 0 18.4 17.6" />
+        <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+      </svg>
+      <span class="touch-roll-lbl">Kanan</span>
+      <span v-if="store.hud.rollCd > 0" class="roll-cd-bar"><i :style="{ width: `${Math.round((1 - store.hud.rollCd) * 100)}%` }" /></span>
+    </button>
+
+    <!-- 4. TOMBOL JEDA / PAUSE CEPAT MOBILE -->
+    <button
+      v-if="store.touch && store.phase === 'playing' && !touchLayout.pause.hidden"
+      type="button"
+      class="touch-pause hud-el custom-pos"
+      :style="hudPosStyle('pause')"
+      aria-label="Buka Menu Jeda"
+      title="Jeda Permainan"
+      @pointerdown.stop
+      @click="onPauseTap"
+    >
+      <UiIcon name="jeda" :size="18" />
+      <span class="touch-pause-lbl">Jeda</span>
+    </button>
 
     <!-- PETUNJUK TOMBOL -->
     <Transition name="fade">
@@ -525,18 +614,137 @@ function handleQuickStop() {
 .hint span{display:flex;align-items:center;gap:5px}
 @media (max-width:1100px){ .hint{display:none} }
 
+/* Penyesuaian posisi khusus sentuh sesuai editor Profil */
+.custom-pos{right:auto !important;bottom:auto !important}
+
+/* 3. TOMBOL SENTUH MANUVER GULING (Q / E MOBILE) & JEDA MOBILE */
+.touch-roll{
+  position:absolute;
+  width:56px;
+  height:56px;
+  min-width:44px;
+  min-height:44px;
+  border-radius:14px;
+  background:var(--surface-a);
+  border:1px solid rgba(148,174,255,.24);
+  box-shadow:0 8px 22px rgba(0,0,0,.45);
+  color:#e2e8f0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  padding:4px;
+  touch-action:none;
+  user-select:none;
+  z-index:4;
+  transition:border-color .15s,background .15s,color .15s,opacity .15s,box-shadow .15s;
+}
+.touch-roll:active,.touch-roll.active{
+  background:rgba(59,130,246,.32);
+  border-color:#38bdf8;
+  color:#ffffff;
+  box-shadow:0 0 18px rgba(56,189,248,.45),0 6px 18px rgba(0,0,0,.45);
+}
+.touch-roll.cooling{
+  opacity:.62;
+  border-color:rgba(148,174,255,.14);
+}
+.touch-roll-lbl{
+  font-family:var(--display);
+  font-size:10px;
+  font-weight:500;
+  line-height:1;
+  color:var(--muted);
+}
+.touch-roll.active .touch-roll-lbl{color:#fff}
+.roll-cd-bar{
+  position:absolute;
+  left:8px;
+  right:8px;
+  bottom:4px;
+  height:2.5px;
+  border-radius:2px;
+  background:rgba(148,174,255,.16);
+  overflow:hidden;
+}
+.roll-cd-bar i{
+  display:block;
+  height:100%;
+  background:#38bdf8;
+  border-radius:inherit;
+}
+
+.touch-pause{
+  position:absolute;
+  min-width:46px;
+  min-height:46px;
+  padding:6px 10px;
+  border-radius:12px;
+  background:rgba(11,16,36,.84);
+  border:1px solid rgba(148,174,255,.22);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  box-shadow:0 6px 18px rgba(0,0,0,.42);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+  touch-action:manipulation;
+  user-select:none;
+  z-index:5;
+  transition:background .15s,border-color .15s,transform .1s;
+}
+.touch-pause:active{
+  background:rgba(59,130,246,.28);
+  border-color:rgba(148,174,255,.45);
+}
+.touch-pause-lbl{
+  font-family:var(--display);
+  font-size:9.5px;
+  font-weight:500;
+  line-height:1;
+  color:var(--muted);
+}
+
 /* Penyesuaian Layar Kecil / HP */
 @media (max-width:768px){
-  .cockpit-stick-wrap{left:calc(10px + var(--safe-l));bottom:calc(10px + var(--safe-b));padding:6px;height:auto}
+  .cockpit-stick-wrap:not(.custom-pos){left:calc(10px + var(--safe-l));bottom:calc(10px + var(--safe-b))}
+  .cockpit-stick-wrap{padding:6px;height:auto}
   .stick-base{width:80px;height:80px}
   .stick-knob{width:36px;height:36px;margin-left:-18px;margin-top:-18px}
-  .cockpit-throttle-wrap{right:calc(10px + var(--safe-r));bottom:calc(10px + var(--safe-b));width:138px;height:auto;padding:8px 10px}
+  .cockpit-throttle-wrap:not(.custom-pos){right:calc(10px + var(--safe-r));bottom:calc(10px + var(--safe-b))}
+  .cockpit-throttle-wrap{width:134px;height:auto;padding:8px 10px;gap:6px}
   .speedo-val{font-size:18px}
-  .throttle-body{gap:12px;margin:2px 0}
-  .slot-column{height:68px}
-  .throttle-track{width:28px;height:68px}
-  .throttle-handle{width:24px;height:16px;margin-left:-12px}
+  .throttle-body{gap:10px;margin:0}
+  .slot-column{height:76px}
+  .throttle-track{width:28px;height:76px}
+  .throttle-handle{width:24px;height:18px;margin-left:-12px}
   .approach-green-card{left:50%;top:calc(var(--top) + 104px + var(--safe-t));transform:translateX(-50%);padding:6px 12px;gap:8px}
   .approach-title{font-size:13px}
+}
+
+/* Mobile Landscape: kompak & bebas tumpuk pada tinggi layar terbatas */
+@media (max-height:520px) and (orientation:landscape){
+  .dest{top:calc(var(--top) + 34px + var(--safe-t));padding:3px 5px;gap:4px}
+  .who{min-height:28px;padding:0 8px;gap:6px;font-size:12.5px}
+  .who small{display:none}
+  .pill{min-height:28px;padding:0 9px;font-size:12px}
+  .pk{top:calc(var(--top) + 70px + var(--safe-t));padding:10px 12px}
+  .pk-l{max-height:min(42dvh,180px)}
+  .approach-green-card{top:calc(var(--top) + 72px + var(--safe-t));padding:4px 10px;gap:8px}
+  .approach-title{font-size:12.5px}
+  .cockpit-stick-wrap{padding:6px 8px;gap:4px}
+  .stick-base{width:76px;height:76px}
+  .stick-label{font-size:10.5px}
+  .cockpit-throttle-wrap{width:122px;padding:7px 8px;gap:4px}
+  .speedo-val{font-size:16px}
+  .thrust-meter{margin-bottom:2px}
+  .throttle-body{gap:8px}
+  .throttle-hint-box{display:none}
+  .touch-roll{width:50px;height:50px;border-radius:12px}
+  .touch-pause{min-width:42px;min-height:42px;padding:5px 8px}
 }
 </style>

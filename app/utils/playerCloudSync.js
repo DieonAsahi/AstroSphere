@@ -193,16 +193,18 @@ export function mergeProgress(cloudRow, localProgress, localSettings, localState
   const rawMergedState = lSavedAt >= cSavedAt ? (localState || cloudRow?.game_state || {}) : (cloudRow?.game_state || localState || {});
   const mergedGameState = rawMergedState && typeof rawMergedState === 'object' && !Array.isArray(rawMergedState) ? rawMergedState : {};
 
-  // Pengaturan preferensi & keymap terisolasi (jangan wariskan keymap tamu ke akun awan)
+  // Pengaturan preferensi, keymap & tata letak sentuh terisolasi (jangan wariskan milik tamu ke akun awan)
   const cloudKeymap = cloudRow?.progress_data?.keymap || cloudRow?.settings_data?.keys || null;
+  const cloudTouchLayout = cloudRow?.progress_data?.touchLayout || cloudRow?.settings_data?.touchLayout || null;
   const mergedSettings = {
     ...(cloudRow?.settings_data || {}),
     ...(localSettings || {}),
   };
-  if (cloudKeymap) {
-    mergedSettings.keys = cloudKeymap;
+  mergedSettings.keys = cloudKeymap || {};
+  if (cloudTouchLayout && typeof cloudTouchLayout === 'object') {
+    mergedSettings.touchLayout = cloudTouchLayout;
   } else {
-    mergedSettings.keys = {};
+    delete mergedSettings.touchLayout;
   }
 
   return {
@@ -221,6 +223,7 @@ export function mergeProgress(cloudRow, localProgress, localSettings, localState
       events: mergedEvents,
       missions: mergedMissions,
       keymap: cloudKeymap || {},
+      ...(cloudTouchLayout && typeof cloudTouchLayout === 'object' ? { touchLayout: cloudTouchLayout } : {}),
     },
     game_state: mergedGameState,
     settings_data: mergedSettings,

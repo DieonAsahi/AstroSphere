@@ -15,7 +15,7 @@ const k = (id) => keyLabel(km.value[id]?.[0]);
 const isActKey = (id, code) => (km.value[id] || []).includes(code);
 
 // Data Slide 1 - 4: Briefing Game 2 Kolom
-const SLIDES = [
+const BASE_SLIDES = [
   {
     step: '01 / 05 — EKSPLORASI',
     title: 'Jelajah Bebas Tata Surya 3D',
@@ -33,13 +33,15 @@ const SLIDES = [
         icon: 'peta',
         title: 'Peta Sistem & Autopilot',
         img: '/img/guide/slide-1-2-peta.webp',
-        desc: 'Tekan tombol M untuk membuka peta tata surya dan meluncur otomatis ke planet tujuan pilihanmu.'
+        desc: 'Tekan tombol M untuk membuka peta tata surya dan meluncur otomatis ke planet tujuan pilihanmu.',
+        touchDesc: 'Ketuk tombol Jeda di layar lalu pilih Peta tata surya untuk meluncur otomatis ke planet tujuan pilihanmu.'
       },
       {
         icon: 'mata',
         title: 'Kamera Kokpit & Bebas',
         img: '/img/guide/slide-1-3-kamera.webp',
-        desc: 'Tekan tombol V untuk berganti antara kamera kokpit orang pertama atau sudut pandang luar.'
+        desc: 'Tekan tombol V untuk berganti antara kamera kokpit orang pertama atau sudut pandang luar.',
+        touchDesc: 'Sentuh dan seret area tengah layar untuk memutar sudut pandang kamera melihat sekeliling 360°.'
       }
     ]
   },
@@ -126,6 +128,14 @@ const SLIDES = [
   }
 ];
 
+const SLIDES = computed(() => BASE_SLIDES.map((s) => ({
+  ...s,
+  points: s.points.map((pt) => ({
+    ...pt,
+    desc: store.touch && pt.touchDesc ? pt.touchDesc : pt.desc,
+  })),
+})));
+
 // Deteksi error muat gambar (cadangan: tampilan ikon)
 const imgErrors = reactive({});
 
@@ -135,58 +145,64 @@ const sub = ref(0), subTick = ref(0), subHold = ref(false);
 const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function pickSub(i) { sub.value = i; subTick.value++; }
 function nextSub() {
-  const item = SLIDES[slide.value - 1];
+  const item = SLIDES.value[slide.value - 1];
   if (!item || still) return;
   sub.value = (sub.value + 1) % item.points.length; subTick.value++;
 }
 watch(slide, () => { sub.value = 0; subTick.value++; });
 
 // ---- State simulator pesawat interaktif (Slide 5) ----
+const defaultActionPrompt = () => (
+  store.touch
+    ? 'Siap Menerima Input — Sentuh tombol kontrol di kanan untuk mencoba'
+    : 'Siap Menerima Input — Tekan tombol keyboard atau klik kontrol di kanan'
+);
 const activeAction = ref('');
-const actionStatus = ref('Siap Menerima Input — Tekan tombol keyboard atau klik kontrol di kanan');
+const actionStatus = ref(defaultActionPrompt());
 
 function setAction(act) {
   activeAction.value = act;
+  const touch = store.touch;
   switch (act) {
     case 'forward':
-      actionStatus.value = 'Pendorong Maju Aktif (Enter) — Kecepatan Naik';
+      actionStatus.value = touch ? 'Tuas Kecepatan (Maju) — Daya Dorong Naik' : 'Pendorong Maju Aktif (Enter) — Kecepatan Naik';
       break;
     case 'turbo':
-      actionStatus.value = 'Pendorong Turbo Aktif (Alt) — Kecepatan Maksimal!';
+      actionStatus.value = touch ? 'Tuas Kecepatan (Turbo) — Kecepatan Maksimal!' : 'Pendorong Turbo Aktif (Alt) — Kecepatan Maksimal!';
       break;
     case 'brake':
-      actionStatus.value = 'Rem Pendorong Balik Aktif (Ctrl) — Perlambatan';
+      actionStatus.value = touch ? 'Tuas Kecepatan (Rem) — Perlambatan Laju' : 'Rem Pendorong Balik Aktif (Ctrl) — Perlambatan';
       break;
     case 'stop':
-      actionStatus.value = 'Berhenti Seketika (Spasi) — Pesawat Diam';
+      actionStatus.value = touch ? 'Tuas Kecepatan (Netral) — Pesawat Diam' : 'Berhenti Seketika (Spasi) — Pesawat Diam';
       break;
     case 'up':
-      actionStatus.value = 'Hidung Naik (W / Panah Atas) — Pitch Up';
+      actionStatus.value = touch ? 'Kemudi Analog (Atas) — Hidung Pesawat Naik' : 'Hidung Naik (W / Panah Atas) — Pitch Up';
       break;
     case 'down':
-      actionStatus.value = 'Hidung Turun (S / Panah Bawah) — Pitch Down';
+      actionStatus.value = touch ? 'Kemudi Analog (Bawah) — Hidung Pesawat Turun' : 'Hidung Turun (S / Panah Bawah) — Pitch Down';
       break;
     case 'left':
-      actionStatus.value = 'Belok Kiri (A / Panah Kiri) — Yaw & Banking Roll';
+      actionStatus.value = touch ? 'Kemudi Analog (Kiri) — Belok ke Kiri' : 'Belok Kiri (A / Panah Kiri) — Yaw & Banking Roll';
       break;
     case 'right':
-      actionStatus.value = 'Belok Kanan (D / Panah Kanan) — Yaw & Banking Roll';
+      actionStatus.value = touch ? 'Kemudi Analog (Kanan) — Belok ke Kanan' : 'Belok Kanan (D / Panah Kanan) — Yaw & Banking Roll';
       break;
     case 'rollL':
-      actionStatus.value = `Manuver Guling Kiri (${k('rollL')}) — Hindari rintangan & sampah antariksa`;
+      actionStatus.value = touch ? 'Tombol Guling Kiri — Hindari sampah antariksa ke kiri' : `Manuver Guling Kiri (${k('rollL')}) — Hindari rintangan & sampah antariksa`;
       break;
     case 'rollR':
-      actionStatus.value = `Manuver Guling Kanan (${k('rollR')}) — Hindari rintangan & sampah antariksa`;
+      actionStatus.value = touch ? 'Tombol Guling Kanan — Hindari sampah antariksa ke kanan' : `Manuver Guling Kanan (${k('rollR')}) — Hindari rintangan & sampah antariksa`;
       break;
     default:
-      actionStatus.value = 'Siap Menerima Input — Tekan tombol keyboard atau klik kontrol di kanan';
+      actionStatus.value = defaultActionPrompt();
   }
 }
 
 function clearAction(act) {
   if (!act || activeAction.value === act) {
     activeAction.value = '';
-    actionStatus.value = 'Siap Menerima Input — Tekan tombol keyboard atau klik kontrol di kanan';
+    actionStatus.value = defaultActionPrompt();
   }
 }
 
@@ -439,13 +455,17 @@ onBeforeUnmount(() => {
           <!-- KOLOM KANAN: PENJELASAN KONTROL & TOMBOL UJI -->
           <div class="info-col">
             <div class="step-tag">05 / 05 — SIMULASI KOKPIT</div>
-            <h1 class="briefing-title">Uji Kendali Pesawat</h1>
-            <p class="briefing-lead">Tekan tombol pada keyboard nyata atau klik tombol di bawah untuk menguji respons fisik pesawat demo sebelum meluncur.</p>
+            <h1 class="briefing-title">{{ store.touch ? 'Kontrol Layar Sentuh' : 'Uji Kendali Pesawat' }}</h1>
+            <p class="briefing-lead">
+              {{ store.touch
+                ? 'Sentuh tombol uji kendali di bawah ini untuk melihat respons pesawat sebelum meluncur.'
+                : 'Tekan tombol pada keyboard nyata atau klik tombol di bawah untuk menguji respons fisik pesawat demo sebelum meluncur.' }}
+            </p>
 
             <div class="ctrl-testing-panel">
               <!-- Baris Arah Hidung & Manuver Guling -->
               <div class="ctrl-subgroup">
-                <span class="ctrl-sublabel">Arah Hidung &amp; Manuver Guling (Hindari Rintangan)</span>
+                <span class="ctrl-sublabel">{{ store.touch ? 'Kemudi Analog (Kiri) & Tombol Guling' : 'Arah Hidung & Manuver Guling (Hindari Rintangan)' }}</span>
                 <div class="wasd-layout">
                   <div class="key-row">
                     <button
@@ -457,7 +477,7 @@ onBeforeUnmount(() => {
                       @pointerup="clearAction('rollL')"
                       @pointerleave="clearAction('rollL')"
                     >
-                      <b class="kbd">{{ k('rollL') }}</b>
+                      <b class="kbd">{{ store.touch ? '↺' : k('rollL') }}</b>
                       <small>Guling Kiri</small>
                     </button>
                     <button
@@ -468,7 +488,7 @@ onBeforeUnmount(() => {
                       @pointerup="clearAction('up')"
                       @pointerleave="clearAction('up')"
                     >
-                      <b class="kbd">{{ k('up') }}</b>
+                      <b class="kbd">{{ store.touch ? '↑' : k('up') }}</b>
                       <small>Naik</small>
                     </button>
                     <button
@@ -480,7 +500,7 @@ onBeforeUnmount(() => {
                       @pointerup="clearAction('rollR')"
                       @pointerleave="clearAction('rollR')"
                     >
-                      <b class="kbd">{{ k('rollR') }}</b>
+                      <b class="kbd">{{ store.touch ? '↻' : k('rollR') }}</b>
                       <small>Guling Kanan</small>
                     </button>
                   </div>
@@ -493,7 +513,7 @@ onBeforeUnmount(() => {
                       @pointerup="clearAction('left')"
                       @pointerleave="clearAction('left')"
                     >
-                      <b class="kbd">{{ k('left') }}</b>
+                      <b class="kbd">{{ store.touch ? '←' : k('left') }}</b>
                       <small>Kiri</small>
                     </button>
                     <button
@@ -504,7 +524,7 @@ onBeforeUnmount(() => {
                       @pointerup="clearAction('down')"
                       @pointerleave="clearAction('down')"
                     >
-                      <b class="kbd">{{ k('down') }}</b>
+                      <b class="kbd">{{ store.touch ? '↓' : k('down') }}</b>
                       <small>Turun</small>
                     </button>
                     <button
@@ -515,7 +535,7 @@ onBeforeUnmount(() => {
                       @pointerup="clearAction('right')"
                       @pointerleave="clearAction('right')"
                     >
-                      <b class="kbd">{{ k('right') }}</b>
+                      <b class="kbd">{{ store.touch ? '→' : k('right') }}</b>
                       <small>Kanan</small>
                     </button>
                   </div>
@@ -524,7 +544,7 @@ onBeforeUnmount(() => {
 
               <!-- Baris Daya Dorong & Rem -->
               <div class="ctrl-subgroup">
-                <span class="ctrl-sublabel">Daya Dorong &amp; Rem</span>
+                <span class="ctrl-sublabel">{{ store.touch ? 'Tuas Kecepatan (Kanan)' : 'Daya Dorong & Rem' }}</span>
                 <div class="speed-grid">
                   <button
                     type="button"
@@ -534,7 +554,7 @@ onBeforeUnmount(() => {
                     @pointerup="clearAction('forward')"
                     @pointerleave="clearAction('forward')"
                   >
-                    <b class="kbd">{{ k('forward') }}</b>
+                    <b class="kbd">{{ store.touch ? 'Atas' : k('forward') }}</b>
                     <span>Maju / Gas</span>
                   </button>
                   <button
@@ -545,7 +565,7 @@ onBeforeUnmount(() => {
                     @pointerup="clearAction('turbo')"
                     @pointerleave="clearAction('turbo')"
                   >
-                    <b class="kbd">{{ k('turbo') }}</b>
+                    <b class="kbd">{{ store.touch ? 'Maks' : k('turbo') }}</b>
                     <span>Turbo</span>
                   </button>
                   <button
@@ -556,7 +576,7 @@ onBeforeUnmount(() => {
                     @pointerup="clearAction('brake')"
                     @pointerleave="clearAction('brake')"
                   >
-                    <b class="kbd">{{ k('brake') }}</b>
+                    <b class="kbd">{{ store.touch ? 'Bawah' : k('brake') }}</b>
                     <span>Rem</span>
                   </button>
                   <button
@@ -567,16 +587,26 @@ onBeforeUnmount(() => {
                     @pointerup="clearAction('stop')"
                     @pointerleave="clearAction('stop')"
                   >
-                    <b class="kbd sp">{{ k('stop') }}</b>
+                    <b class="kbd sp">{{ store.touch ? 'Netral' : k('stop') }}</b>
                     <span>Berhenti</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Baris Kontrol Kamera Bebas -->
+              <!-- Baris Kontrol Kamera & Jeda -->
               <div class="ctrl-subgroup">
-                <span class="ctrl-sublabel">Kamera Bebas (Free-Look POV)</span>
-                <div class="cam-hint-grid">
+                <span class="ctrl-sublabel">{{ store.touch ? 'Tombol Jeda & Sentuh Seret Kamera' : 'Kamera Bebas (Free-Look POV)' }}</span>
+                <div v-if="store.touch" class="cam-hint-grid">
+                  <div class="cam-hint-item">
+                    <b class="kbd">Jeda</b>
+                    <span>Menu Jeda, Peta &amp; Hanggar</span>
+                  </div>
+                  <div class="cam-hint-item">
+                    <b class="kbd">Seret Layar</b>
+                    <span>Putar Kamera Lihat Sekeliling</span>
+                  </div>
+                </div>
+                <div v-else class="cam-hint-grid">
                   <div class="cam-hint-item">
                     <b class="kbd">Klik Kiri 1&times;</b>
                     <span>Atur POV Kamera Bebas</span>
@@ -856,5 +886,37 @@ onBeforeUnmount(() => {
   .bottom-bar{flex-wrap:wrap;justify-content:center;gap:12px}
   .bottom-bar .nav-btn{flex:1 1 120px}
   .progress-track{order:-1;width:100%;justify-content:center}
+}
+
+/* Mobile Landscape: pertahankan tata letak 2 kolom ringkas agar muat dalam tinggi 340px–450px */
+@media (max-height:520px) and (orientation:landscape){
+  .guide{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l));overflow:hidden;align-items:stretch}
+  .wrap{gap:8px;height:100%;justify-content:space-between}
+  .head{padding-bottom:0}
+  .head .ib.sm{width:34px;height:34px}
+  .skip-link{padding:4px 10px;font-size:12.5px}
+  .slide-viewport{min-height:0;flex:1;justify-content:center;overflow:hidden}
+  .briefing-grid{grid-template-columns:0.9fr 1.15fr;gap:16px;align-items:center}
+  .visual-frame{aspect-ratio:16 / 10;max-height:calc(100dvh - 104px)}
+  .stage-sky{min-height:130px}
+  .demo-ship-box{width:84px;height:74px}
+  .stage-status{padding:6px 10px;font-size:11px;gap:8px}
+  .info-col{max-height:calc(100dvh - 104px);overflow-y:auto;gap:6px;padding-right:4px}
+  .step-tag{font-size:10.5px}
+  .briefing-title{font-size:clamp(17px,2.3vw,21px)}
+  .briefing-lead{font-size:12px;line-height:1.38;margin:0}
+  .points-list{gap:6px}
+  .point-item{padding:5px 8px;margin:0;gap:8px;border-radius:10px}
+  .pt-badge{width:26px;height:26px;font-size:11px}
+  .pt-title{font-size:12.5px}
+  .pt-desc{font-size:11px;line-height:1.34}
+  .ctrl-testing-panel{gap:6px}
+  .ctrl-sublabel{font-size:10px}
+  .test-key{padding:4px 9px}
+  .test-key-wide{padding:5px 8px;font-size:11.5px}
+  .cam-hint-grid{grid-template-columns:1fr 1fr}
+  .bottom-bar{padding-top:8px;flex-wrap:nowrap;justify-content:space-between;gap:10px}
+  .bottom-bar .nav-btn{flex:0 0 auto;height:34px;min-height:34px;min-width:104px;padding:0 14px;font-size:12.5px}
+  .progress-track{order:0;width:auto}
 }
 </style>

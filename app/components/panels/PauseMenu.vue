@@ -62,6 +62,13 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
         </button>
       </div>
 
+      <!-- Ringkasan Kontrol Sentuh Cepat (khusus perangkat sentuh) -->
+      <button v-if="store.touch" type="button" class="touch-summary-bar" @click="store.modal = 'controls'">
+        <UiIcon name="sentuh" :size="15" />
+        <span class="tsb-text">Kemudi Analog · Tuas Kecepatan · Guling Kiri/Kanan · Jeda · Seret Kamera</span>
+        <span class="tsb-act">Panduan</span>
+      </button>
+
       <!-- Bagian Bawah -->
       <div class="foot">
         <span class="pts"><UiIcon name="bintang" :size="16" />{{ store.progress.points }} bintang</span>
@@ -113,10 +120,28 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 .exit-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);transition:all .15s}
 .exit-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
 
+.touch-summary-bar{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.22);color:#7dd3fc;text-align:left;cursor:pointer;transition:background .15s}
+.touch-summary-bar:hover{background:rgba(56,189,248,.14)}
+.tsb-text{flex:1;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.tsb-act{font-family:var(--display);font-size:11.5px;font-weight:500;color:#38bdf8;white-space:nowrap}
+
 @media (max-width:480px){
   .pause{padding:16px 12px}
   .pause-card{padding:18px 16px;gap:12px;max-height:calc(100vh - 32px)}
   .grid{gap:8px}
   .tile-btn{padding:10px 6px;font-size:12.5px}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .pause{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l))}
+  .pause-card{width:min(620px,100%);max-height:calc(100dvh - 16px);padding:14px 18px;gap:10px}
+  .h2{font-size:18px}
+  .resume-btn{height:38px;min-height:38px;font-size:14px}
+  .mlist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .mis{padding:8px 10px;gap:8px}
+  .mic{width:28px;height:28px}
+  .grid{gap:8px}
+  .tile-btn{padding:9px 8px;font-size:12.5px;gap:4px}
+  .touch-summary-bar{padding:6px 10px}
+  .foot{padding-top:10px;margin-top:0}
 }
 </style>

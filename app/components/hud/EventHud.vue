@@ -75,4 +75,11 @@ function close() { ev.result = null; }
 /* layar sentuh: perisai di tengah bawah, kartu hasil sebagai lembar bawah */
 .touch .shield{left:50%;transform:translateX(-50%);bottom:calc(14px + var(--safe-b));width:min(240px,60vw)}
 .touch .res-wrap{place-items:end center;padding:12px 12px calc(12px + var(--safe-b))}
+@media (max-height:520px) and (orientation:landscape){
+  .touch .shield{width:min(195px,34vw);bottom:calc(8px + var(--safe-b));padding:7px 10px;gap:4px 8px}
+  .touch .res-wrap{place-items:center;padding:10px calc(14px + var(--safe-r)) 10px calc(14px + var(--safe-l))}
+  .res{max-height:calc(100dvh - 20px);overflow-y:auto;padding:14px 18px;gap:8px}
+  .ric{width:38px;height:38px}
+  .txt,.fact p{font-size:13px}
+}
 </style>

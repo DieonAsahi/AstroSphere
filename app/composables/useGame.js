@@ -5,6 +5,7 @@ import { SHIPS, SHIP_IDS } from '../data/ships.js';
 import { QUIZ, POINTS_PER_QUESTION, QUIZ_VERSION } from '../data/quiz.js';
 import { NAME_OF } from '../data/solarSystem.js';
 import { sanitizeKeys } from '../data/keymap.js';
+import { defaultTouchLayout, sanitizeTouchLayout } from '../data/touchLayout.js';
 import { PREDICT, PREDICT_REWARD, MYTH_REWARD, FACTS, CARD_REWARD } from '../data/learning.js';
 import { useSupabaseContent } from './useSupabaseContent.js';
 import { EVENTS, EVENT_REWARD } from '../data/events.js';
@@ -60,7 +61,18 @@ const ls = {
 const touch = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
   ? (window.matchMedia('(pointer: coarse)').matches || ((navigator.maxTouchPoints || 0) > 0 && window.matchMedia('(hover: none)').matches))
   : false;
-const DEFAULT_SETTINGS = { soundEnabled: true, hudOpacity: 1, sensitivity: 1, invertY: false, graphics: 'rendah', reduceMotion: false, tutorialSeen: false, events: true, keys: {} };
+const DEFAULT_SETTINGS = {
+  soundEnabled: true,
+  hudOpacity: 1,
+  sensitivity: 1,
+  invertY: false,
+  graphics: 'rendah',
+  reduceMotion: false,
+  tutorialSeen: false,
+  events: true,
+  keys: {},
+  touchLayout: defaultTouchLayout(),
+};
 const DEFAULT_PROGRESS = { points: 0, earned: 0, best: {}, attempts: {}, owned: ['astra'], selectedShip: 'astra', ledger: [], quizVersion: QUIZ_VERSION, predict: {}, myths: {}, cards: {}, found: { matahari: true }, events: {}, missions: {} };
 
 /** Menghitung skor kuis maksimal yang sah per planet berdasarkan bobot poin soal aktif */
@@ -76,17 +88,18 @@ export function quizMax(planet) {
 }
 
 function sanitizeSettings(s) {
-  const o = { ...DEFAULT_SETTINGS, keys: {} };
+  const o = { ...DEFAULT_SETTINGS, keys: {}, touchLayout: defaultTouchLayout() };
   if (!s || typeof s !== 'object') return o;
   for (const k of ['soundEnabled', 'invertY', 'reduceMotion', 'tutorialSeen', 'events']) if (typeof s[k] === 'boolean') o[k] = s[k];
   if (Number.isFinite(s.hudOpacity)) o.hudOpacity = Math.min(1, Math.max(.3, s.hudOpacity));
   if (Number.isFinite(s.sensitivity)) o.sensitivity = Math.min(2.5, Math.max(.3, s.sensitivity));
   if (s.graphics === 'tinggi' || s.graphics === 'rendah') o.graphics = s.graphics;
   o.keys = sanitizeKeys(s.keys);
+  o.touchLayout = sanitizeTouchLayout(s.touchLayout);
   return o;
 }
 
-// ---- Isolasi Keymap Per Akun (Tamu vs Akun Login) ----
+// ---- Isolasi Keymap & Tata Letak Sentuh Per Akun (Tamu vs Akun Login) ----
 let storeInitialized = false;
 
 function getActiveUserId() {
@@ -97,69 +110,96 @@ function getActiveUserId() {
   return (a?.loggedIn && typeof a.userId === 'string' && a.userId) ? a.userId : null;
 }
 
-export function getUserKeymapStorageKey(userId = null) {
+function prefStorageKey(prefix, userId = null) {
   const targetId = userId ?? getActiveUserId();
-  return targetId ? `astrosphere.keymap.${targetId}` : 'astrosphere.keymap.guest';
+  return targetId ? `${prefix}.${targetId}` : `${prefix}.guest`;
 }
 
-export function loadUserKeymap(userId = null) {
+function hasObjectEntries(v) {
+  return !!v && typeof v === 'object' && Object.keys(v).length > 0;
+}
+
+function loadUserPrefMap(prefix, settingField, sanitizeFn, fallbackFn, userId = null) {
   const targetId = userId ?? getActiveUserId();
-  const storageKey = targetId ? `astrosphere.keymap.${targetId}` : 'astrosphere.keymap.guest';
+  const storageKey = prefStorageKey(prefix, targetId);
   const raw = ls.read(storageKey);
-  if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
-    return sanitizeKeys(raw);
+  if (hasObjectEntries(raw)) {
+    return sanitizeFn(raw);
   }
-  // Migrasi aman satu kali untuk mode Tamu jika belum ada astrosphere.keymap.guest tetapi ada di settings lama
+  // Migrasi aman satu kali untuk mode Tamu bila masih tersimpan di objek settings lama
   if (!targetId) {
     const legacy = ls.read(KEYS.settings);
-    if (legacy?.keys && typeof legacy.keys === 'object' && Object.keys(legacy.keys).length > 0) {
-      const sanitized = sanitizeKeys(legacy.keys);
-      ls.write('astrosphere.keymap.guest', sanitized);
+    if (hasObjectEntries(legacy?.[settingField])) {
+      const sanitized = sanitizeFn(legacy[settingField]);
+      ls.write(`${prefix}.guest`, sanitized);
       return sanitized;
     }
   }
-  return {};
+  return fallbackFn();
+}
+
+function saveUserPrefMap(prefix, settingField, sanitizeFn, value = null, userId = null, syncCloud = true) {
+  const targetId = userId ?? getActiveUserId();
+  const fallbackVal = storeInitialized ? store?.settings?.[settingField] : undefined;
+  const finalVal = sanitizeFn(value ?? fallbackVal ?? {});
+  ls.write(prefStorageKey(prefix, targetId), finalVal);
+  if (storeInitialized && store?.settings) {
+    store.settings[settingField] = finalVal;
+    ls.write(KEYS.settings, store.settings);
+  }
+  if (syncCloud && storeInitialized && store?.account?.loggedIn && store?.account?.userId) {
+    triggerCloudSync();
+  }
+  return finalVal;
+}
+
+function switchAccountPrefMap(prefix, settingField, sanitizeFn, fallbackFn, userId = null, cloudValue = null) {
+  let targetVal;
+  if (userId) {
+    const localVal = ls.read(`${prefix}.${userId}`);
+    if (hasObjectEntries(localVal)) targetVal = sanitizeFn(localVal);
+    else if (hasObjectEntries(cloudValue)) targetVal = sanitizeFn(cloudValue);
+    else targetVal = fallbackFn();
+    ls.write(`${prefix}.${userId}`, targetVal);
+  } else {
+    const guestVal = ls.read(`${prefix}.guest`);
+    targetVal = hasObjectEntries(guestVal) ? sanitizeFn(guestVal) : fallbackFn();
+  }
+  if (storeInitialized && store?.settings) {
+    store.settings[settingField] = targetVal;
+    ls.write(KEYS.settings, store.settings);
+  }
+  return targetVal;
+}
+
+export function getUserKeymapStorageKey(userId = null) {
+  return prefStorageKey('astrosphere.keymap', userId);
+}
+
+export function loadUserKeymap(userId = null) {
+  return loadUserPrefMap('astrosphere.keymap', 'keys', sanitizeKeys, () => ({}), userId);
 }
 
 export function saveUserKeymap(keys = null, userId = null) {
-  const targetId = userId ?? getActiveUserId();
-  const finalKeys = sanitizeKeys(keys ?? (storeInitialized ? store?.settings?.keys : {}) ?? {});
-  const storageKey = targetId ? `astrosphere.keymap.${targetId}` : 'astrosphere.keymap.guest';
-  ls.write(storageKey, finalKeys);
-  if (storeInitialized && store?.settings) {
-    store.settings.keys = finalKeys;
-    ls.write(KEYS.settings, store.settings);
-  }
-  if (storeInitialized && store?.account?.loggedIn && store?.account?.userId) {
-    triggerCloudSync();
-  }
+  saveUserPrefMap('astrosphere.keymap', 'keys', sanitizeKeys, keys, userId, true);
 }
 
 export function switchAccountKeymap(userId = null, cloudKeymap = null) {
-  let targetKeys = {};
-  if (userId) {
-    // Mode Akun Login:
-    // Cek key lokal spesifik ID pengguna (astrosphere.keymap.<userId>)
-    const localKeys = ls.read(`astrosphere.keymap.${userId}`);
-    if (localKeys && typeof localKeys === 'object' && Object.keys(localKeys).length > 0) {
-      targetKeys = sanitizeKeys(localKeys);
-    } else if (cloudKeymap && typeof cloudKeymap === 'object' && Object.keys(cloudKeymap).length > 0) {
-      targetKeys = sanitizeKeys(cloudKeymap);
-    } else {
-      targetKeys = {};
-    }
-    ls.write(`astrosphere.keymap.${userId}`, targetKeys);
-  } else {
-    // Mode Tamu: muat khusus astrosphere.keymap.guest
-    const guestKeys = ls.read('astrosphere.keymap.guest');
-    targetKeys = sanitizeKeys(guestKeys || {});
-  }
-  if (storeInitialized && store?.settings) {
-    store.settings.keys = targetKeys;
-    ls.write(KEYS.settings, store.settings);
-  }
+  const targetKeys = switchAccountPrefMap('astrosphere.keymap', 'keys', sanitizeKeys, () => ({}), userId, cloudKeymap);
   game()?.applySettings();
   return targetKeys;
+}
+
+export function loadUserTouchLayout(userId = null) {
+  return loadUserPrefMap('astrosphere.touchlayout', 'touchLayout', sanitizeTouchLayout, defaultTouchLayout, userId);
+}
+
+export function saveUserTouchLayout(layout = null, userId = null) {
+  return saveUserPrefMap('astrosphere.touchlayout', 'touchLayout', sanitizeTouchLayout, layout, userId, true);
+}
+
+export function switchAccountTouchLayout(userId = null, cloudLayout = null) {
+  return switchAccountPrefMap('astrosphere.touchlayout', 'touchLayout', sanitizeTouchLayout, defaultTouchLayout, userId, cloudLayout);
 }
 
 function sanitizeProgress(p) {
@@ -197,6 +237,7 @@ export const store = reactive({
     target: { id: '', name: '—', dist: '—', eta: '—' },
     near: { id: '', name: '—', dist: '—', isApproaching: false },
     stick: { x: 0, y: 0 },
+    dodging: false, rollDir: 0, rollCd: 0,
     disc: '0/0', boundary: false,
   },
   autopilot: false,
@@ -252,10 +293,11 @@ export const store = reactive({
   },
 });
 
-// Inisialisasi keymap terisolasi akun / tamu setelah store siap (mencegah TDZ ReferenceError)
+// Inisialisasi keymap & tata letak sentuh terisolasi akun / tamu setelah store siap (mencegah TDZ ReferenceError)
 storeInitialized = true;
 const initialUserId = store.account.loggedIn && store.account.userId ? store.account.userId : null;
 store.settings.keys = loadUserKeymap(initialUserId);
+store.settings.touchLayout = loadUserTouchLayout(initialUserId);
 
 /** Sudah pernah ditemukan (dijelajahi)? Kuis, Mitos/Fakta, dan kartu planet baru terbuka setelah ini. */
 export const isFound = (id) => !!store.progress.found[id] || store.discovered.includes(id);
@@ -303,6 +345,7 @@ function clearLocalAccountToGuest() {
   });
   saveAccount();
   switchAccountKeymap(null);
+  switchAccountTouchLayout(null);
 }
 
 // Memicu sinkronisasi otomatis (debounced 2 detik) jika pemain masuk akun online
@@ -328,6 +371,7 @@ function triggerCloudSync() {
       events: store.progress.events,
       missions: store.progress.missions,
       keymap: store.settings.keys || {},
+      touchLayout: store.settings.touchLayout || defaultTouchLayout(),
     },
     game_state: readGameState() || {},
     settings_data: store.settings,
@@ -399,7 +443,12 @@ export function acknowledgeBannedModal() {
 }
 
 export function saveSettings() {
+  saveUserPrefMap('astrosphere.touchlayout', 'touchLayout', sanitizeTouchLayout, store.settings.touchLayout, null, false);
   saveUserKeymap(store.settings.keys);
+}
+
+export function saveTouchLayout(layout = null) {
+  return saveUserTouchLayout(layout);
 }
 
 export function saveProgress() {
@@ -444,6 +493,13 @@ export async function pullCloudProgress() {
       const localKeys = ls.read(`astrosphere.keymap.${store.account.userId}`);
       if (!localKeys && cloudKeymap && typeof cloudKeymap === 'object' && Object.keys(cloudKeymap).length > 0) {
         switchAccountKeymap(store.account.userId, cloudKeymap);
+      }
+      const cloudTouchLayout = res.mergedData?.progress_data?.touchLayout || res.mergedData?.settings_data?.touchLayout;
+      const localTouch = ls.read(`astrosphere.touchlayout.${store.account.userId}`);
+      if (!localTouch && cloudTouchLayout && typeof cloudTouchLayout === 'object' && Object.keys(cloudTouchLayout).length > 0) {
+        switchAccountTouchLayout(store.account.userId, cloudTouchLayout);
+      } else if (localTouch) {
+        store.settings.touchLayout = sanitizeTouchLayout(localTouch);
       }
       saveAccount();
       ls.write(KEYS.progress, store.progress);
@@ -524,9 +580,11 @@ export async function registerUser(name, pass) {
     ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
-    // Beralih ke keymap akun ini secara terisolasi (muat milik akun atau tamu bersih)
+    // Beralih ke keymap & tata letak sentuh akun ini secara terisolasi (muat milik akun atau tamu bersih)
     const cloudKeymap = cloudRes.mergedData?.progress_data?.keymap || null;
+    const cloudTouchLayout = cloudRes.mergedData?.progress_data?.touchLayout || cloudRes.mergedData?.settings_data?.touchLayout || null;
     switchAccountKeymap(userId, cloudKeymap);
+    switchAccountTouchLayout(userId, cloudTouchLayout);
     saveSettings();
     return { ok: true, cloud: true };
   }
@@ -596,9 +654,11 @@ export async function loginUser(name, pass) {
     ls.write(KEYS.astroId, finalAstroId);
     saveAccount();
     saveProgress();
-    // Beralih ke keymap akun ini secara terisolasi (muat milik akun, jangan warisi tamu)
+    // Beralih ke keymap & tata letak sentuh akun ini secara terisolasi (muat milik akun, jangan warisi tamu)
     const cloudKeymap = cloudRes.mergedData?.progress_data?.keymap || null;
+    const cloudTouchLayout = cloudRes.mergedData?.progress_data?.touchLayout || cloudRes.mergedData?.settings_data?.touchLayout || null;
     switchAccountKeymap(userId, cloudKeymap);
+    switchAccountTouchLayout(userId, cloudTouchLayout);
     saveSettings();
     return { ok: true, cloud: true };
   }
@@ -810,6 +870,7 @@ export async function deleteUserAccount() {
   store.hasSave = false;
   store.saveMeta = '';
   switchAccountKeymap(null);
+  switchAccountTouchLayout(null);
 
   // 5. Kembali ke splash screen bersih
   store.modal = null;
@@ -1036,9 +1097,11 @@ if (typeof window !== 'undefined') {
           ls.write(KEYS.astroId, finalAstroId);
           saveAccount();
           saveProgress();
-          // Beralih ke keymap akun Google ini secara terisolasi
+          // Beralih ke keymap & tata letak sentuh akun Google ini secara terisolasi
           const cloudKeymap = syncRes.mergedData?.progress_data?.keymap || null;
+          const cloudTouchLayout = syncRes.mergedData?.progress_data?.touchLayout || syncRes.mergedData?.settings_data?.touchLayout || null;
           switchAccountKeymap(user.id, cloudKeymap);
+          switchAccountTouchLayout(user.id, cloudTouchLayout);
           saveSettings();
 
           // Deteksi jika baru kembali dari redirect Google OAuth (PKCE maupun implicit)

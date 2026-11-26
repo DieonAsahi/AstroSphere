@@ -35,7 +35,7 @@ const eventBanner = computed(() => {
     if (ev.phase === 'warn') return { cls: 'warn', icon: 'matahari', t: eDef.warn, s: ev.safe ? 'Kamu sudah di bayangan — tetap di sana' : `Berlindung di bayangan ${ev.shelterName}`, n: ev.left };
     return { cls: ev.safe ? 'safe' : 'danger', icon: 'matahari', t: eDef.hit, s: ev.safe ? 'Aman di bayangan' : 'Terkena radiasi — cepat ke bayangan!', n: ev.left };
   }
-  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: eDef.warn, s: store.touch ? 'Hindari dengan joystick' : 'Hindari: A/D belok · W/S naik-turun · Q/E guling', n: ev.left };
+  if (ev.phase === 'warn') return { cls: 'warn', icon: 'info', t: eDef.warn, s: store.touch ? 'Hindari dengan kemudi analog atau tombol guling' : 'Hindari: A/D belok · W/S naik-turun · Q/E guling', n: ev.left };
   return { cls: ev.hits > 3 ? 'danger' : 'warn', icon: 'info', t: eDef.hit, s: ev.hits ? `Tertabrak ${ev.hits} kali` : 'Belum tertabrak', n: ev.left };
 });
 
@@ -74,6 +74,7 @@ onBeforeUnmount(() => { game()?.dispose(); });
 
 <template>
   <div class="shell" :class="{ touch: store.touch }">
+    <UiOrientationGuard />
     <NuxtErrorBoundary>
       <canvas id="c" ref="canvas" tabindex="-1" aria-label="Ruang angkasa 3D AstroSphere" />
     <div id="vignette" ref="vignette" />
@@ -425,11 +426,26 @@ onBeforeUnmount(() => { game()?.dispose(); });
     top:calc(var(--top) + 114px + var(--safe-t));
   }
 }
-@media (max-width:720px) and (max-height:460px){
+@media (max-height:520px) and (orientation:landscape){
   .notify.in-jelajah{
-    top:calc(var(--top) + 48px + var(--safe-t));
-    width:min(220px,calc(50vw - 110px - var(--safe-r)));
+    top:calc(46px + var(--safe-t));
+    width:min(240px,calc(50vw - 125px - var(--safe-r)));
+    gap:5px;
   }
+  .box-loader{
+    padding:18px 22px;
+    gap:10px;
+    max-height:calc(100dvh - 20px);
+    overflow-y:auto;
+  }
+  .box-loader.compact{
+    padding:16px 20px;
+    gap:10px;
+  }
+  .loader-orbit{width:58px;height:58px}
+  .loader-orbit.small{width:52px;height:52px}
+  .loader-title{font-size:17px}
+  .loader-sub{font-size:12.5px;min-height:16px}
 }
 @media (prefers-reduced-motion:reduce){
   .hud-alert-card.damaged,.hud-event-banner.warn{animation:none}

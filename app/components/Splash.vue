@@ -434,4 +434,29 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
   .form-title{font-size:19.5px}
 }
 @media (max-width:768px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
+@media (max-height:520px) and (orientation:landscape){
+  .top{padding:calc(10px + var(--safe-t)) calc(18px + var(--safe-r)) 0 calc(18px + var(--safe-l))}
+  .brand{font-size:17px;gap:8px}
+  .user-pill{padding:3px 10px 3px 4px;gap:7px}
+  .user-name{font-size:12.5px}
+  .hero{top:calc(50% + 12px);left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 36px));gap:9px}
+  .hero .h1{font-size:clamp(22px,3.4vw,30px);white-space:normal;line-height:1.12}
+  .hero .lead{font-size:13px;line-height:1.42;max-width:54ch}
+  .cta{flex-direction:row;flex-wrap:wrap;width:auto;max-width:none;gap:10px;margin-top:2px}
+  .cta .btn{min-width:168px;width:auto;height:40px;min-height:40px;font-size:14px}
+  .acct{width:auto;max-width:none;gap:8px}
+  .acct .btn{flex:0 0 auto;min-width:106px;height:34px;min-height:34px;font-size:13px}
+  .note{display:block;font-size:12px}
+  .formwrap,.login .formwrap,.register .formwrap{align-items:flex-start;padding:calc(46px + var(--safe-t)) calc(24px + var(--safe-r)) calc(12px + var(--safe-b)) calc(24px + var(--safe-l))}
+  .form{width:min(395px,100%);margin:auto 0;padding:16px 20px;gap:10px}
+  .form-header{gap:4px;margin-bottom:2px}
+  .form-title{font-size:18px}
+  .form-subtitle{font-size:12px}
+  .form-field{gap:4px;font-size:12.5px}
+  .form-input,.form-submit-btn,.google-btn,.guest-btn{height:38px;min-height:38px;font-size:13px}
+  .eye-btn{top:1px}
+}
+@media (max-width:720px) and (max-height:520px) and (orientation:landscape){
+  .login .formwrap,.register .formwrap{justify-content:center}
+}
 </style>
