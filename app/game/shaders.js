@@ -335,7 +335,7 @@ void main(){
 
 export const SUN_VS = PLANET_VS;
 export const SUN_FS = /* glsl */`
-uniform float uTime;
+uniform float uTime; uniform float uStorm; uniform float uFlare; uniform vec3 uActive;
 varying vec3 vObj; varying vec3 vWorldPos; varying vec3 vN; varying vec3 vCenter;
 ${GLSL_NOISE}
 void main(){
@@ -347,6 +347,16 @@ void main(){
   col = mix(col, vec3(1.0, 0.95, 0.8), smoothstep(0.75, 1.1, cells));
   float spot = smoothstep(0.64, 0.72, fbm(p * 2.0 + 11.0, 3) * 0.5 + 0.5);
   col *= 1.0 - spot * 0.5;
+  // Badai Matahari (fenomena): wilayah aktif terang + bintik gelap + kilat suar. uActive = arah satuan (ruang objek),
+  // nol di luar fenomena (juga di lab gerhana yang tidak mengisi uniform ini) sehingga blok ini dilewati.
+  float ad = dot(p, uActive);
+  if (ad > 0.85) {
+    float reg = smoothstep(0.9, 0.985, ad) * uStorm;
+    float umb = smoothstep(0.6, 0.78, fbm(p * 22.0 + 3.0, 2) * 0.5 + 0.5) * smoothstep(0.955, 0.985, ad);
+    col *= 1.0 - umb * 0.75 * uStorm;
+    col += vec3(1.0, 0.82, 0.5) * reg * (0.18 + 0.3 * g);
+    col += vec3(1.0, 0.97, 0.92) * (smoothstep(0.975, 0.998, ad) * 3.0 + smoothstep(0.9, 1.0, ad) * 0.5) * uFlare;
+  }
   float mu = max(dot(normalize(vN), normalize(cameraPosition - vWorldPos)), 0.0);
   col *= 0.55 + 0.45 * sqrt(mu);
   gl_FragColor = vec4(col * 2.2, 1.0);
@@ -358,7 +368,7 @@ export const CORONA_VS = /* glsl */`
 varying vec2 vUv;
 void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 export const CORONA_FS = /* glsl */`
-uniform float uTime; uniform float uScale;
+uniform float uTime; uniform float uScale; uniform float uCme; uniform float uCmeAng; uniform float uProm; uniform float uFlare;
 varying vec2 vUv;
 ${GLSL_NOISE}
 void main(){
@@ -373,6 +383,30 @@ void main(){
   float cor = glow * (0.75 + 0.6 * rays + 0.25 * rays2);
   cor *= smoothstep(uScale, uScale * 0.65, r);
   vec3 col = mix(vec3(1.0, 0.42, 0.1), vec3(1.0, 0.85, 0.6), exp(-rr * 1.2)) * cor * 1.5;
+  // Badai Matahari (fenomena): prominensa di tepi, kilat suar, lalu CME berbentuk kipas yang melebar sambil menjauh.
+  // uCmeAng = sudut layar wilayah aktif. Semua nol di luar fenomena.
+  if (uProm + uFlare + uCme > 0.0) {
+    vec2 q = p * uScale;
+    vec2 cd = vec2(cos(uCmeAng), sin(uCmeAng));
+    float along = dot(q, cd), lat = cd.x * q.y - cd.y * q.x;
+    vec2 lq = vec2(lat, along - 1.0);
+    float arc = abs(length(lq) - 0.2);
+    float ptex = fbm(vec3(lq * 12.0, uTime * 0.5), 2) * 0.5 + 0.5;
+    float ak = arc / 0.035;
+    col += vec3(1.0, 0.34, 0.12) * exp(-ak * ak) * step(0.0, lq.y) * (0.5 + 0.9 * ptex) * uProm * 1.8;
+    col += vec3(1.0, 0.9, 0.75) * exp(-length(q - cd * 1.02) * 5.0) * uFlare * 1.6;
+    if (uCme > 0.0 && uCme < 1.0 && along > 0.95) {
+      float front = 1.05 + 3.4 * uCme;
+      float width = 0.1 + 0.55 * max(0.0, along - 1.0);
+      float lk = lat / width, sk = (along - front) / (0.12 + 0.3 * uCme);
+      float cone = exp(-lk * lk);
+      float shell = exp(-sk * sk);
+      float fill = smoothstep(1.0, front, along) * step(along, front) * 0.3;
+      float streaks = fbm(vec3(lat / width * 2.5, along * 2.0 - uTime * 0.4, 1.7), 3) * 0.5 + 0.5;
+      float fade = pow(1.0 - uCme, 1.3) * smoothstep(0.0, 0.06, uCme);
+      col += vec3(1.0, 0.86, 0.68) * cone * (shell + fill) * (0.4 + 0.9 * streaks) * fade * 1.3;
+    }
+  }
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -438,23 +472,55 @@ void main(){
   #include <colorspace_fragment>
 }`;
 
-export const FLAME_VS = /* glsl */`
-varying float vY; varying vec3 vN; varying vec3 vV;
+/* ---------- Api mesin pesawat (ships.js) ----------
+   Kerucut lathe sumbu +Z; aT = 0 di nosel, 1 di ujung. uLayer 0 = inti panas, 1 = selubung lembut.
+   Vertex: ujung bergoyang oleh derau + denyut radial yang merambat ke belakang.
+   Fragment: derau fbm bergulir sepanjang semburan, ekor "koyak", inti putih-panas, berlian kejut saat turbo. */
+export const JET_VS = /* glsl */`
+attribute float aT;
+uniform float uTime; uniform float uPower; uniform float uBoost; uniform float uSeed; uniform float uLayer;
+varying float vT; varying float vAng; varying vec3 vN; varying vec3 vV;
+float jh1(float n){ return fract(sin(n) * 43758.5453); }
+float jn1(float x){ float i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(jh1(i), jh1(i + 1.0), f) * 2.0 - 1.0; }
 void main(){
-  vY = position.y;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vT = aT;
+  vec3 p = position;
+  vAng = atan(p.y, p.x);
+  float t = aT;
+  float sp = uTime * (5.0 + 4.0 * uLayer + 4.0 * uBoost) + uSeed * 7.0;
+  float sway = t * t * (0.5 + 0.45 * uLayer);
+  p.x += jn1(t * 2.6 - sp * 0.55) * sway;
+  p.y += jn1(t * 2.6 - sp * 0.55 + 17.0) * sway;
+  p.xy *= 1.0 + 0.11 * sin(t * 13.0 - uTime * 36.0 + uSeed) * t;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
   gl_Position = projectionMatrix * mv;
 }`;
-export const FLAME_FS = /* glsl */`
-uniform vec3 uColor; uniform float uPower; uniform float uTime;
-varying float vY; varying vec3 vN; varying vec3 vV;
+export const JET_FS = /* glsl */`
+uniform vec3 uColor; uniform float uPower; uniform float uBoost; uniform float uTime; uniform float uSeed; uniform float uLayer;
+varying float vT; varying float vAng; varying vec3 vN; varying vec3 vV;
+float jhash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float jnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(jhash(i), jhash(i + vec2(1.0, 0.0)), f.x), mix(jhash(i + vec2(0.0, 1.0)), jhash(i + vec2(1.0, 1.0)), f.x), f.y); }
+float jfbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * jnoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }
 void main(){
-  float t = clamp(vY, 0.0, 1.0);
-  float edge = pow(abs(dot(vN, vV)), 1.5);
-  float fl = 0.85 + 0.15 * sin(uTime * 60.0 + vY * 20.0);
-  float a = pow(1.0 - t, 1.6) * edge * uPower * fl;
-  vec3 col = mix(uColor, vec3(1.0), pow(1.0 - t, 5.0) * 0.8) * a * 2.2;
+  float t = clamp(vT, 0.0, 1.0);
+  float edge = abs(dot(normalize(vN), normalize(vV)));
+  vec2 ap = vec2(cos(vAng), sin(vAng));
+  float spd = 8.0 + 6.0 * uLayer + 9.0 * uBoost;
+  float n1 = jfbm(vec2(ap.x * 1.6 + ap.y * 1.3 + uSeed, t * (5.0 + 3.0 * uLayer) - uTime * spd));
+  float n2 = jfbm(vec2(ap.y * 2.1 - ap.x + uSeed * 2.0, t * 9.0 - uTime * spd * 1.45));
+  float turb = 0.5 * (n1 + n2);
+  float body = pow(1.0 - t, 1.2 + 0.6 * uLayer);
+  float core = pow(edge, 1.15 + 1.4 * uLayer);
+  float tear = smoothstep(0.0, 0.35, (1.0 - t) * 1.25 - (turb - 0.5) * 0.95 * t);
+  float a = body * core * tear * (0.5 + 1.0 * turb) * uPower;
+  float diamonds = (1.0 - uLayer) * uBoost * smoothstep(0.55, 1.0, edge) * pow(max(0.0, cos(t * 31.4 - uTime * 3.0)), 6.0) * (1.0 - t);
+  a += diamonds * 0.8;
+  vec3 hot = vec3(1.0, 0.96, 0.88);
+  vec3 col = mix(uColor, hot, pow(1.0 - t, 4.0) * (1.0 - uLayer * 0.7) * smoothstep(0.3, 1.0, edge));
+  col = mix(col, uColor * vec3(1.0, 0.72, 0.66), smoothstep(0.45, 1.0, t) * 0.5);
+  col *= a * mix(2.4, 0.85, uLayer);
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

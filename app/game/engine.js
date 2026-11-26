@@ -10,7 +10,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SKY_VS, SKY_FS, STARS_VS, STARS_FS } from './shaders.js';
 import { clamp, lerp, damp, smooth, dead, nextFrame, DEG, TAU, KM, fmtDist, fmtEta, fmtInt, fmtSpeedKm, daysSinceJ2000, fmtSimDate, dateFromDays, isTouchDevice } from './util.js';
 import { buildSystem, updateBodies, latLonToLocal, upgradePlanetModel } from './system.js';
-import { initShipFactory, buildShip, setShipModels } from './ships.js';
+import { initShipFactory, buildShip, setShipModels, updateShipFx } from './ships.js';
 import { loadCoreModels, loadSingleModel, REMAINING_PLANET_IDS, loadDecor } from './models.js';
 import { createLab, LAB_DURATION } from './lab.js';
 import { createAudio } from './audio.js';
@@ -243,7 +243,7 @@ export function createEngine(el) {
   // ---------- Pesawat ----------
   const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, yaw: 0, pitch: 0 };
   const shipRoot = new THREE.Group();
-  let shipModel = null; const shipModels = {};
+  let shipModel = null, shownShip = null; const shipModels = {};
   let camMode = 'chase', target = null, nearest = null;
   const discovered = new Set(['matahari']);
   let sessionActive = false, shake = 0, msgTimer = 0, inBelt = false;
@@ -280,25 +280,29 @@ export function createEngine(el) {
     ship.quat.setFromEuler(_e.set(ship.pitch, ship.yaw, 0, 'YXZ'));
     ship.vel.set(0, 0, 0); ship.rate.set(0, 0, 0); ship.throttle = 0; ship.boost = 0; ship.braking = false; ship.brakeHold = false;
   }
-  async function ensureShipModel(id) {
-    if (!id || !SHIPS[id] || models?.ships?.[id]) return;
-    const m = await loadSingleModel('ships', id);
-    if (m && models?.ships) {
+  // Tampilkan tepat SATU pesawat: semua grup pesawat lain di shipRoot dilepas lebih dulu
+  // (mencegah model bertumpuk di hanggar saat unduhan GLB selesai tidak berurutan).
+  function showShip(id) {
+    for (const c of [...shipRoot.children]) if (c.userData.isShip) shipRoot.remove(c);
+    shipModel = shipModels[id]; shownShip = id;
+    shipRoot.add(shipModel.group);
+  }
+  const shipLoads = {};
+  function ensureShipModel(id) {
+    if (!id || !SHIPS[id] || !models?.ships || models.ships[id]) return;
+    shipLoads[id] ||= loadSingleModel('ships', id).then((m) => {
+      delete shipLoads[id];
+      if (!m || !models?.ships) return;
       models.ships[id] = m;
       setShipModels(models.ships);
       shipModels[id] = buildShip(id);
-      if (shipModel && (store.progress.selectedShip === id || store.hangarPreview === id)) {
-        shipRoot.remove(shipModel.group);
-        shipModel = shipModels[id];
-        shipRoot.add(shipModel.group);
-      }
-    }
+      if (shownShip === id) showShip(id); // hanya bila pesawat ini yang sedang tampil
+    });
   }
   function setShip(id) {
     if (!SHIPS[id]) id = 'astra';
-    if (!shipModels[id]) shipModels[id] = buildShip(id);
-    if (shipModel) shipRoot.remove(shipModel.group);
-    shipModel = shipModels[id]; shipRoot.add(shipModel.group);
+    if (!shipModels[id] || (shipModels[id].pending && models?.ships?.[id])) shipModels[id] = buildShip(id);
+    showShip(id);
     ensureShipModel(id);
   }
   function readInput(dt) {
@@ -402,19 +406,10 @@ export function createEngine(el) {
     // Efek visual miring sayap (banking roll) halus saat memutar moncong kiri/kanan HANYA pada mesh 3D anak
     g.rotation.z = damp(g.rotation.z, -input.yaw * .45, 6, dt);
     g.rotation.x = damp(g.rotation.x, ship.rate.x * .05, 5, dt);
-    const thrust = Math.max(0, ship.throttle), b = ship.boost, def = shipModel.def;
+    const thrust = Math.max(0, ship.throttle), b = ship.boost;
     const idle = wm === 'menu' || wm === 'hangar' ? .25 : 0;
     const pw = Math.max(idle, thrust) + b * .8;
-    const fl = .9 + Math.sin(time * 43) * .06 + Math.sin(time * 71) * .04;
-    for (const f of shipModel.flames) { f.material.uniforms.uPower.value = Math.min(1.4, .15 + pw); f.scale.set(1, 1, (.5 + thrust * 1.6 + b * 2.8) * def.glow * fl); }
-    // semburan api bawaan model (Discovery): panjang mengikuti gas, padam saat gas nol
-    for (const p of shipModel.plumes || []) { const w = .7 + .3 * Math.min(1, pw); p.scale.set(w, w, (.3 + thrust * .85 + b * 1.4) * fl); p.visible = pw > .03; }
-    for (const s of shipModel.sprites) s.scale.setScalar(def.glow * (.42 + pw * .5) * fl);
-    const blink = (time % 1.4) < .12;
-    for (const n of shipModel.navLights) n.visible = blink;
-    const st = time % 1.3, flash = st < .05 || (st > .14 && st < .19);
-    for (const n of shipModel.strobes) n.visible = flash;
-    for (const gm of shipModel.glowMats) gm.mat.color.copy(gm.base).multiplyScalar(.5 + pw * 2.6);
+    updateShipFx(shipModel, pw, thrust, b, time);
     shipRoot.visible = wm !== 'observe' && !(camMode === 'cockpit' && wm === 'jelajah');
   }
 
@@ -760,7 +755,7 @@ export function createEngine(el) {
     clearAllInputs();
     ship.throttle = 0; ship.braking = true;
     approachShownAt = performance.now();
-    const rawPh = sup.getPhenomenon(b.id) || (sup.loadedFromDb?.value?.phenomena ? null : PHENOMENA[b.id]);
+    const rawPh = sup.getPhenomenon(b.id) || ((!PLANET_IDS.has(b.id) || !sup.loadedFromDb?.value?.phenomena) ? PHENOMENA[b.id] : null);
     const ph = rawPh && rawPh.is_active !== false ? rawPh : null;
     Object.assign(store.approach, { show: true, id: b.id, name: b.name, kind: b.kind, color: b.color, desc: (b.desc || '').split('. ')[0].replace(/\.$/, '') + '.', pheno: ph ? ph.title : '', isNew });
   }
@@ -911,22 +906,22 @@ export function createEngine(el) {
   }
 
   // ---------- Fenomena per planet (di mode Planet) ----------
-  const pheno = { id: null, def: null, view: null, spin: 0, t0: 0, tick: 0, prevDec: null };
+  const pheno = { id: null, def: null, view: null, spin: 0, t0: 0, tick: 0, prevDec: null, clock: 0, lastT: 0, region: null };
   let pinMesh = null;
   const _q2 = new THREE.Quaternion();
   function moonsVisible(parent, v) { for (const x of sys.bodies) if (x.isMoon && x.parent === parent) x.holder.visible = v && isBodyActive(x); }
   function startPheno(id) {
     const livePh = sup.getPhenomenon(id);
-    if (sup.loadedFromDb?.value?.phenomena && (!livePh || livePh.is_active === false)) return;
+    if (sup.loadedFromDb?.value?.phenomena && PLANET_IDS.has(id) && (!livePh || livePh.is_active === false)) return;
     if (livePh && livePh.is_active === false) return;
     const def = livePh || PHENOMENA[id];
     const b = sys.byId[id];
     if (!def || def.lab || !b || !isBodyActive(b)) return;
     if (store.mode !== 'planet' || store.focus !== id) setMode('planet', { body: id, force: true });
-    Object.assign(pheno, { id, def, view: def.view, t0: obsTime, spin: obsTime, tick: 1, prevDec: null });
+    Object.assign(pheno, { id, def, view: def.view, t0: obsTime, spin: obsTime, tick: 1, prevDec: null, clock: 0, lastT: 0, region: null });
     store.obs.mul = def.mul;
     Object.assign(store.pheno, { on: true, id, playing: true, line1: '', line2: '', state: '' });
-    obsCam.dist = def.view === 'wide' ? 8 : def.view === 'top' ? 3.4 : b.ring ? 4.6 : 3.8;
+    obsCam.dist = def.dist || (def.view === 'wide' ? 8 : def.view === 'top' ? 3.4 : b.ring ? 4.6 : 3.8);
     if (def.show === 'pin') {
       if (!pinMesh) {
         pinMesh = new THREE.Group();
@@ -944,6 +939,7 @@ export function createEngine(el) {
     const b = sys.byId[pheno.id];
     if (pinMesh && pinMesh.parent) pinMesh.parent.remove(pinMesh);
     moonsVisible(pheno.id, true);
+    if (b?.fx) stormReset(b.fx);
     Object.assign(pheno, { id: null, def: null, view: null });
     store.obs.mul = 1; store.pheno.on = false; store.pheno.id = '';
     if (!silent && b) { frameBody(b); beginCamTransition(); }
@@ -952,12 +948,15 @@ export function createEngine(el) {
     const b = sys.byId[pheno.id], def = pheno.def; if (!b) return;
     // rotasi yang terlalu cepat diperlambat khusus tampilan (≤ 0,6 putaran/detik) agar tidak berkedip
     pheno.spin += dt * TIME_RATE * Math.min(store.obs.mul, .6 * b.rotationDays / TIME_RATE);
-    b.spinMesh.rotation.y = b.spinPhase0 + TAU * pheno.spin / b.rotationDays;
+    b.spinMesh.rotation.y = (b.spinPhase0 || 0) + TAU * pheno.spin / b.rotationDays;
+    if (def.show === 'storm') stormFx(b, dt);
     pheno.tick += dt; if (pheno.tick < .12) return; pheno.tick = 0;
     const P = store.pheno, days = Math.max(0, obsTime - pheno.t0);
     const toSun = _v.copy(b.pos).negate().normalize();
     const axis = _v2.set(0, 1, 0).applyQuaternion(b.spinMesh.getWorldQuaternion(_q2));
-    if (def.show === 'pin' && pinMesh) {
+    if (def.show === 'storm') {
+      stormText(P);
+    } else if (def.show === 'pin' && pinMesh) {
       const nrm = pinMesh.getWorldPosition(_p).sub(b.pos).normalize();
       const day = nrm.dot(toSun) > 0;
       P.state = day ? 'siang' : 'malam';
@@ -979,6 +978,44 @@ export function createEngine(el) {
       if (b.id === 'saturnus') { const B = Math.abs(Math.asin(clamp(axis.dot(toSun), -1, 1)) / DEG); P.state = B < 3 ? 'tipis' : ''; P.line2 = B < 3 ? 'Cincin sejajar Matahari — nyaris hilang!' : `Cincin terbuka ${B.toFixed(0)}° ke arah Matahari`; }
       else { P.state = frac >= 1 ? 'selesai' : ''; P.line2 = frac >= 1 ? 'Satu putaran orbit selesai!' : `${Math.round(frac * 100)}% satu putaran orbit`; }
     }
+  }
+
+  // ---- Badai Matahari: satu siklus tiap STORM_T detik nyata — wilayah aktif menguat → prominensa naik → suar → CME ----
+  const STORM_T = 14;
+  const _sw = new THREE.Vector3(), _sr = new THREE.Vector3(), _su = new THREE.Vector3(), _sq = new THREE.Quaternion();
+  function stormReset(fx) { fx.storm.value = 0; fx.flare.value = 0; fx.prom.value = 0; fx.cme.value = 0; fx.active.value.set(0, 0, 0); }
+  // wilayah aktif baru di sisi piringan yang menghadap kamera, dekat tepi kiri/atas layar (tidak tertutup kartu kanan)
+  function stormRegion(b) {
+    const a = (.55 + Math.random() * .8) * Math.PI;
+    _sr.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    _su.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    _sw.copy(camera.position).sub(b.pos).normalize().multiplyScalar(.5).addScaledVector(_sr, Math.cos(a)).addScaledVector(_su, Math.sin(a)).normalize();
+    pheno.region = _sw.clone().applyQuaternion(_sq.copy(b.mesh.quaternion).invert()); // ruang objek → ikut berotasi
+  }
+  function stormFx(b, dt) {
+    const fx = b.fx; if (!fx) return;
+    if (store.pheno.playing) pheno.clock += dt;
+    const t = pheno.clock % STORM_T;
+    if (!pheno.region || t < pheno.lastT) stormRegion(b);
+    pheno.lastT = t;
+    fx.active.value.copy(pheno.region);
+    fx.storm.value = clamp(t / 1.5, 0, 1) * (1 - clamp((t - 11.5) / 2, 0, 1));
+    fx.prom.value = clamp((t - .8) / 1.4, 0, 1) * (1 - clamp((t - 3.2) / .5, 0, 1));
+    fx.flare.value = t < 3 ? 0 : Math.exp(-(((t - 3.5) / .3) ** 2)) + (t > 3.5 ? .35 * clamp(1 - (t - 3.5) / 3, 0, 1) : 0);
+    const c = clamp((t - 3.4) / 8, 0, 1);
+    fx.cme.value = c > 0 && c < 1 ? 1 - (1 - c) ** 1.6 : 0;
+    // arah semburan di layar = proyeksi wilayah aktif (korona adalah papan yang selalu menghadap kamera)
+    _sw.copy(pheno.region).applyQuaternion(b.mesh.quaternion);
+    _sr.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    _su.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    fx.cmeAng.value = Math.atan2(_sw.dot(_su), _sw.dot(_sr));
+  }
+  function stormText(P) {
+    const t = pheno.clock % STORM_T;
+    if (t < 3) { P.state = 'aktif'; P.line1 = 'Bintik Matahari menumpuk energi magnet'; P.line2 = 'Lengkung plasma (prominensa) mulai naik'; }
+    else if (t < 4.8) { P.state = 'suar'; P.line1 = 'Suar Matahari meledak!'; P.line2 = 'Kilatnya sampai di Bumi dalam ± 8 menit'; }
+    else if (t < 11.5) { P.state = 'cme'; P.line1 = 'Awan plasma (CME) melesat'; P.line2 = '± 1.000 km/detik, sampai di Bumi dalam ± 1–3 hari'; }
+    else { P.state = 'aurora'; P.line1 = 'Bila mengarah ke Bumi, muncul aurora'; P.line2 = 'Badai ini juga bisa mengganggu satelit & GPS'; }
   }
 
   // ---------- Mode Sejarah: tampilan planet bersih tanpa titik POI 3D ----------
@@ -1312,6 +1349,9 @@ export function createEngine(el) {
     if ((store.modal || store.approach.show || store.phase !== 'playing' || wm !== 'jelajah') && (freeLookMode || (typeof document !== 'undefined' && document.pointerLockElement === canvas))) {
       exitFreeLook();
     }
+    // suara mesin hanya saat terbang; di layar pengamatan (Planet, Sejarah, Fenomena) dengung latar juga senyap.
+    // Dipanggil sebelum percabangan lab/misi/jeda agar suara tidak tertahan di volume terakhir.
+    sfx.update(wm === 'jelajah' && store.phase === 'playing', ship, wm === 'observe' || wm === 'lab');
     // layar yang menutupi dunia (jeda, kuis, profil): render cukup ± 20 fps, tapi pada mode 'peta' tetap update real-time
     if ((store.phase === 'paused' || (wm === 'frozen' && store.mode !== 'peta')) && (++idleN % 3)) return;
     if ((wm === 'jelajah' || wm === 'peta') && store.phase === 'playing') gameTime += dt * TIME_RATE;
@@ -1393,7 +1433,6 @@ export function createEngine(el) {
     }
     renderWorld();
     updateHUD(dt); updatePOIs();
-    sfx.update(wm === 'jelajah' && store.phase === 'playing', ship);
   }
 
   let bgPlanetsLoading = false;
@@ -1456,13 +1495,10 @@ export function createEngine(el) {
       updateCamera(1, 0);
       camera.position.copy(ship.pos).add(_v.set(Math.sin(menuAngle) * 11, 3, Math.cos(menuAngle) * 11).applyQuaternion(ship.quat));
       camera.lookAt(ship.pos);
-      const warm = new THREE.Group(); warm.position.copy(ship.pos); scene.add(warm);
-      const curShip = store.progress.selectedShip || 'astra';
-      if (!shipModels[curShip]) shipModels[curShip] = buildShip(curShip);
-      warm.add(shipModels[curShip].group);
+      // pemanasan shader: pesawat aktif tetap di shipRoot (tidak dipindah induk, agar tidak hilang/terduplikasi)
+      const shipVis = shipRoot.visible; shipRoot.visible = true;
       try { await renderer.compileAsync(scene, camera); await renderer.compileAsync(bgScene, bgCam); } catch (e) { console.warn(e); }
-      warm.remove(shipModels[curShip].group);
-      scene.remove(warm);
+      shipRoot.visible = shipVis;
       trans.t = 1;
       setLoad(1, 'Siap terbang');
       store.ready = true;
@@ -1480,7 +1516,7 @@ export function createEngine(el) {
     applyObsToggles, flyTo,
     approachYes() { const id = store.approach.id; store.approach.show = false; if (id) setMode('planet', { body: id }); },
     approachNo() { store.approach.show = false; },
-    pheno: { start: startPheno, stop: () => stopPheno(), restart() { if (!pheno.id) return; obsTime = pheno.t0; pheno.spin = pheno.t0; pheno.prevDec = null; store.obs.mul = pheno.def.mul; store.pheno.playing = true; },
+    pheno: { start: startPheno, stop: () => stopPheno(), restart() { if (!pheno.id) return; obsTime = pheno.t0; pheno.spin = pheno.t0; pheno.prevDec = null; pheno.clock = 0; pheno.lastT = 0; pheno.region = null; store.obs.mul = pheno.def.mul; store.pheno.playing = true; },
       toggle() { if (!pheno.id) return; store.pheno.playing = !store.pheno.playing; store.obs.mul = store.pheno.playing ? pheno.def.mul : 0; } },
     setShip(id) { setShip(id); },
     previewShip(id) { setShip(id); store.hangarPreview = id; },

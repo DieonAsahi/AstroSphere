@@ -133,13 +133,17 @@ export function buildSystem(scene, U, { touch, models = null }) {
 
   // Matahari (tidak berskala)
   const sunR = SUN.radius;
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), new THREE.ShaderMaterial({ vertexShader: SUN_VS, fragmentShader: SUN_FS, uniforms: { uTime: U.uTime } }));
+  // fx: uniform fenomena "Badai Matahari" (diatur engine.js saat fenomena Matahari diputar)
+  const fx = { storm: { value: 0 }, flare: { value: 0 }, prom: { value: 0 }, cme: { value: 0 }, cmeAng: { value: 0 }, active: { value: new THREE.Vector3() } };
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), new THREE.ShaderMaterial({ vertexShader: SUN_VS, fragmentShader: SUN_FS,
+    uniforms: { uTime: U.uTime, uStorm: fx.storm, uFlare: fx.flare, uActive: fx.active } }));
   sun.scale.setScalar(sunR); scene.add(sun);
   const coronaScale = 6;
   const corona = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ vertexShader: CORONA_VS, fragmentShader: CORONA_FS,
-    uniforms: { uTime: U.uTime, uScale: { value: coronaScale } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    uniforms: { uTime: U.uTime, uScale: { value: coronaScale }, uCme: fx.cme, uCmeAng: fx.cmeAng, uProm: fx.prom, uFlare: fx.flare },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   corona.scale.setScalar(sunR * coronaScale); scene.add(corona);
-  const sunBody = Object.assign({}, SUN, { pos: new THREE.Vector3(), isSun: true, mesh: sun, corona, approach: sunR * 3.2, spinMesh: sun });
+  const sunBody = Object.assign({}, SUN, { pos: new THREE.Vector3(), isSun: true, mesh: sun, corona, approach: sunR * 3.2, spinMesh: sun, fx });
   bodies.push(sunBody); byId[SUN.id] = sunBody;
 
   const geoHi = new THREE.SphereGeometry(1, touch ? 96 : 160, touch ? 64 : 100);

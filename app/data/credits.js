@@ -15,5 +15,7 @@ export const MODEL_CREDITS = [
   { use: 'Uranus', title: 'Uranus', author: 'NestaEric', license: 'CC BY 4.0', url: 'https://sketchfab.com/3d-models/uranus-0009a69dbace44608c0bd09af9ba20db' },
   { use: 'Neptunus', title: 'Neptune', author: 'Nestaeric', license: 'CC BY 4.0', url: 'https://sketchfab.com/3d-models/neptune-2a6f9ccc5c724a709912774caa197b77' },
   { use: 'Lubang hitam di langit', title: 'Black Hole', author: 'NestaEric', license: 'CC BY 4.0', url: 'https://sketchfab.com/3d-models/black-hole-e410da98b1e5445eae2acafaaa53587d' },
+  { use: 'Latar halaman Masuk', title: 'Sun', author: 'SebastianSosnowski', license: 'CC BY 4.0', url: 'https://sketchfab.com/3d-models/sun-9ef1c68fbb944147bcfcc891d3912645' },
+  { use: 'Latar halaman Daftar', title: 'Galaxy Collision 1- Milky Way x Andromeda', author: 'aditya299792', license: 'CC BY 4.0', url: 'https://sketchfab.com/3d-models/galaxy-collision-1-milky-way-x-andromeda-0ec6b1f811684bfca7abe3ea78221fe5' },
 ];
 export const LICENSE_URL = { 'CC BY 4.0': 'https://creativecommons.org/licenses/by/4.0/', 'CC BY-SA 4.0': 'https://creativecommons.org/licenses/by-sa/4.0/' };

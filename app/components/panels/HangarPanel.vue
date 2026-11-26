@@ -88,6 +88,7 @@ onBeforeUnmount(() => {
   if (store.hangarPreview !== store.progress.selectedShip) {
     game()?.setShip(store.progress.selectedShip);
   }
+  store.hangarPreview = store.progress.selectedShip;
 });
 </script>
 

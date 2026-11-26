@@ -32,11 +32,18 @@ export function createAudio(getEnabled) {
         const g = ctx.createGain(); g.gain.value = v; o.connect(g); g.connect(pf); o.start();
       });
       pf.connect(pad); pad.connect(comp); pad.connect(dl);
+      this.pad = pad;
     },
     setEnabled(on) { if (this.ctx) this.master.gain.setTargetAtTime(on ? .9 : 0, this.ctx.currentTime, .08); },
-    update(active, ship) {
+    /**
+     * @param {boolean} active  pesawat sedang diterbangkan (desis & dengung mesin terdengar)
+     * @param {object} ship
+     * @param {boolean} [calm]  layar pengamatan (Planet, Sejarah, Fenomena): dengung latar rendah ikut dimatikan
+     */
+    update(active, ship, calm = false) {
       if (!this.ctx) return;
       const t = this.ctx.currentTime, a = active ? 1 : 0, thr = Math.abs(ship.throttle), sN = clamp(ship.speed / 300, 0, 1);
+      if (this.pad && calm !== this.calm) { this.calm = calm; this.pad.gain.setTargetAtTime(calm ? 0 : .05, t, calm ? .25 : 1.5); }
       this.engGain.gain.setTargetAtTime(a * (.035 + thr * .11 + ship.boost * .14), t, .15);
       this.engLP.frequency.setTargetAtTime(150 + sN * 650 + ship.boost * 900, t, .2);
       this.humGain.gain.setTargetAtTime(a * (.012 + thr * .035), t, .2);

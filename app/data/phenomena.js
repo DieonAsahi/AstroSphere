@@ -3,8 +3,11 @@
 //        khusus untuk tampilan; posisi orbit & arah cahaya Matahari tetap mengikuti waktu yang dipercepat.
 // view : 'sun' kamera dari arah Matahari · 'top' dari atas kutub ekliptika · 'wide' lebar (planet + satelit)
 // show : 'pin' penanda di permukaan (siang/malam) · 'season' kemiringan ke Matahari · 'spins' hitungan putaran · 'years' tahun berjalan
+//        'storm' badai Matahari (wilayah aktif → suar → CME) digambar di shader Matahari & korona (system.js, engine.js)
+// dist : jarak kamera (kelipatan jari-jari) bila ingin berbeda dari bawaan.
 // Bumi memakai laboratorium gerhana tersendiri (lab: true).
 export const PHENOMENA = {
+  matahari: { title: 'Badai Matahari', short: 'Energi magnet di sekitar bintik Matahari bisa lepas tiba-tiba: suar menyala terang, lalu awan plasma raksasa (CME) melesat ke angkasa. Bila mengarah ke Bumi, muncullah aurora.', mul: 6, show: 'storm', dist: 5 },
   merkurius: { title: 'Sehari lebih lama dari setahun', short: 'Dari siang ke siang lagi di Merkurius butuh 176 hari Bumi — dua kali lamanya satu tahun Merkurius.', mul: 400, view: 'top', show: 'pin' },
   venus: { title: 'Matahari terbit di barat', short: 'Venus berputar terbalik dan sangat lambat. Di sana Matahari terbit di barat dan terbenam di timur.', mul: 600, view: 'top', show: 'pin' },
   bumi: { title: 'Gerhana Matahari & Bulan', short: 'Saat Matahari, Bulan, dan Bumi segaris, bayangan menutupi cahaya Matahari.', lab: true },

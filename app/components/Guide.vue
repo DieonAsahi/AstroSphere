@@ -1,7 +1,9 @@
 <script setup>
 // Onboarding modern gaya briefing game dengan layout 2 kolom (Visual di kiri, Penjelasan di kanan)
 // serta panggung demo pesawat interaktif di slide 5.
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+// Slide 1–4: kolom kiri = slider 3 gambar (public/img/guide/) yang selaras dengan poin 01/02/03 di kanan
+// — berganti otomatis, bisa dipilih lewat poin atau penanda di bawah gambar.
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { store, game, saveSettings } from '~/composables/useGame.js';
 import { resolveKeymap, keyLabel } from '~/data/keymap.js';
 
@@ -17,23 +19,25 @@ const SLIDES = [
     step: '01 / 05 — EKSPLORASI',
     title: 'Jelajah Bebas Tata Surya 3D',
     lead: 'Kendalikan pesawat antariksamu mengarungi Matahari, 8 planet, dan Bulan dengan orbit astronomis yang akurat.',
-    image: '/img/guide/slide-1-jelajah.webp',
     icon: 'planet',
     placeholderTitle: 'Simulasi Tata Surya 3D',
     points: [
       {
         icon: 'orbit',
         title: 'Navigasi 3D Tanpa Batas',
+        img: '/img/guide/slide-1-1-navigasi.webp',
         desc: 'Terbang bebas mengarungi ruang angkasa. Kecepatan melambat secara aman saat memasuki radius observasi planet.'
       },
       {
         icon: 'peta',
         title: 'Peta Sistem & Autopilot',
+        img: '/img/guide/slide-1-2-peta.webp',
         desc: 'Tekan tombol M untuk membuka peta tata surya dan meluncur otomatis ke planet tujuan pilihanmu.'
       },
       {
         icon: 'mata',
         title: 'Kamera Kokpit & Bebas',
+        img: '/img/guide/slide-1-3-kamera.webp',
         desc: 'Tekan tombol V untuk berganti antara kamera kokpit orang pertama atau sudut pandang luar.'
       }
     ]
@@ -42,23 +46,25 @@ const SLIDES = [
     step: '02 / 05 — SEJARAH & SAINS',
     title: 'Lini Masa Sejarah & Fenomena',
     lead: 'Singkap jejak peradaban manusia serta laboratorium fenomena astronomi interaktif di setiap planet.',
-    image: '/img/guide/slide-2-sejarah.webp',
     icon: 'fenomena',
     placeholderTitle: 'Laboratorium Fenomena & Sejarah',
     points: [
       {
         icon: 'info',
         title: 'Titik Sejarah (POI) 6 Zaman',
+        img: '/img/guide/slide-2-1-sejarah.webp',
         desc: 'Telusuri pendaratan wahana antariksa nyata di Bumi, Bulan, dan Mars dari era kuno hingga modern.'
       },
       {
         icon: 'matahari',
         title: 'Laboratorium Fenomena Langit',
+        img: '/img/guide/slide-2-2-fenomena.webp',
         desc: 'Saksikan gerhana Matahari & Bulan, pergantian musim di Saturnus, dan rotasi ekstrem di Jupiter.'
       },
       {
         icon: 'jurnal',
         title: 'Jurnal Penemuan Otomatis',
+        img: '/img/guide/slide-2-3-jurnal.webp',
         desc: 'Setiap planet dan sabuk asteroid yang kamu dekati otomatis tercatat menjadi kartu koleksi di Jurnal pribadimu.'
       }
     ]
@@ -67,23 +73,25 @@ const SLIDES = [
     step: '03 / 05 — EVALUASI & MISI',
     title: 'Kuis Planet & Misi Kisah Nyata',
     lead: 'Raih Bintang penjelajah lewat kuis sains dan jalankan misi penyelamatan sejarah berisiko tinggi.',
-    image: '/img/guide/slide-3-kuis-misi.webp',
     icon: 'bintang',
     placeholderTitle: 'Kuis Astronomi & Misi Nyata',
     points: [
       {
         icon: 'bintang',
         title: 'Kuis Sains Per Planet',
+        img: '/img/guide/slide-3-1-kuis.webp',
         desc: 'Jawab 3 tantangan astronomi di tiap destinasi untuk mengumpulkan Bintang tanpa penalti jawaban salah.'
       },
       {
         icon: 'kilat',
         title: 'Misi Apollo 13 (1970)',
+        img: '/img/guide/slide-3-2-apollo13.webp',
         desc: 'Kendalikan wahana darurat pasca ledakan tangki oksigen, hitung gravitasi Bulan, dan bawa astronaut pulang.'
       },
       {
         icon: 'info',
         title: 'Misi Mars Climate Orbiter (1999)',
+        img: '/img/guide/slide-3-3-mco.webp',
         desc: 'Investigasi kekeliruan perhitungan satuan Metrik vs Imperial sebelum wahana terbakar di atmosfer Mars.'
       }
     ]
@@ -92,34 +100,45 @@ const SLIDES = [
     step: '04 / 05 — ARMADA ANTARIKSA',
     title: 'Hanggar & Peningkatan Armada',
     lead: 'Kumpulkan Bintang untuk membuka dan menerbangkan pesawat antariksa generasi masa depan.',
-    image: '/img/guide/slide-4-hanggar.webp',
     icon: 'hanggar',
     placeholderTitle: 'Hanggar Pesawat Antariksa',
     points: [
       {
         icon: 'pesawat',
         title: 'Astra Scout (Pesawat Awal)',
+        img: '/img/guide/slide-4-1-astra.webp',
         desc: 'Pesawat penjelajah lincah dan seimbang, sahabat setia penjelajah antariksa pemula.'
       },
       {
         icon: 'kilat',
         title: 'Orion Glider (300 Bintang)',
+        img: '/img/guide/slide-4-2-orion.webp',
         desc: 'Pesawat sayap sapuan berkecepatan jelajah tinggi untuk menyeberangi jarak jauh antarplanet luar.'
       },
       {
         icon: 'bintang',
         title: 'Nova Voyager (700 Bintang)',
+        img: '/img/guide/slide-4-3-nova.webp',
         desc: 'Pesawat penjelajah antarbintang berakselerasi turbo ekstrem dan ketahanan perisai radiasi ganda.'
       }
     ]
   }
 ];
 
-// Deteksi error muat gambar lokal (jika belum ditaruh oleh pengguna)
+// Deteksi error muat gambar (cadangan: tampilan ikon)
 const imgErrors = reactive({});
-function onImgError(idx) {
-  imgErrors[idx] = true;
+
+// ---- Slider gambar slide 1–4 (selaras dengan poin 01/02/03) ----
+// Berganti saat animasi bilah progres selesai (CSS), jeda saat kursor/fokus di atas gambar.
+const sub = ref(0), subTick = ref(0), subHold = ref(false);
+const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function pickSub(i) { sub.value = i; subTick.value++; }
+function nextSub() {
+  const item = SLIDES[slide.value - 1];
+  if (!item || still) return;
+  sub.value = (sub.value + 1) % item.points.length; subTick.value++;
 }
+watch(slide, () => { sub.value = 0; subTick.value++; });
 
 // ---- State simulator pesawat interaktif (Slide 5) ----
 const activeAction = ref('');
@@ -199,6 +218,7 @@ function prevSlide() {
 
 function onKeyDown(e) {
   if (store.modal) return;
+  if (e.target?.closest?.('.point-item, .sub-dot')) return; // Enter/Spasi di tombol poin → pilih gambar, bukan mulai
 
   // Navigasi global Enter/Spasi saat dunia siap jika tidak di slide demo
   if (slide.value !== TOTAL_SLIDES && (e.code === 'Enter' || e.code === 'Space') && store.ready) {
@@ -241,6 +261,9 @@ function onKeyUp(e) {
 onMounted(() => {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+  // unduh semua gambar panduan di latar (±0,6 MB) agar pergantian slide tidak berkedip
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 800));
+  idle(() => { for (const s of SLIDES) for (const p of s.points) { const im = new Image(); im.decoding = 'async'; im.src = p.img; } });
 });
 
 onBeforeUnmount(() => {
@@ -274,19 +297,41 @@ onBeforeUnmount(() => {
           <div v-if="slide === (idx + 1)" class="briefing-grid fade-in">
             <!-- KOLOM KIRI: BINGKAI VISUAL GAMBAR -->
             <div class="visual-col">
-              <div class="visual-frame">
-                <!-- Gambar aktual jika file sudah ditaruh di public/img/guide/ -->
-                <img
-                  v-if="!imgErrors[idx]"
-                  :src="item.image"
-                  :alt="item.title"
-                  class="visual-img"
-                  loading="eager"
-                  @error="onImgError(idx)"
-                />
+              <div class="visual-frame" @pointerenter="subHold = true" @pointerleave="subHold = false" @focusin="subHold = true" @focusout="subHold = false">
+                <!-- 3 gambar bertumpuk, berganti dengan transisi silang -->
+                <template v-for="(pt, sIdx) in item.points" :key="pt.img">
+                  <img
+                    v-if="!imgErrors[pt.img]"
+                    :src="pt.img"
+                    :alt="pt.title"
+                    class="visual-img shot"
+                    :class="{ on: sub === sIdx }"
+                    :aria-hidden="sub !== sIdx"
+                    :loading="sIdx === 0 ? 'eager' : 'lazy'"
+                    decoding="async"
+                    @error="imgErrors[pt.img] = true"
+                  />
+                </template>
 
-                <!-- Tampilan cadangan estetis jika gambar belum tersedia -->
-                <div v-else class="visual-placeholder">
+                <!-- Penanda gambar + bilah progres (klik untuk memilih) -->
+                <div class="sub-dots" role="tablist" aria-label="Pilih gambar">
+                  <button
+                    v-for="(pt, sIdx) in item.points"
+                    :key="sIdx"
+                    type="button"
+                    role="tab"
+                    class="sub-dot"
+                    :class="{ on: sub === sIdx }"
+                    :aria-selected="sub === sIdx"
+                    :aria-label="pt.title"
+                    @click="pickSub(sIdx)"
+                  >
+                    <span class="sub-bar"><span v-if="sub === sIdx" :key="subTick" class="sub-fill" :class="{ hold: subHold, still }" @animationend="nextSub" /></span>
+                  </button>
+                </div>
+
+                <!-- Tampilan cadangan bila gambar gagal dimuat -->
+                <div v-if="imgErrors[item.points[sub]?.img]" class="visual-placeholder">
                   <div class="ph-glow" />
                   <div class="ph-content">
                     <span class="ph-icon" :class="{ 'star-ph': idx === 2 }">
@@ -306,13 +351,21 @@ onBeforeUnmount(() => {
 
               <!-- DAFTAR 3 POIN FITUR VERTIKAL BERSIH DENGAN PENANDA ANGKA MODERN -->
               <div class="points-list">
-                <div v-for="(pt, pIdx) in item.points" :key="pIdx" class="point-item">
+                <button
+                  v-for="(pt, pIdx) in item.points"
+                  :key="pIdx"
+                  type="button"
+                  class="point-item"
+                  :class="{ on: sub === pIdx }"
+                  :aria-pressed="sub === pIdx"
+                  @click="pickSub(pIdx)"
+                >
                   <span class="pt-badge" aria-hidden="true">{{ String(pIdx + 1).padStart(2, '0') }}</span>
-                  <div class="pt-text">
+                  <span class="pt-text">
                     <b class="pt-title">{{ pt.title }}</b>
-                    <p class="pt-desc">{{ pt.desc }}</p>
-                  </div>
-                </div>
+                    <span class="pt-desc">{{ pt.desc }}</span>
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -591,6 +644,17 @@ onBeforeUnmount(() => {
 .visual-col{display:flex;flex-direction:column;justify-content:center}
 .visual-frame{position:relative;width:100%;aspect-ratio:16 / 10;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:0 12px 36px rgba(0,0,0,.5)}
 .visual-img{width:100%;height:100%;object-fit:cover;display:block}
+.visual-img.shot{position:absolute;inset:0;opacity:0;transform:scale(1.045);transition:opacity .7s ease,transform 6s ease-out}
+.visual-img.shot.on{opacity:1;transform:scale(1)}
+.sub-dots{position:absolute;left:0;right:0;bottom:6px;z-index:3;display:flex;justify-content:center;gap:2px}
+.sub-dot{background:none;border:0;padding:14px 8px;cursor:pointer;border-radius:10px}
+.sub-dot:focus-visible{outline:2px solid var(--sky);outline-offset:-4px}
+.sub-bar{display:block;width:38px;height:4px;border-radius:99px;background:rgba(255,255,255,.28);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.sub-dot:hover .sub-bar{background:rgba(255,255,255,.45)}
+.sub-fill{display:block;height:100%;width:100%;border-radius:inherit;background:#fff;transform-origin:left;animation:subFill 4.8s linear forwards}
+.sub-fill.hold{animation-play-state:paused}
+.sub-fill.still{animation:none}
+@keyframes subFill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 
 /* TAMPILAN CADANGAN (PLACEHOLDER) SEBELUM GAMBAR DITARUH */
 .visual-placeholder{position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,#162354 0%,#0c1433 100%);padding:20px;text-align:center}
@@ -609,11 +673,16 @@ onBeforeUnmount(() => {
 
 /* DAFTAR 3 POIN FITUR VERTIKAL BERSIH DENGAN PENANDA ANGKA MODERN */
 .points-list{display:flex;flex-direction:column;gap:14px}
-.point-item{display:flex;align-items:flex-start;gap:12px}
+.point-item{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;background:none;border:1px solid transparent;color:inherit;font:inherit;padding:8px 10px;margin:-8px -10px;border-radius:12px;cursor:pointer;transition:background .2s,border-color .2s}
+.point-item:hover{background:rgba(148,174,255,.05)}
+.point-item:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+.point-item.on{background:rgba(59,130,246,.09);border-color:rgba(96,165,250,.28)}
+.point-item.on .pt-badge{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.point-item.on .pt-title{color:#fff}
 .pt-badge{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(59,130,246,.08);border:1px solid rgba(148,174,255,.16);font-size:12px;font-weight:500;color:#60a5fa;letter-spacing:.02em;flex:none;margin-top:2px}
 .pt-text{display:flex;flex-direction:column;gap:2px}
 .pt-title{font-family:var(--display);font-size:14.5px;font-weight:500;color:var(--text)}
-.pt-desc{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
+.pt-desc{display:block;font-size:13px;color:var(--muted);line-height:1.45;margin:0}
 
 /* SLIDE 5: PANGGUNG SIMULATOR 3D & KONTROLER */
 .stage-frame{background:#080e24;display:flex;flex-direction:column}
