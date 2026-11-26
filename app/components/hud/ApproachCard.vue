@@ -1,28 +1,16 @@
 <script setup>
-// Muncul saat pesawat mendekati planet: pesawat berhenti, pemain memilih melihat planet atau lanjut terbang.
+// Muncul saat pesawat mendekati planet atau bulan: pesawat berhenti, pemain memilih melihat objek atau lanjut terbang.
 // Mengambil ringkasan materi dan fenomena secara reaktif dari useSupabaseContent (Supabase LIVE / Fallback).
 import { computed } from 'vue';
 import { store, game, isFound } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT } from '~/data/learning.js';
-import { PLANETS, MOONS } from '~/data/solarSystem.js';
+import { MOONS } from '~/data/solarSystem.js';
 
 const { getPlanet, getPhenomenon, loadedFromDb } = useSupabaseContent();
 
 const isMoon = computed(() => !!store.approach.isMoon || MOONS.some((m) => m.id === store.approach.id));
-const parentPlanet = computed(() => {
-  if (!isMoon.value) return null;
-  const parentId = store.approach.parent || MOONS.find((m) => m.id === store.approach.id)?.parent;
-  return PLANETS.find((p) => p.id === parentId);
-});
-const eyebrowText = computed(() => {
-  if (isMoon.value) {
-    const parentName = parentPlanet.value?.name || (store.approach.parent ? store.approach.parent.toUpperCase() : 'BUMI');
-    return `SATELIT ALAMI ${parentName.toUpperCase()}`;
-  }
-  return 'OBJEK TERDETEKSI';
-});
 
 const planetData = computed(() => getPlanet(store.approach.id));
 const phenomenonData = computed(() => {
@@ -41,29 +29,9 @@ const approachDesc = computed(() => {
   return store.approach.desc;
 });
 
-function openHistory() {
-  store.approach.show = false;
-  store.sejarah.era = 'semua';
-  game()?.setMode('sejarah', { body: store.approach.id });
-}
-
-function openQuiz() {
-  store.approach.show = false;
-  store.quiz.planet = store.approach.id;
-  store.quiz.kind = 'planet';
-  store.quiz.stage = 'intro';
-  game()?.setMode('kuis');
-}
-
-// Status penemuan baru & jarak terkini
+// Status penemuan baru
 const isNewObject = computed(() => store.approach.isNew || !isFound(store.approach.id));
 const statusBadgeText = computed(() => (isNewObject.value ? 'Baru · +5 ★' : 'Terdata di Peta'));
-const approachDist = computed(() => {
-  if (store.hud.near.id === store.approach.id && store.hud.near.dist && store.hud.near.dist !== '—') {
-    return store.hud.near.dist;
-  }
-  return '';
-});
 
 // Fenomena yang belum ditebak ditampilkan sebagai pertanyaan, supaya jawabannya tidak bocor sebelum "Tebak dulu".
 const teaser = computed(() => {
@@ -85,12 +53,11 @@ const teaser = computed(() => {
     <div class="card box">
       <div class="card-header">
         <div class="header-eyebrow-row">
-          <span class="eyebrow">{{ eyebrowText }}</span>
+          <span class="eyebrow">OBJEK TERDETEKSI</span>
           <div class="top-status-badge" :class="{ 'is-new': isNewObject }">
             <UiIcon v-if="isNewObject" name="bintang" :size="12" />
             <UiIcon v-else name="cek" :size="12" />
             <span>{{ statusBadgeText }}</span>
-            <span v-if="approachDist" class="badge-dist">· {{ approachDist }}</span>
           </div>
         </div>
         <div class="top">
@@ -115,7 +82,7 @@ const teaser = computed(() => {
             <div class="title-row">
               <h2 id="ap-t" class="planet-title">{{ approachName }}</h2>
             </div>
-            <p class="planet-kind">{{ isMoon ? `Satelit Alami · ${parentPlanet?.name || 'Tata Surya'}` : store.approach.kind }}</p>
+            <p class="planet-kind">{{ store.approach.kind }}</p>
           </div>
         </div>
       </div>
@@ -127,23 +94,9 @@ const teaser = computed(() => {
         <span>{{ teaser.label }}: <b>{{ teaser.text }}</b></span>
       </div>
 
-      <p class="q">{{ isMoon ? `Lihat ${approachName} dari dekat?` : (store.approach.id === 'matahari' ? 'Lihat Matahari dari dekat?' : 'Lihat planet ini dari dekat?') }}</p>
+      <p class="q">{{ isMoon ? 'Lihat bulan ini dari dekat?' : (store.approach.id === 'matahari' ? 'Lihat Matahari dari dekat?' : 'Lihat planet ini dari dekat?') }}</p>
 
-      <div v-if="isMoon" class="acts-moon-grid">
-        <button class="btn-action primary" @click="game()?.approachYes()">
-          <UiIcon name="mata" :size="18" />Detail
-        </button>
-        <button class="btn-action line" @click="openHistory">
-          <UiIcon name="sejarah" :size="18" />Sejarah
-        </button>
-        <button class="btn-action gold" @click="openQuiz">
-          <UiIcon name="bintang" :size="18" />★ Kuis
-        </button>
-        <button class="btn-action ghost" @click="game()?.approachNo()">
-          Tidak, lanjut terbang
-        </button>
-      </div>
-      <div v-else class="acts">
+      <div class="acts">
         <button class="btn-action primary" @click="game()?.approachYes()">
           <UiIcon name="mata" :size="18" />Ya, lihat
         </button>
@@ -224,10 +177,6 @@ const teaser = computed(() => {
   border-color:rgba(245, 158, 11, 0.32);
   color:#fbbf24;
 }
-.badge-dist{
-  color:rgba(255, 255, 255, 0.55);
-  font-size:10.5px;
-}
 
 .top{
   display:flex;
@@ -255,7 +204,7 @@ const teaser = computed(() => {
   transition:all .25s ease;
 }
 
-/* Karakter Visual Khas 8 Planet & Benda Angkasa */
+/* Karakter Visual Khas 8 Planet, Matahari & Bulan/Satelit */
 .planet-dot.sphere-merkurius{
   background:
     radial-gradient(circle at 28% 26%, rgba(255,255,255,.5) 0%, transparent 35%),
@@ -313,12 +262,37 @@ const teaser = computed(() => {
     radial-gradient(circle at 35% 30%, #fff7ed 0%, #fef08a 25%, #f59e0b 55%, #b45309 85%, #78350f 100%) !important;
   box-shadow:inset -5px -5px 12px rgba(120,53,15,.9), 0 0 24px rgba(245,158,11,.65), 0 0 8px #fef08a !important;
 }
-.planet-dot.sphere-bulan{
+.planet-dot.sphere-bulan,
+.planet-dot.sphere-callisto{
   background:
     radial-gradient(circle at 28% 26%, rgba(255,255,255,.6) 0%, transparent 35%),
     radial-gradient(circle at 62% 58%, rgba(55,65,81,.5) 0%, transparent 45%),
     radial-gradient(circle at 35% 35%, #e2e8f0 0%, #cbd5e1 30%, #94a3b8 65%, #475569 90%, #1e293b 100%) !important;
   box-shadow:inset -5px -5px 12px rgba(15,23,42,.85), 0 0 14px rgba(226,232,240,.35) !important;
+}
+.planet-dot.sphere-io{
+  background:
+    radial-gradient(circle at 28% 26%, rgba(255,255,255,.6) 0%, transparent 35%),
+    radial-gradient(circle at 35% 35%, #fef08a 0%, #facc15 35%, #ca8a04 70%, #854d0e 100%) !important;
+  box-shadow:inset -5px -5px 12px rgba(66,32,6,.85), 0 0 14px rgba(250,204,21,.4) !important;
+}
+.planet-dot.sphere-europa{
+  background:
+    radial-gradient(circle at 28% 26%, rgba(255,255,255,.7) 0%, transparent 35%),
+    radial-gradient(circle at 35% 35%, #f8fafc 0%, #e2e8f0 35%, #cbd5e1 70%, #94a3b8 100%) !important;
+  box-shadow:inset -5px -5px 12px rgba(30,41,59,.85), 0 0 14px rgba(226,232,240,.45) !important;
+}
+.planet-dot.sphere-ganymede{
+  background:
+    radial-gradient(circle at 28% 26%, rgba(255,255,255,.6) 0%, transparent 35%),
+    radial-gradient(circle at 35% 35%, #d6d3d1 0%, #a8a29e 35%, #78716c 70%, #44403c 100%) !important;
+  box-shadow:inset -5px -5px 12px rgba(28,25,23,.85), 0 0 14px rgba(168,162,158,.35) !important;
+}
+.planet-dot.sphere-titan{
+  background:
+    radial-gradient(circle at 28% 26%, rgba(255,255,255,.6) 0%, transparent 35%),
+    radial-gradient(circle at 35% 35%, #fed7aa 0%, #fb923c 40%, #c2410c 75%, #7c2d12 100%) !important;
+  box-shadow:inset -5px -5px 12px rgba(67,20,7,.85), 0 0 14px rgba(251,146,60,.4) !important;
 }
 
 /* Cincin Miring Saturnus */
@@ -407,31 +381,6 @@ const teaser = computed(() => {
   display:flex;
   gap:10px;
   flex-wrap:wrap;
-}
-.acts-moon-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-.acts-moon-grid .ghost{
-  grid-column:1 / -1;
-  background:rgba(148, 174, 255, 0.04);
-  border:1px solid rgba(148, 174, 255, 0.16);
-  color:var(--muted);
-}
-.acts-moon-grid .ghost:hover{
-  background:rgba(148, 174, 255, 0.10);
-  color:#fff;
-}
-.btn-action.gold{
-  background:linear-gradient(135deg, #f59e0b, #d97706);
-  color:#ffffff;
-  border:1px solid transparent;
-  box-shadow:0 4px 14px rgba(245, 158, 11, 0.35);
-}
-.btn-action.gold:hover{
-  background:linear-gradient(135deg, #d97706, #b45309);
-  transform:translateY(-1px);
 }
 .btn-action{
   flex:1 1 160px;
