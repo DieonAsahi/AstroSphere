@@ -2284,7 +2284,7 @@ const FAQ = computed(() => {
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(6, 10, 26, 0.78);
+  background: rgba(5, 8, 20, 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -2297,8 +2297,8 @@ const FAQ = computed(() => {
   width: 100%;
   padding: 24px;
   border-radius: 14px;
-  background: #0e1533;
-  border: 1px solid rgba(148, 174, 255, 0.25);
+  background: rgba(11, 16, 33, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.18);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;

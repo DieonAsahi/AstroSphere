@@ -280,7 +280,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,26,.55) 0%,rgba(5,8,26,0) 34%)}
 .top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;padding:calc(18px + var(--safe-t)) calc(28px + var(--safe-r)) 0 calc(28px + var(--safe-l));z-index:2}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:500;font-size:21px}
-.user-pill{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 5px;border-radius:999px;background:rgba(10,16,40,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(148,174,255,.22);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.user-pill{display:flex;align-items:center;gap:9px;padding:4px 12px 4px 5px;border-radius:10px;background:rgba(10,16,40,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(148,174,255,.22);box-shadow:0 4px 16px rgba(0,0,0,.35)}
 .user-avatar{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#ffffff;font-family:var(--display);font-size:12px;font-weight:600;line-height:1;flex:none}
 .user-name{font-size:13.5px;font-weight:500;color:#f4f7ff;line-height:1;white-space:nowrap}
 .user-sep{width:1px;height:14px;background:rgba(255,255,255,.18);flex:none}
@@ -292,7 +292,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
 .hero .h1{font-size:clamp(26px,3.4vw,44px);white-space:nowrap;text-shadow:0 4px 28px rgba(0,0,0,.75);letter-spacing:-.01em;line-height:1.15}
 .hero .lead{max-width:58ch;font-size:clamp(14px,1.4vw,16.5px);line-height:1.6;color:rgba(235,241,255,.92);text-shadow:0 2px 12px rgba(4,8,24,.85)}
 .cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px}
-.cta .btn{min-width:200px;height:48px;min-height:48px;border-radius:12px;font-weight:500;font-size:15.5px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.cta .btn{min-width:200px;height:48px;min-height:48px;border-radius:10px;font-weight:500;font-size:15.5px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 .cta .btn.primary{background:var(--blue);box-shadow:0 4px 18px rgba(37,99,235,.45)}
 .cta .btn.primary:hover{filter:brightness(1.12)}
 .cta .btn.line{background:rgba(14,21,51,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(148,174,255,.35);color:#f4f7ff}
@@ -304,7 +304,7 @@ onBeforeUnmount(() => { live?.dispose(); live = null; live3d?.dispose(); live3d 
 .btn-icon{flex:none;display:block;opacity:.92}
 .note{font-size:13px;color:rgba(235,241,255,.88);text-shadow:0 2px 12px rgba(4,8,24,.98)}
 .formwrap{position:absolute;inset:0;display:grid;place-items:center;padding:40px 16px;z-index:2;overflow-y:auto}
-.form{position:relative;width:min(420px,100%);padding:28px;display:flex;flex-direction:column;gap:16px;background:rgba(15,20,38,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,174,255,.16);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.65)}
+.form{position:relative;width:min(420px,100%);padding:28px;display:flex;flex-direction:column;gap:16px;background:rgba(11,16,33,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,.18);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.65)}
 .back-link{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:rgba(170,182,224,.85);cursor:pointer;background:none;border:none;padding:0;margin-bottom:2px;transition:color .15s}
 .back-link:hover{color:#f4f7ff}
 .back-arrow{font-size:14px;line-height:1}

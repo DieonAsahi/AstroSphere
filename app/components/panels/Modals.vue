@@ -119,7 +119,9 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
         </div>
         <div v-else-if="store.modal !== 'journal'" class="mh">
           <h2 id="mt" class="h2">{{ TITLE[store.modal] }}</h2>
-          <button class="ib sm" aria-label="Tutup" @click="close"><UiIcon name="tutup" :size="20" /></button>
+          <button class="modern-close-btn" aria-label="Tutup" title="Tutup (Esc)" @click="close">
+            <UiIcon name="tutup" :size="18" />
+          </button>
         </div>
 
         <div v-if="store.modal === 'settings'" class="settings-body">
@@ -181,8 +183,8 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 
         <div v-else-if="store.modal === 'controls'" class="mb"><UiKeyGuide compact /><p class="small c">Tombol bisa diubah di Profil → Kontrol.</p></div>
 
-        <div v-else-if="store.modal === 'confirmNew'" class="mb">
-          <p class="small">Posisi pesawat dan jurnal akan dimulai ulang dari orbit Bumi. Bintang, skor kuis, dan pesawatmu tetap aman.</p>
+        <div v-else-if="store.modal === 'confirmNew'" class="mb confirm-body">
+          <p class="confirm-text">Posisi pesawat dan jurnal akan dimulai ulang dari orbit Bumi. Bintang, skor kuis, dan pesawatmu tetap aman.</p>
           <div class="acts"><button class="btn line" @click="close">Batal</button><button class="btn primary" @click="startNew">Mulai baru</button></div>
         </div>
 
@@ -210,13 +212,27 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 </template>
 
 <style scoped>
-.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(6,10,26,.72)}
+.modal{
+  position:fixed;
+  inset:0;
+  z-index:50;
+  display:grid;
+  place-items:center;
+  padding:16px;
+  background:rgba(5,8,20,.8);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
 .box{
   position:relative;
   width:min(520px,100%);
   max-height:calc(100vh - 40px);
   overflow-y:auto;
-  padding:22px 24px 24px;
+  padding:24px;
+  border-radius:14px;
+  background:rgba(11,16,33,.96);
+  border:1px solid rgba(148,163,184,.18);
+  box-shadow:0 20px 52px rgba(0,0,0,.68);
   display:flex;
   flex-direction:column;
   gap:16px;
@@ -240,24 +256,27 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 .box.settings{
   width:min(480px,100%);
   max-height:calc(100vh - 56px);
-  border-radius:16px;
+  border-radius:14px;
   padding:22px 24px 20px;
 }
 .box.controls{
   width:min(880px,100%);
   max-height:calc(100vh - 56px);
-  border-radius:16px;
+  border-radius:14px;
   padding:22px 24px 24px;
 }
 .box.journal{
   width:min(740px,100%);
   max-height:calc(100vh - 56px);
-  border-radius:16px;
+  border-radius:14px;
   padding:20px 22px 22px;
 }
 .journal-shell{display:flex;flex-direction:column;width:100%}
 .mh{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mh .h2{font-family:var(--display);font-size:19px;font-weight:600;color:#f8fafc;line-height:1.25;margin:0}
 .mb{display:flex;flex-direction:column;gap:8px}
+.confirm-body{gap:10px}
+.confirm-text{font-size:14px;line-height:1.55;color:#cbd5e1;margin:0}
 
 /* HEADER PENGATURAN MODERN */
 .settings-head{
@@ -444,23 +463,23 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
   position:absolute;
   inset:0;
   z-index:30;
-  background:rgba(6,10,26,.88);
+  background:rgba(5,8,20,.84);
   backdrop-filter:blur(8px);
   -webkit-backdrop-filter:blur(8px);
   display:flex;
   align-items:center;
   justify-content:center;
   padding:20px;
-  border-radius:16px;
+  border-radius:14px;
 }
 .setting-confirm-dialog{
   width:100%;
   max-width:380px;
-  background:rgba(15,23,42,.95);
-  border:1px solid rgba(148,174,255,.22);
+  background:rgba(11,16,33,.96);
+  border:1px solid rgba(148,163,184,.18);
   border-radius:14px;
   padding:20px 22px;
-  box-shadow:0 16px 36px rgba(0,0,0,.55),0 0 20px rgba(59,130,246,.12);
+  box-shadow:0 20px 44px rgba(0,0,0,.62);
   display:flex;
   flex-direction:column;
   gap:12px;
@@ -507,25 +526,25 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
   border-top:1px solid rgba(148,174,255,.1);
 }
 .btn-dialog-cancel{
-  border-radius:8px;
-  padding:7px 14px;
-  font-size:12.5px;
+  border-radius:10px;
+  padding:8px 16px;
+  font-size:13px;
   font-weight:500;
   color:var(--muted);
   background:transparent;
-  border:1px solid rgba(148,174,255,.2);
+  border:1px solid rgba(148,163,184,.25);
   cursor:pointer;
   transition:all .15s ease;
 }
 .btn-dialog-cancel:hover{
   color:#fff;
-  border-color:rgba(148,174,255,.35);
-  background:rgba(255,255,255,.04);
+  border-color:rgba(148,163,184,.45);
+  background:rgba(255,255,255,.05);
 }
 .btn-dialog-confirm{
-  border-radius:8px;
-  padding:7px 18px;
-  font-size:12.5px;
+  border-radius:10px;
+  padding:8px 18px;
+  font-size:13px;
   font-weight:600;
   background:#3b82f6;
   color:#ffffff;
@@ -543,4 +562,9 @@ const TITLE = { settings: 'Pengaturan', journal: 'Jurnal penjelajah', controls: 
 .dz{color:var(--coral)}
 .c{text-align:center}
 .acts{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+.acts .btn{height:40px;min-height:40px;padding:0 18px;border-radius:10px;font-family:var(--display);font-size:14px;font-weight:500;box-shadow:none}
+.acts .btn.line{background:rgba(148,174,255,.06);border:1px solid rgba(148,163,184,.28);color:#e2e8f0}
+.acts .btn.line:hover{background:rgba(148,174,255,.14);border-color:rgba(148,163,184,.45);color:#fff;filter:none}
+.acts .btn.primary{background:#3b82f6;color:#ffffff;border:none;box-shadow:0 4px 14px rgba(59,130,246,.35)}
+.acts .btn.primary:hover{background:#2563eb;transform:translateY(-1px);filter:none}
 </style>

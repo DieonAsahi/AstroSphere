@@ -72,8 +72,8 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 </template>
 
 <style scoped>
-.pause{position:fixed;inset:0;z-index:35;display:grid;place-items:center;padding:24px 16px;background:rgba(6,10,26,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-sizing:border-box}
-.pause-card{width:min(480px,100%);max-height:calc(100vh - 48px);overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:16px;border-radius:16px;background:rgba(14,20,42,.95);border:1px solid rgba(148,174,255,.18);box-shadow:0 16px 40px rgba(0,0,0,.6);box-sizing:border-box}
+.pause{position:fixed;inset:0;z-index:35;display:grid;place-items:center;padding:24px 16px;background:rgba(5,8,20,.8);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-sizing:border-box}
+.pause-card{width:min(480px,100%);max-height:calc(100vh - 48px);overflow-y:auto;padding:24px 26px;display:flex;flex-direction:column;gap:16px;border-radius:14px;background:rgba(11,16,33,.96);border:1px solid rgba(148,163,184,.18);box-shadow:0 20px 50px rgba(0,0,0,.65);box-sizing:border-box}
 .pause-card::-webkit-scrollbar{width:5px}
 .pause-card::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
 

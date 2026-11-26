@@ -58,8 +58,8 @@ function close() { ev.result = null; }
 .shield.ok .bar>i{background:var(--green)} .shield.mid .bar>i{background:var(--star)} .shield.bad .bar>i{background:var(--coral)}
 .shield.bad{border-color:rgba(255,107,107,.5)}
 .shield small{grid-column:1/-1;font-size:12px;color:var(--coral);line-height:1.4}
-.res-wrap{position:absolute;inset:0;display:grid;place-items:center;padding:16px}
-.res{pointer-events:auto;width:min(440px,100%);padding:22px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--coral)}
+.res-wrap{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(5,8,20,.8);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.res{pointer-events:auto;width:min(440px,100%);padding:22px;display:flex;flex-direction:column;gap:12px;border-radius:14px;background:rgba(11,16,33,.96);border:1px solid rgba(148,163,184,.18);border-top:4px solid var(--coral);box-shadow:0 20px 50px rgba(0,0,0,.65)}
 .res.ok{border-top-color:var(--green)}
 .top{display:flex;align-items:center;gap:14px}
 .top small{font-size:12.5px;color:var(--faint)}

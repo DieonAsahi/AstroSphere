@@ -111,16 +111,16 @@ onBeforeUnmount(detachKeyGuard);
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(5, 8, 22, 0.84);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(5, 8, 20, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .disabled-dialog {
   width: min(430px, 100%);
   padding: 28px 24px 24px;
-  border-radius: 16px;
-  background: rgba(14, 21, 51, 0.96);
+  border-radius: 14px;
+  background: rgba(11, 16, 33, 0.96);
   border: 1px solid rgba(248, 113, 113, 0.34);
   box-shadow: 0 22px 54px rgba(0, 0, 0, 0.72), 0 0 28px rgba(239, 68, 68, 0.14);
   display: flex;
