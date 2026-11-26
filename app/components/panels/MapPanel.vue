@@ -7,7 +7,7 @@ import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
 import { PLANETS, MOONS } from '~/data/solarSystem.js';
 import { fmtDist, fmtEta } from '~/game/util.js';
 
-const cv = ref(null), wrap = ref(null);
+const cv = ref(null), wrap = ref(null), detRef = ref(null);
 const sel = ref(store.hud.target.id && store.hud.target.id !== 'matahari' ? store.hud.target.id : 'mars');
 const hover = ref(null);
 const live = ref({}); // jarak & perkiraan waktu per planet (diperbarui 4×/detik)
@@ -356,7 +356,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
       <p class="legend"><i class="you" />Kamu <i class="lim" />Batas jelajah · seret untuk geser</p>
     </div>
 
-    <aside class="det card flat">
+    <aside ref="detRef" class="det card flat">
       <div class="hscroll chips">
         <button
           v-for="p in targetList"
@@ -414,6 +414,7 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
           </div>
         </template>
       </div>
+      <UiScrollHint :target="detRef" />
     </aside>
   </div>
 </template>
@@ -531,34 +532,72 @@ canvas:active{cursor:grabbing}
 }
 @media (max-height: 540px) and (orientation: landscape) {
   .map {
-    grid-template-columns: 1fr min(320px, 46vw) !important;
+    grid-template-columns: 1fr min(285px, 43vw) !important;
     grid-template-rows: auto 1fr !important;
-    padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) calc(8px + var(--safe-b)) calc(12px + var(--safe-l)) !important;
-    gap: 10px !important;
+    padding: calc(6px + var(--safe-t)) calc(10px + var(--safe-r)) calc(6px + var(--safe-b)) calc(10px + var(--safe-l)) !important;
+    gap: 8px !important;
     height: 100dvh !important;
     overflow: hidden !important;
   }
   .mh {
     grid-column: 1 / -1;
   }
+  .mh-title {
+    font-size: 17px !important;
+  }
+  .btn-close-map {
+    height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+  }
   .mc {
     min-height: 0;
     height: 100%;
   }
   .det {
-    padding: 12px;
-    gap: 8px;
-    max-height: calc(100dvh - 60px);
-    overflow-y: auto;
+    padding: 10px 12px !important;
+    gap: 6px !important;
+    max-height: calc(100dvh - 50px) !important;
+    overflow-y: auto !important;
+    border-radius: 12px !important;
   }
   .det .chips {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     overflow-x: auto;
     padding-bottom: 2px;
   }
+  .chip {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  .dtop .planet-dot {
+    --s: 38px !important;
+  }
+  .dtop-name {
+    font-size: 15px !important;
+  }
+  .dtop-kind {
+    font-size: 11px !important;
+  }
+  .stats {
+    gap: 4px !important;
+  }
+  .tile {
+    padding: 4px 6px !important;
+  }
+  .tile .num {
+    font-size: 12px !important;
+  }
   .planet-desc-box {
-    max-height: 90px;
+    max-height: 75px !important;
+    font-size: 11.5px !important;
+    line-height: 1.35 !important;
+  }
+  .det .btn {
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 12px !important;
   }
 }
 </style>

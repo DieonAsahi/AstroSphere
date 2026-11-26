@@ -209,6 +209,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         <UiIcon name="lanjut" :size="16" />
       </button>
     </div>
+    <UiScrollHint />
   </div>
 
   <!-- TAMPILAN KOLEKSI 16 ENTITAS (GRID 4x4) -->
@@ -284,6 +285,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
     <p class="j-footnote">
       Terbang mendekati benda langit untuk membuka kartunya. Setiap kartu baru bernilai +{{ CARD_REWARD }} bintang.
     </p>
+    <UiScrollHint />
   </div>
 </template>
 

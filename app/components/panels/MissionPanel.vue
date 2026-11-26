@@ -145,6 +145,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         <div class="crew"><div v-for="c in D.crew" :key="c.name" class="cr"><span class="av">{{ c.name[0] }}</span><b>{{ c.name }}</b><small>{{ c.role }}</small></div></div>
         <p class="small">11 April 1970 · Pusat kendali: Houston, Amerika Serikat</p>
         <button class="btn primary lg block" @click="G()?.launch()"><UiIcon name="kilat" :size="20" />Luncurkan</button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'decide'" key="decide" class="card mc">
@@ -156,6 +157,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         </div>
         <p v-if="decOpt" class="fb" :class="{ ok: decOpt.ok }">{{ decOpt.why }}</p>
         <button v-if="decOpt?.ok" class="btn primary block" @click="done('decide', dec.tries)">Jalankan rencana<UiIcon name="lanjut" :size="18" /></button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'power'" key="power" class="card mc">
@@ -168,6 +170,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         <p v-if="pw.msg" class="fb" :class="{ ok: pw.ok }">{{ pw.msg }}</p>
         <button v-if="!pw.ok" class="btn primary block" @click="checkPower">Selesai</button>
         <button v-else class="btn primary block" @click="done('power', pw.tries)">Lanjut<UiIcon name="lanjut" :size="18" /></button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'burn'" key="burn" class="card mc">
@@ -184,6 +187,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         </button>
         <p v-if="!burn.ok && !store.touch" class="keys">atau tahan <b class="kbd sm">Spasi</b></p>
         <button v-if="burn.ok" class="btn primary block" @click="done('burn', burn.tries)">Lanjut<UiIcon name="lanjut" :size="18" /></button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'far'" key="far" class="card mc">
@@ -191,6 +195,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         <h2 class="h2">{{ S.far.title }}</h2>
         <p class="tx">{{ S.far.text }}</p>
         <button class="btn primary block" @click="G()?.skipFar()">Lanjut<UiIcon name="lanjut" :size="18" /></button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'co2'" key="co2" class="card mc">
@@ -205,6 +210,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         <p v-if="co.msg" class="fb" :class="{ ok: co.ok }">{{ co.msg }}</p>
         <button v-if="!co.ok" class="btn primary block" @click="build">Rakit adaptor</button>
         <button v-else class="btn primary block" @click="done('co2', co.tries)">Pasang<UiIcon name="lanjut" :size="18" /></button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'reentry'" key="reentry" class="card mc">
@@ -225,6 +231,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
         <button v-else-if="!re.ok" class="btn star block" @click="reStart"><UiIcon name="putar" :size="18" />{{ re.tries ? 'Coba lagi' : 'Mulai masuk atmosfer' }}</button>
         <button v-else class="btn primary block" @click="done('reentry', re.tries)">Buka parasut<UiIcon name="lanjut" :size="18" /></button>
         <p v-if="re.run && !store.touch" class="keys"><b class="kbd sm">←</b><b class="kbd sm">→</b> atur sudut</p>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'done'" key="done" class="card mc fin">
@@ -238,6 +245,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
           <button class="btn line" @click="restart"><UiIcon name="ulang" :size="18" />Main lagi</button>
           <button class="btn primary" @click="game()?.back()">Kembali terbang</button>
         </div>
+        <UiScrollHint />
       </section>
     </Transition>
   </div>
@@ -755,29 +763,39 @@ onBeforeUnmount(() => { cancelAnimationFrame(raf); window.removeEventListener('k
   .stat{
     top:calc(10px + var(--safe-t, 0px));
     left:calc(12px + var(--safe-l, 0px));
-    max-width:calc(100vw - min(370px, 50vw) - 30px);
+    max-width:calc(100vw - min(285px, 43vw) - 30px);
   }
   .tag{margin-bottom:4px}
-  .stat .h1{font-size:16px;margin-bottom:3px}
-  .clk{margin-bottom:4px}
-  .clk b{font-size:12px}
+  .stat .h1{font-size:15px;margin-bottom:2px}
+  .clk{margin-bottom:3px}
+  .clk b{font-size:11.5px}
   .meters{display:none}
   .mc{
     left:auto !important;
     right:calc(10px + var(--safe-r, 0px)) !important;
     transform:none !important;
-    width:min(370px, 50vw) !important;
+    width:min(285px, 43vw) !important;
     bottom:calc(6px + var(--safe-b, 0px)) !important;
     top:calc(8px + var(--safe-t, 0px)) !important;
     max-height:calc(100dvh - 16px) !important;
-    padding:12px 14px;
-    gap:8px;
+    padding:10px 12px !important;
+    gap:6px !important;
+    border-radius:12px !important;
+    overflow-y:auto !important;
   }
-  .tx{font-size:13px;line-height:1.4}
-  .opts{gap:6px}
-  .opt{padding:8px 10px;font-size:13px;min-height:36px}
-  .fb{padding:8px 10px;font-size:12.5px}
-  .mc>.btn,.row2{position:sticky;bottom:0;z-index:3;margin-top:2px}
+  .tx{font-size:12px;line-height:1.35}
+  .opts{gap:5px}
+  .opt{padding:6px 8px;font-size:12px;min-height:32px}
+  .fb{padding:6px 8px;font-size:11.5px}
+  .crew{gap:4px}
+  .cr{padding:4px 6px;gap:4px}
+  .cr .av{width:22px;height:22px;font-size:11px}
+  .cr b{font-size:11px}
+  .cr small{font-size:9.5px}
+  .items{gap:4px}
+  .item{padding:5px 8px;font-size:11.5px}
+  .btn{height:34px !important;min-height:34px !important;font-size:12px !important;border-radius:8px !important}
+  .mc>.btn,.row2{position:static !important;margin-top:6px !important}
 }
 @media (prefers-reduced-motion:reduce){ .boom,.static,.dotp{animation:none} }
 </style>

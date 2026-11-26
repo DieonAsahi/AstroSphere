@@ -11,6 +11,7 @@ import { PHENOMENA } from '~/data/phenomena.js';
 import { PREDICT, FACTS } from '~/data/learning.js';
 
 const { getPlanet, getPhenomenon, getHistory, getFacts, loadedFromDb } = useSupabaseContent();
+const sheetRef = ref(null);
 const p = computed(() => PLANETS.find((x) => x.id === store.focus) || MOONS.find((x) => x.id === store.focus) || PLANETS[2]);
 const isMoon = computed(() => !!p.value.parent || MOONS.some((m) => m.id === p.value.id));
 const parentPlanet = computed(() => {
@@ -201,7 +202,7 @@ const stageEyebrow = computed(() => {
     <div v-else class="stage-bottom"><div class="card flat mini"><UiOrbitInset :body="p.id" :w="120" :h="80" /></div></div>
 
     <!-- CARD PANEL KANAN (DESAIN OBSERVATORIUM BERSIH & TERSTRUKTUR) -->
-    <aside class="sheet card" aria-label="Tentang objek">
+    <aside ref="sheetRef" class="sheet card" aria-label="Tentang objek">
       <Transition name="fade" mode="out-in">
         <!-- TEBAK DULU -->
         <div v-if="asking" key="ask" class="sheet-body sheet-scroll sbody scroll">
@@ -346,6 +347,7 @@ const stageEyebrow = computed(() => {
           </button>
         </template>
       </div>
+      <UiScrollHint :target="sheetRef" />
     </aside>
   </div>
 </template>
@@ -917,18 +919,71 @@ const stageEyebrow = computed(() => {
     right: calc(10px + var(--safe-r)) !important;
     top: calc(44px + var(--safe-t)) !important;
     bottom: calc(10px + var(--safe-b)) !important;
-    width: min(350px, 46vw) !important;
+    width: min(285px, 43vw) !important;
     height: auto !important;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
     border-bottom: 1px solid rgba(148, 174, 255, 0.16) !important;
-    padding-bottom: 0 !important;
+    padding: 10px 12px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   .sheet::before {
     display: none !important;
   }
+  .sheet .sheet-body,
+  .sheet .sheet-scroll,
+  .sheet .sbody {
+    overflow: visible !important;
+    flex: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    gap: 8px !important;
+  }
+  .summary-card {
+    padding: 8px 10px !important;
+    gap: 4px !important;
+  }
+  .summary-card .desc {
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+  }
+  .data-grid {
+    padding: 6px 8px !important;
+    gap: 6px !important;
+  }
+  .data-item .val {
+    font-size: 11.5px !important;
+  }
+  .data-item .lbl {
+    font-size: 9.5px !important;
+  }
+  .spin-card,
+  .facts-trigger-card {
+    padding: 8px 10px !important;
+    font-size: 11.5px !important;
+  }
+  .sfoot {
+    position: static !important;
+    flex: none !important;
+    margin-top: 10px !important;
+    padding: 6px 0 0 !important;
+    border-top: 1px solid rgba(148, 174, 255, 0.14) !important;
+    background: transparent !important;
+  }
+  .btn-foot {
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 12px !important;
+    padding: 0 8px !important;
+  }
+  .stage-title {
+    max-width: calc(100vw - min(285px, 43vw) - 30px) !important;
+  }
   .stage-bottom {
     bottom: calc(10px + var(--safe-b)) !important;
-    max-width: calc(100vw - min(350px, 46vw) - 30px) !important;
+    max-width: calc(100vw - min(285px, 43vw) - 30px) !important;
   }
 }
 </style>

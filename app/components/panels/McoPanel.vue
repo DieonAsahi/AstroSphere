@@ -91,6 +91,7 @@ onBeforeUnmount(() => clearInterval(waitT));
         <p class="tx">{{ D.brief }}</p>
         <p class="small">11 Desember 1998 · Diluncurkan dari Cape Canaveral, Amerika Serikat</p>
         <button class="btn primary lg block" @click="G()?.launch()"><UiIcon name="kilat" :size="20" />Luncurkan</button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'wait'" key="wait" class="card mc center">
@@ -98,6 +99,7 @@ onBeforeUnmount(() => clearInterval(waitT));
         <h2 class="h2">Menunggu sinyal kembali…</h2>
         <b class="big num">{{ String(Math.floor(waitN / 60)).padStart(2, '0') }}:{{ String(waitN % 60).padStart(2, '0') }}</b>
         <p class="small">Wahana sedang di balik Mars. Sinyal seharusnya muncul lagi saat ia keluar dari bayangan planet.</p>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'lost'" key="lost" class="card mc">
@@ -105,6 +107,7 @@ onBeforeUnmount(() => clearInterval(waitT));
         <h2 class="h2">Sinyal tidak pernah kembali</h2>
         <p class="tx">{{ D.lost }}</p>
         <button class="btn star lg block" @click="G()?.investigate()"><UiIcon name="info" :size="20" />Selidiki penyebabnya</button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'investigate'" key="inv" class="card mc">
@@ -123,6 +126,7 @@ onBeforeUnmount(() => clearInterval(waitT));
           <p v-if="invOpt" class="fb" :class="{ ok: invOpt.ok }">{{ invOpt.why }}</p>
           <button v-if="invOpt?.ok" class="btn primary block" @click="G()?.complete('investigate', inv.tries <= 1)">Ulangi sejarah<UiIcon name="lanjut" :size="18" /></button>
         </template>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'fix'" key="fix" class="card mc">
@@ -142,6 +146,7 @@ onBeforeUnmount(() => clearInterval(waitT));
           <div class="leg"><span class="r">terlalu rendah (atmosfer)</span><span>target {{ D.plannedKm }} km</span></div>
         </div>
         <button v-if="fx.done" class="btn star lg block" @click="G()?.complete('fix', true)"><UiIcon name="kilat" :size="20" />Coba masuk orbit lagi</button>
+        <UiScrollHint />
       </section>
 
       <section v-else-if="M.step === 'done'" key="done" class="card mc fin">
@@ -155,6 +160,7 @@ onBeforeUnmount(() => clearInterval(waitT));
           <button class="btn line" @click="restart"><UiIcon name="ulang" :size="18" />Main lagi</button>
           <button class="btn primary" @click="game()?.back()">Kembali terbang</button>
         </div>
+        <UiScrollHint />
       </section>
     </Transition>
   </div>
@@ -677,30 +683,36 @@ onBeforeUnmount(() => clearInterval(waitT));
   .stat{
     top:calc(10px + var(--safe-t, 0px));
     left:calc(12px + var(--safe-l, 0px));
-    max-width:calc(100vw - min(370px, 50vw) - 30px);
+    max-width:calc(100vw - min(285px, 43vw) - 30px);
   }
   .tag{margin-bottom:4px}
-  .stat .h1{font-size:16px;margin-bottom:3px}
-  .clk{margin-bottom:4px}
+  .stat .h1{font-size:15px;margin-bottom:2px}
+  .clk{margin-bottom:3px}
+  .clk b{font-size:11.5px}
   .info{display:none}
   .mc{
     left:auto !important;
     right:calc(10px + var(--safe-r, 0px)) !important;
     transform:none !important;
-    width:min(370px, 50vw) !important;
+    width:min(285px, 43vw) !important;
     bottom:calc(6px + var(--safe-b, 0px)) !important;
     top:calc(8px + var(--safe-t, 0px)) !important;
     max-height:calc(100dvh - 16px) !important;
-    padding:12px 14px;
-    gap:8px;
+    padding:10px 12px !important;
+    gap:6px !important;
+    border-radius:12px !important;
+    overflow-y:auto !important;
   }
-  .tx{font-size:13px;line-height:1.4}
+  .tx{font-size:12px;line-height:1.35}
   .clues{gap:4px}
-  .clue{padding:8px 10px}
-  .opts{gap:6px}
-  .opt{padding:8px 10px;font-size:13px;min-height:36px}
-  .fb{padding:8px 10px;font-size:12.5px}
-  .mc>.btn,.row2{position:sticky;bottom:0;z-index:3;margin-top:2px}
+  .clue{padding:6px 8px;font-size:12px}
+  .opts{gap:5px}
+  .opt{padding:6px 8px;font-size:12px;min-height:32px}
+  .fb{padding:6px 8px;font-size:11.5px}
+  .lessons{padding:8px 10px;font-size:12px}
+  .lessons ul,.facts{font-size:11.5px;gap:4px;padding-left:14px}
+  .btn{height:34px !important;min-height:34px !important;font-size:12px !important;border-radius:8px !important}
+  .mc>.btn,.row2{position:static !important;margin-top:6px !important}
 }
 @media (prefers-reduced-motion:reduce){ .static,.dotp{animation:none} }
 </style>

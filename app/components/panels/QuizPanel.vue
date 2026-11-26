@@ -241,6 +241,7 @@ const letters = ['A', 'B', 'C', 'D'];
         <p class="fine-note">
           {{ nOpen }} dari {{ activeSelectionList.length }} {{ bodyCategory === 'moon' ? 'bulan' : 'planet' }} terbuka · Jawaban salah tidak mengurangi bintang.
         </p>
+        <UiScrollHint />
       </div>
 
       <!-- SOAL (QUESTION / FEEDBACK VIEW) -->
@@ -303,6 +304,7 @@ const letters = ['A', 'B', 'C', 'D'];
             </div>
           </div>
         </Transition>
+        <UiScrollHint />
       </div>
 
       <!-- HASIL (RESULT VIEW) -->
@@ -354,6 +356,7 @@ const letters = ['A', 'B', 'C', 'D'];
             <span>Selesai &amp; Kembali</span>
           </button>
         </div>
+        <UiScrollHint />
       </div>
     </section>
   </div>
@@ -1168,10 +1171,17 @@ const letters = ['A', 'B', 'C', 'D'];
 }
 @media (max-height:540px){
   .quiz{max-height:calc(100dvh - 16px)}
-  .body{padding:10px 16px 12px;gap:8px;max-height:calc(100dvh - 100px);overflow-y:auto}
-  .opts-modern{gap:6px}
-  .opt-modern{min-height:42px;padding:6px 12px;font-size:13px}
-  .planet-selector-grid{margin:2px 0;gap:5px}
-  .prompt-modern{font-size:14px;line-height:1.4}
+  .head{padding:6px 14px}
+  .quiz-title{font-size:15px}
+  .body{padding:8px 14px 10px;gap:6px;max-height:calc(100dvh - 72px);overflow-y:auto}
+  .prompt-modern{font-size:13px;line-height:1.35;margin-bottom:2px}
+  .opts-modern{gap:5px}
+  .opt-modern{min-height:32px;padding:4px 10px;font-size:12px;gap:8px;border-radius:8px}
+  .opt-circle{width:20px;height:20px;font-size:10px}
+  .fb-modern{padding:8px 10px;gap:6px}
+  .fb-explanation{font-size:11.5px;line-height:1.35}
+  .btn-quiz-primary,.btn-quiz-star,.btn-next-action,.btn-result-primary,.btn-result-secondary{height:34px !important;min-height:34px !important;font-size:12px !important;border-radius:8px !important}
+  .planet-selector-grid{margin:2px 0;gap:4px}
+  .p-btn{padding:4px 6px;font-size:11.5px;min-height:30px}
 }
 </style>

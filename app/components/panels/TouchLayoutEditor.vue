@@ -294,10 +294,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
         <small>Kanan</small>
       </div>
 
-      <!-- Pratinjau Tombol Jeda -->
-      <div v-else-if="el.id === 'pause'" class="prev-pause">
-        <UiIcon name="jeda" :size="18" />
-        <small>Jeda</small>
+      <!-- Pratinjau Tombol Jeda & Pilot View -->
+      <div v-else-if="el.id === 'pause'" class="prev-pause-col">
+        <div class="prev-pause">
+          <UiIcon name="jeda" :size="18" />
+          <small>Jeda</small>
+        </div>
+        <div class="prev-pause prev-cam">
+          <UiIcon name="mata" :size="18" />
+          <small>Pilot</small>
+        </div>
       </div>
     </div>
   </div>
@@ -751,6 +757,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
   font-size: 9.5px;
   color: var(--muted);
   line-height: 1;
+}
+
+.prev-pause-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
 }
 
 .prev-pause {

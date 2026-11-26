@@ -111,6 +111,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
     </div>
 
     <p class="fine-note">Pernyataan baru yang kamu jawab benar berhadiah +{{ MYTH_REWARD }} bintang.</p>
+    <UiScrollHint />
   </div>
 
   <!-- BERMAIN (PLAY VIEW) -->
@@ -183,6 +184,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         </button>
       </div>
     </div>
+    <UiScrollHint />
   </div>
 
   <!-- HASIL (RESULT VIEW) -->
@@ -225,6 +227,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         <span>Selesai &amp; Kembali</span>
       </button>
     </div>
+    <UiScrollHint />
   </div>
 </template>
 
@@ -751,15 +754,25 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 }
 @media (max-height: 540px) and (orientation: landscape) {
   .body {
-    padding: 10px 16px 12px;
-    gap: 8px;
-    max-height: calc(100dvh - 100px);
+    padding: 8px 14px 10px;
+    gap: 6px;
+    max-height: calc(100dvh - 72px);
     overflow-y: auto;
   }
-  .pick-modern { gap: 8px; }
-  .btn-pick-action { height: 38px; min-height: 38px; font-size: 13px; }
-  .fb-modern { padding: 10px 12px; gap: 6px; }
-  .quiz-title { font-size: 17px; }
-  .mast-card { padding: 8px 10px; gap: 4px; }
+  .pick-modern { gap: 6px; }
+  .btn-pick-action { height: 34px; min-height: 34px; font-size: 12px; }
+  .fb-modern { padding: 8px 10px; gap: 4px; }
+  .fb-explanation { font-size: 11.5px; line-height: 1.35; }
+  .quiz-title { font-size: 15px; }
+  .lead-sub { font-size: 12px; }
+  .mast-card { padding: 6px 8px; gap: 3px; }
+  .mcard-modern { padding: 8px 12px; min-height: 48px; }
+  .statement-text { font-size: 12.5px; line-height: 1.35; }
+  .btn-next-action, .btn-quiz-primary, .btn-result-primary, .btn-result-secondary {
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
 }
 </style>

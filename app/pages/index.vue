@@ -430,7 +430,7 @@ onBeforeUnmount(() => { game()?.dispose(); });
   .compass{top:calc(2px + var(--safe-t)) !important}
   .touch .compass{top:calc(2px + var(--safe-t)) !important}
   .notify.in-jelajah{
-    top:calc(38px + var(--safe-t));
+    top:calc(76px + var(--safe-t));
     right:calc(8px + var(--safe-r));
     width:min(230px,30vw);
     max-height:calc(100dvh - 170px);

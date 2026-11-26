@@ -710,6 +710,7 @@ function downloadPdf() {
         </template>
 
         <p class="fine">Data tersinkronisasi dengan katalog AstroSphere.</p>
+        <UiScrollHint :target="scroller" />
       </div>
     </aside>
   </div>
@@ -1368,18 +1369,52 @@ function downloadPdf() {
   .stage-title {
     left: calc(var(--gap) + var(--safe-l)) !important;
     top: calc(44px + var(--safe-t)) !important;
-    max-width: calc(100vw - min(350px, 46vw) - 30px) !important;
+    max-width: calc(100vw - min(285px, 43vw) - 30px) !important;
   }
   .sheet {
     left: auto !important;
     right: calc(10px + var(--safe-r)) !important;
     top: calc(44px + var(--safe-t)) !important;
     bottom: calc(10px + var(--safe-b)) !important;
-    width: min(350px, 46vw) !important;
+    width: min(285px, 43vw) !important;
     height: auto !important;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
     border-bottom: 1px solid rgba(148, 174, 255, 0.16) !important;
-    padding-bottom: 0 !important;
+    padding: 10px 12px !important;
+  }
+  .sbody {
+    padding: 0 !important;
+    gap: 8px !important;
+  }
+  .h3 {
+    font-size: 15px !important;
+  }
+  .small {
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+  }
+  .filter-slide-bar button {
+    height: 26px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+  }
+  .evt-row {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    border-radius: 8px !important;
+  }
+  .evt-title {
+    font-size: 12.5px !important;
+  }
+  .evt-body {
+    font-size: 11.5px !important;
+  }
+  .btn-back-list,
+  .btn-focus-poi,
+  .btn-download-pdf {
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 12px !important;
   }
 }
 </style>

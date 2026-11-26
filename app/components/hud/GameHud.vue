@@ -34,6 +34,11 @@ function onPauseTap() {
   game()?.pause?.();
 }
 
+const isCockpitView = computed(() => store.camMode === 'cockpit');
+function onToggleCam() {
+  game()?.toggleCam?.();
+}
+
 // Status tuas dan pendorong
 const status = computed(() => {
   if (store.hud.braking) return 'REM';
@@ -478,20 +483,38 @@ function handleQuickStop() {
       <span v-if="store.hud.rollCd > 0" class="roll-cd-bar"><i :style="{ width: `${Math.round((1 - store.hud.rollCd) * 100)}%` }" /></span>
     </button>
 
-    <!-- 4. TOMBOL JEDA / PAUSE CEPAT MOBILE -->
-    <button
+    <!-- 4. TOMBOL JEDA & KAMERA PILOT CEPAT MOBILE -->
+    <div
       v-if="store.touch && store.phase === 'playing' && !touchLayout.pause.hidden"
-      type="button"
-      class="touch-pause hud-el custom-pos"
+      class="touch-pause-col hud-el custom-pos"
       :style="hudPosStyle('pause')"
-      aria-label="Buka Menu Jeda"
-      title="Jeda Permainan"
-      @pointerdown.stop
-      @click="onPauseTap"
     >
-      <UiIcon name="jeda" :size="18" />
-      <span class="touch-pause-lbl">Jeda</span>
-    </button>
+      <button
+        type="button"
+        class="touch-pause"
+        aria-label="Buka Menu Jeda"
+        title="Jeda Permainan"
+        @pointerdown.stop
+        @click="onPauseTap"
+      >
+        <UiIcon name="jeda" :size="18" />
+        <span class="touch-pause-lbl">Jeda</span>
+      </button>
+
+      <button
+        type="button"
+        class="touch-cam"
+        :class="{ active: isCockpitView }"
+        :aria-label="isCockpitView ? 'Ganti ke Kamera Belakang' : 'Ganti ke View Pilot (Kokpit)'"
+        :title="isCockpitView ? 'Kamera Belakang' : 'View Pilot'"
+        @pointerdown.stop
+        @click="onToggleCam"
+      >
+        <UiIcon name="mata" :size="18" />
+        <span class="touch-cam-lbl">{{ isCockpitView ? 'Kokpit' : 'Pilot' }}</span>
+        <span v-if="isCockpitView" class="cam-active-dot" />
+      </button>
+    </div>
 
     <!-- PETUNJUK TOMBOL -->
     <Transition name="fade">
@@ -675,11 +698,23 @@ function handleQuickStop() {
   border-radius:inherit;
 }
 
-.touch-pause{
+.touch-pause-col{
   position:absolute;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  touch-action:manipulation;
+  user-select:none;
+  z-index:5;
+}
+
+.touch-pause,
+.touch-cam{
+  position:relative;
   min-width:46px;
   min-height:46px;
-  padding:6px 10px;
+  padding:5px 8px;
   border-radius:12px;
   background:rgba(11,16,36,.84);
   border:1px solid rgba(148,174,255,.22);
@@ -694,19 +729,41 @@ function handleQuickStop() {
   gap:2px;
   touch-action:manipulation;
   user-select:none;
-  z-index:5;
-  transition:background .15s,border-color .15s,transform .1s;
+  transition:background .15s,border-color .15s,transform .1s,color .15s,box-shadow .15s;
 }
 .touch-pause:active{
   background:rgba(59,130,246,.28);
   border-color:rgba(148,174,255,.45);
 }
-.touch-pause-lbl{
+.touch-cam:active{
+  background:rgba(59,130,246,.32);
+}
+.touch-cam.active{
+  background:rgba(59,130,246,.35);
+  border-color:#38bdf8;
+  color:#ffffff;
+  box-shadow:0 0 14px rgba(56,189,248,.45),0 4px 12px rgba(0,0,0,.45);
+}
+.cam-active-dot{
+  position:absolute;
+  top:4px;
+  right:4px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#38bdf8;
+  box-shadow:0 0 6px #38bdf8;
+}
+.touch-pause-lbl,
+.touch-cam-lbl{
   font-family:var(--display);
   font-size:9.5px;
   font-weight:500;
   line-height:1;
   color:var(--muted);
+}
+.touch-cam.active .touch-cam-lbl{
+  color:#fff;
 }
 
 /* Penyesuaian Layar Kecil / HP */
@@ -736,10 +793,23 @@ function handleQuickStop() {
   .pill{min-height:24px;padding:0 7px;font-size:11px;gap:3px}
   .pk{top:calc(74px + var(--safe-t));padding:10px 12px;width:min(320px,calc(100vw - 24px))}
   .pk-l{max-height:min(40dvh,150px)}
-  .approach-green-card{top:calc(74px + var(--safe-t));padding:3px 10px;gap:7px;border-radius:8px}
-  .approach-title{font-size:12px}
-  .approach-dist{font-size:11px}
-  .badge-green-zone{font-size:9.5px;padding:1px 5px}
+  .approach-green-card{
+    top:calc(42px + var(--safe-t));
+    right:calc(10px + var(--safe-r));
+    left:auto;
+    transform:none;
+    padding:3px 8px;
+    gap:6px;
+    border-radius:8px;
+    z-index:12;
+  }
+  .approach-green-card :deep(.planet-dot),
+  .approach-green-card .planet-dot{
+    --s:18px !important;
+  }
+  .approach-title{font-size:11.5px}
+  .approach-dist{font-size:10.5px}
+  .badge-green-zone{font-size:8.5px;padding:1px 4px;border-radius:4px}
   .cockpit-stick-wrap{padding:5px 7px;gap:3px}
   .stick-base{width:72px;height:72px}
   .stick-knob{width:32px;height:32px;margin-left:-16px;margin-top:-16px}
@@ -756,7 +826,15 @@ function handleQuickStop() {
   .touch-roll{width:46px;height:46px;min-width:40px;min-height:40px;border-radius:11px;padding:3px}
   .touch-roll svg{width:20px;height:20px}
   .touch-roll-lbl{font-size:9px}
-  .touch-pause{min-width:38px;min-height:38px;padding:4px 6px;border-radius:10px}
-  .touch-pause-lbl{font-size:8.5px}
+  .touch-pause-col{gap:4px}
+  .touch-pause,
+  .touch-cam{min-width:36px;min-height:36px;padding:3px 5px;border-radius:9px}
+  .touch-pause :deep(svg),
+  .touch-pause svg,
+  .touch-cam :deep(svg),
+  .touch-cam svg{width:16px;height:16px}
+  .touch-pause-lbl,
+  .touch-cam-lbl{font-size:8px}
+  .cam-active-dot{top:3px;right:3px;width:5px;height:5px}
 }
 </style>

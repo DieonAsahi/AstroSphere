@@ -12,6 +12,7 @@ import { SUN_TOPICS, FACTS } from '~/data/learning.js';
 import { PHENOMENA } from '~/data/phenomena.js';
 
 const { getPhenomenon, getFacts } = useSupabaseContent();
+const sheetRef = ref(null);
 
 const SCI = [
   { k: 'Diameter', v: '1.392.700 km', sub: '109× ukuran Bumi' },
@@ -45,7 +46,7 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
 
     <div v-if="!store.pheno.on" class="stage-bottom"><PanelsTimeBar /></div>
 
-    <aside class="sheet card" aria-label="Tentang Matahari">
+    <aside ref="sheetRef" class="sheet card" aria-label="Tentang Matahari">
       <div v-if="store.pheno.on" class="sbody scroll">
         <span class="tag-ph"><UiIcon name="fenomena" :size="13" />Fenomena</span>
         <h2 class="h2">{{ ph?.title || 'Badai Matahari' }}</h2>
@@ -130,6 +131,7 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
           <button class="btn-foot star" @click="myths"><UiIcon name="kuis" :size="17" /><span class="lb">Mitos/Fakta</span></button>
         </div>
       </div>
+      <UiScrollHint :target="sheetRef" />
     </aside>
   </div>
 </template>
@@ -224,8 +226,71 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
   .btn-foot{font-size:13px;padding:0 10px;gap:6px}
 }
 @media (max-height:540px) and (orientation:landscape){
-  .sheet{left:auto !important;right:calc(10px + var(--safe-r)) !important;top:calc(44px + var(--safe-t)) !important;bottom:calc(10px + var(--safe-b)) !important;width:min(350px, 46vw) !important;height:auto !important;border-radius:14px !important;border-bottom:1px solid rgba(148,174,255,.16) !important;padding-bottom:0 !important}
+  .sheet{
+    left:auto !important;
+    right:calc(10px + var(--safe-r)) !important;
+    top:calc(44px + var(--safe-t)) !important;
+    bottom:calc(10px + var(--safe-b)) !important;
+    width:min(285px, 43vw) !important;
+    height:auto !important;
+    border-radius:12px !important;
+    border-bottom:1px solid rgba(148,174,255,.16) !important;
+    padding:10px 12px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
   .sheet::before{display:none !important}
-  .stage-bottom{bottom:calc(10px + var(--safe-b)) !important;max-width:calc(100vw - min(350px, 46vw) - 30px) !important}
+  .sheet .sbody{
+    overflow:visible !important;
+    flex:none !important;
+    height:auto !important;
+    padding:0 !important;
+    gap:8px !important;
+  }
+  .summary-card{
+    padding:8px 10px !important;
+    gap:4px !important;
+  }
+  .summary-card .desc{
+    font-size:11.5px !important;
+    line-height:1.4 !important;
+  }
+  .facts.grid-sci{
+    padding:6px 8px !important;
+    gap:6px !important;
+  }
+  .fact b.num{
+    font-size:11.5px !important;
+  }
+  .fact small{
+    font-size:9.5px !important;
+  }
+  .topic-head{
+    padding:6px 8px !important;
+    font-size:11.5px !important;
+  }
+  .sfoot{
+    position:static !important;
+    flex:none !important;
+    margin-top:10px !important;
+    padding:6px 0 0 !important;
+    border-top:1px solid rgba(148,174,255,.14) !important;
+    background:transparent !important;
+  }
+  .btn-foot{
+    height:34px !important;
+    min-height:34px !important;
+    font-size:12px !important;
+    padding:0 8px !important;
+  }
+  .stage-title{
+    max-width:calc(100vw - min(285px, 43vw) - 30px) !important;
+  }
+  .stage-bottom{
+    bottom:calc(10px + var(--safe-b)) !important;
+    max-width:calc(100vw - min(285px, 43vw) - 30px) !important;
+  }
 }
 </style>

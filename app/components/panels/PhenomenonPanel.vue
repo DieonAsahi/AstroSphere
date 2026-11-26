@@ -19,6 +19,7 @@ const pq = computed(() => {
   return PREDICT[key.value];
 });
 const pick = ref(null), revealed = ref(false), skipped = ref(false), result = ref({ ok: false, reward: 0 });
+const sheetRef = ref(null);
 const asking = computed(() => !store.progress.predict[key.value] && pick.value == null && !skipped.value);
 
 function prepare() {
@@ -142,7 +143,7 @@ const f3 = (v) => (+v).toFixed(3);
       </div>
     </div>
 
-    <aside class="sheet card" aria-label="Penjelasan gerhana">
+    <aside ref="sheetRef" class="sheet card" aria-label="Penjelasan gerhana">
       <div v-if="asking" class="sheet-body sheet-scroll sbody scroll">
         <UiPredictCard :q="pq" @pick="choose" />
       </div>
@@ -199,6 +200,7 @@ const f3 = (v) => (+v).toFixed(3);
           <button class="btn-foot line" @click="L()?.replay()"><UiIcon name="ulang" :size="17" />Ulangi</button>
         </div>
       </div>
+      <UiScrollHint :target="sheetRef" />
     </aside>
   </div>
 </template>
@@ -581,22 +583,83 @@ const f3 = (v) => (+v).toFixed(3);
     right:calc(10px + var(--safe-r)) !important;
     top:calc(44px + var(--safe-t)) !important;
     bottom:calc(10px + var(--safe-b)) !important;
-    width:min(350px, 46vw) !important;
+    width:min(285px, 43vw) !important;
     height:auto !important;
     max-height:none !important;
-    border-radius:14px !important;
+    border-radius:12px !important;
     border-bottom:1px solid rgba(148,174,255,.16) !important;
-    padding-bottom:0 !important;
+    padding:10px 12px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  .sheet::before{display:none !important}
+  .sheet .sheet-body,
+  .sheet .sheet-scroll,
+  .sheet .sbody{
+    overflow:visible !important;
+    flex:none !important;
+    height:auto !important;
+    padding:0 !important;
+    gap:8px !important;
+  }
+  .sfoot{
+    position:static !important;
+    flex:none !important;
+    margin-top:10px !important;
+    padding:6px 0 0 !important;
+    border-top:1px solid rgba(148,174,255,.14) !important;
+    background:transparent !important;
+  }
+  .btn-foot{
+    height:34px !important;
+    min-height:34px !important;
+    font-size:12px !important;
+    padding:0 8px !important;
   }
   .stage-title{
-    top:calc(44px + var(--safe-t)) !important;
-    max-width:calc(100vw - min(350px, 46vw) - 30px) !important;
+    top:calc(40px + var(--safe-t)) !important;
+    max-width:calc(100vw - min(285px, 43vw) - 30px) !important;
+  }
+  .stage-title .h1{
+    font-size:15px !important;
+    margin-bottom:2px !important;
+  }
+  .pheno-sub{
+    display:none !important;
+  }
+  .stage-title .seg button{
+    height:26px !important;
+    padding:0 8px !important;
+    font-size:11px !important;
   }
   .tlw{
     right:auto !important;
     left:calc(var(--gap) + var(--safe-l)) !important;
-    bottom:calc(10px + var(--safe-b)) !important;
-    max-width:calc(100vw - min(350px, 46vw) - 30px) !important;
+    bottom:calc(8px + var(--safe-b)) !important;
+    max-width:calc(100vw - min(285px, 43vw) - 30px) !important;
+  }
+  .tl{
+    padding:4px 8px !important;
+    gap:6px !important;
+    border-radius:8px !important;
+  }
+  .tl .ib{
+    width:28px !important;
+    height:28px !important;
+    min-width:28px !important;
+    min-height:28px !important;
+    border-radius:6px !important;
+  }
+  .tl .sp{
+    display:none !important;
+  }
+  .tl .tm{
+    font-size:11px !important;
+  }
+  .legend span{
+    font-size:9px !important;
   }
 }
 </style>

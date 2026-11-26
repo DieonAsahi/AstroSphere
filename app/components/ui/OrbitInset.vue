@@ -20,16 +20,14 @@ function draw() {
   const c = cv.value;
   if (!c) return;
 
-  const W = props.w;
-  const H = props.h;
   const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = c.clientWidth || props.w;
+  const H = c.clientHeight || props.h;
 
-  // Selalu set ukuran kanvas di awal agar tidak pernah membengkak ke ukuran default browser (300x150)
-  if (c.width !== W * dpr || c.height !== H * dpr) {
-    c.width = W * dpr;
-    c.height = H * dpr;
-    c.style.width = W + 'px';
-    c.style.height = H + 'px';
+  // Selalu sesuaikan resolusi kanvas dengan ukuran tampilan aktual
+  if (c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)) {
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
   }
 
   const x = c.getContext('2d');
@@ -157,5 +155,12 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
   height:60px;
   border-radius:12px;
   background:rgba(6,10,26,.6);
+}
+@media (max-height: 540px) and (orientation: landscape){
+  .oi{
+    width:64px;
+    height:42px;
+    border-radius:8px;
+  }
 }
 </style>

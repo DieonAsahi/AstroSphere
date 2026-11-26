@@ -26,6 +26,7 @@ const boostSpeedKm = computed(() => {
 });
 const shipOf = (id) => shipsData.value[id] || SHIPS[id];
 const owned = (id) => store.progress.owned.includes(id);
+const sheetRef = ref(null);
 
 function preview(id) {
   game()?.previewShip(id);
@@ -166,7 +167,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- PANEL DETAIL KANAN HANGGAR (GAYA 60-30-10 MODERN) -->
-    <aside class="sheet card" aria-label="Detail pesawat">
+    <aside ref="sheetRef" class="sheet card" aria-label="Detail pesawat">
       <div class="sbody scroll">
         <div class="ship-info-header">
           <h2 class="ship-header-title">{{ cur.name }}</h2>
@@ -226,6 +227,7 @@ onBeforeUnmount(() => {
           </div>
         </template>
       </div>
+      <UiScrollHint :target="sheetRef" />
     </aside>
   </div>
 </template>
@@ -597,18 +599,68 @@ onBeforeUnmount(() => {
     right:calc(10px + var(--safe-r)) !important;
     top:calc(44px + var(--safe-t)) !important;
     bottom:calc(10px + var(--safe-b)) !important;
-    width:min(350px, 46vw) !important;
+    width:min(285px, 43vw) !important;
     height:auto !important;
-    border-radius:14px !important;
-    padding-bottom:0 !important;
+    border-radius:12px !important;
+    padding:10px 12px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  .sheet .sbody{
+    overflow:visible !important;
+    flex:none !important;
+    height:auto !important;
+    padding:0 !important;
+    gap:8px !important;
+  }
+  .sfoot{
+    position:static !important;
+    flex:none !important;
+    margin-top:10px !important;
+    padding:6px 0 0 !important;
+    border-top:1px solid rgba(148,174,255,.14) !important;
+    background:transparent !important;
+  }
+  .ship-act-btn{
+    height:34px !important;
+    min-height:34px !important;
+    font-size:12px !important;
+    padding:0 8px !important;
   }
   .hangar-selector-wrap{
     left:calc(16px + var(--safe-l)) !important;
     transform:none !important;
-    bottom:calc(10px + var(--safe-b)) !important;
-    width:calc(100vw - min(350px, 46vw) - 40px) !important;
-    max-width:400px !important;
+    bottom:calc(8px + var(--safe-b)) !important;
+    width:calc(100vw - min(285px, 43vw) - 36px) !important;
+    max-width:340px !important;
   }
-  .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ship-chip{
+    height:46px !important;
+    min-height:46px !important;
+    padding:3px 6px !important;
+    gap:6px !important;
+  }
+  .chip-thumb{
+    width:30px !important;
+    height:30px !important;
+  }
+  .chip-name{
+    font-size:11px !important;
+  }
+  .ship-header-title{
+    font-size:15px !important;
+  }
+  .speed-grid{
+    gap:6px !important;
+  }
+  .speed-box{
+    padding:5px 8px !important;
+  }
+  .sb-val{
+    font-size:12.5px !important;
+  }
+  .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11.5px !important;line-height:1.35 !important}
 }
 </style>
