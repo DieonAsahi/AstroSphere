@@ -244,11 +244,26 @@ export function createEngine(el) {
   const bodyTime = () => (worldMode() === 'observe' ? obsTime : gameTime);
 
   // ---------- Pesawat ----------
-  const ROLL_DUR = 1.02, ROLL_CD = 1.25, ROLL_DODGE_SPEED = 21, ROLL_HELIX_Y = 2.0, CAM_ROLL_MAX = 3.2 * DEG;
+  const ROLL_DUR = 1.02, ROLL_CD = 1.25, ROLL_DODGE_SPEED = 21, ROLL_HELIX_Y = 2.0, CHASE_ROLL_MAX = 14 * DEG;
   const ship = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), vel: new THREE.Vector3(), rate: new THREE.Vector3(), throttle: 0, boost: 0, speed: 0, limited: false, braking: false, dodging: false, yaw: 0, pitch: 0 };
   const roll = { dir: 0, t: 0, cd: 0 };
   let bankRoll = 0, camRoll = 0, camLagX = 0;
   const _vRollAxis = new THREE.Vector3(0, 0, 1), _qRoll = new THREE.Quaternion();
+  function rollSample() {
+    if (roll.t <= 0) return { active: false, p: 0, ep: 0, bell: 0, spin: 0, barrelAngle: 0 };
+    const p = 1 - roll.t / ROLL_DUR;
+    const cosEase = 0.5 - 0.5 * Math.cos(Math.PI * p);
+    const cubEase = p * p * (3 - 2 * p);
+    const ep = 0.5 * cosEase + 0.5 * cubEase;
+    return {
+      active: true,
+      p,
+      ep,
+      bell: Math.sin(Math.PI * p),
+      spin: Math.sin(Math.PI * 2 * ep),
+      barrelAngle: -roll.dir * TAU * ep,
+    };
+  }
   function resetRoll(clearCam = false) {
     roll.dir = 0; roll.t = 0; roll.cd = 0; ship.dodging = false;
     if (clearCam) { camRoll = 0; camLagX = 0; }
@@ -467,20 +482,14 @@ export function createEngine(el) {
     if (g.rotation.order !== 'YXZ') g.rotation.order = 'YXZ';
     // Efek visual miring sayap (banking roll) & manuver guling menghindar heliks 360° HANYA pada mesh 3D anak
     bankRoll = damp(bankRoll, -input.yaw * .45, 6, dt);
+    const r = rollSample();
     let barrelAngle = 0, microPitch = 0, microYaw = 0, heaveY = 0, rollFx = 0;
-    if (roll.t > 0) {
-      const p = 1 - roll.t / ROLL_DUR;
-      // Kurva ease-in-out sinematik: sayap miring perlahan, berbalik halus di udara, lalu kembali rata natural
-      const cosEase = 0.5 - 0.5 * Math.cos(Math.PI * p);
-      const cubEase = p * p * (3 - 2 * p);
-      const ep = 0.5 * cosEase + 0.5 * cubEase;
-      const bell = Math.sin(Math.PI * p);
-      const spin = Math.sin(Math.PI * 2 * ep);
-      barrelAngle = -roll.dir * Math.PI * 2 * ep;
-      microYaw = -roll.dir * 0.068 * bell;
-      microPitch = -0.042 * spin;
-      heaveY = -0.22 * spin;
-      rollFx = 0.28 * bell;
+    if (r.active) {
+      barrelAngle = r.barrelAngle;
+      microYaw = -roll.dir * 0.068 * r.bell;
+      microPitch = -0.042 * r.spin;
+      heaveY = -0.22 * r.spin;
+      rollFx = 0.28 * r.bell;
     }
     g.position.set(0, heaveY, 0);
     g.rotation.z = bankRoll + barrelAngle;
@@ -580,19 +589,20 @@ export function createEngine(el) {
         look.yaw = damp(Math.atan2(Math.sin(look.yaw), Math.cos(look.yaw)), 0, 3.5, dt);
         look.pitch = damp(look.pitch, 0, 3.5, dt);
       }
-      const rp = roll.t > 0 ? 1 - roll.t / ROLL_DUR : 0;
-      const rBell = roll.t > 0 ? Math.sin(Math.PI * rp) : 0;
-      const followTilt = (store.phase === 'playing' && !freeLookMode && roll.t > 0)
-        ? -roll.dir * CAM_ROLL_MAX * rBell * (camMode === 'cockpit' ? .65 : 1)
-        : 0;
-      const followLagX = (store.phase === 'playing' && !freeLookMode && roll.t > 0 && camMode !== 'cockpit')
-        ? -roll.dir * .52 * rBell
-        : 0;
-      camRoll = damp(camRoll, followTilt, 6.2, dt);
-      camLagX = damp(camLagX, followLagX, 5.0, dt);
+      const r = rollSample();
       lookQ.setFromEuler(_eL.set(look.pitch, look.yaw, 0, 'YXZ'));
-      if (camMode === 'cockpit') { tPos.set(0, .45, -1.2).applyQuaternion(ship.quat).add(ship.pos); tQuat.copy(camQ).multiply(lookQ); }
-      else {
+      if (camMode === 'cockpit') {
+        camRoll = 0; camLagX = 0;
+        const cockpitRoll = (store.phase === 'playing' && r.active) ? r.barrelAngle : 0;
+        tPos.set(0, .45, -1.2).applyQuaternion(ship.quat).add(ship.pos);
+        tQuat.copy(camQ);
+        if (Math.abs(cockpitRoll) > 1e-4) tQuat.multiply(_qRoll.setFromAxisAngle(_vRollAxis, cockpitRoll));
+        tQuat.multiply(lookQ);
+      } else {
+        const followTilt = (store.phase === 'playing' && !freeLookMode && r.active) ? -roll.dir * CHASE_ROLL_MAX * r.bell : 0;
+        const followLagX = (store.phase === 'playing' && !freeLookMode && r.active) ? -roll.dir * 1.15 * r.bell : 0;
+        camRoll = damp(camRoll, followTilt, 7.5, dt);
+        camLagX = damp(camLagX, followLagX, 6.0, dt);
         const sN = clamp(ship.speed / 300, 0, 1);
         _v2.copy(camOffset(def)); _v2.z += sN * 2 + ship.boost * 2.5;
         _v2.x += camLagX;
@@ -600,9 +610,7 @@ export function createEngine(el) {
         tPos.copy(ship.pos).add(_v2);
         tQuat.copy(camQ).multiply(lookQ).multiply(LOOK_DOWN);
         if (nearest) { const minD = nearest.radius + 1.2, d = tPos.distanceTo(nearest.pos); if (d < minD) tPos.sub(nearest.pos).setLength(minD).add(nearest.pos); }
-      }
-      if (Math.abs(camRoll) > 1e-4) {
-        tQuat.multiply(_qRoll.setFromAxisAngle(_vRollAxis, camRoll));
+        if (Math.abs(camRoll) > 1e-4) tQuat.multiply(_qRoll.setFromAxisAngle(_vRollAxis, camRoll));
       }
     }
     if (trans.t < 1) {

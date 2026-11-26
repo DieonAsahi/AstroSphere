@@ -268,7 +268,6 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
               maxlength="20"
               class="form-input"
             >
-            <span v-if="store.screen === 'register'" class="field-hint">3–20 karakter: huruf kecil, angka, atau garis bawah _</span>
           </label>
 
           <label class="form-field">
@@ -371,10 +370,10 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
 .acct .btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.45);color:#ffffff}
 .btn-icon{flex:none;display:block;opacity:.92}
 .note{font-size:13px;color:rgba(235,241,255,.88);text-shadow:0 2px 12px rgba(4,8,24,.98)}
-.formwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(56px + var(--safe-t)) clamp(28px,6vw,84px) 24px;z-index:2;overflow-y:auto}
+.formwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:calc(56px + var(--safe-t)) calc(clamp(28px,5vw,72px) + var(--safe-r)) calc(24px + var(--safe-b)) calc(clamp(28px,5vw,72px) + var(--safe-l));z-index:2;overflow-y:auto}
 .login .formwrap{justify-content:flex-start}
 .register .formwrap{justify-content:flex-end}
-.form{position:relative;width:min(404px,100%);margin:auto 0;padding:22px 24px;display:flex;flex-direction:column;gap:11px;background:rgba(11,16,33,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,.18);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.65)}
+.form{position:relative;flex:0 0 auto;width:min(420px,100%);margin:auto 0;padding:24px 26px;display:flex;flex-direction:column;gap:12px;background:rgba(11,16,33,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(148,163,184,.18);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.65)}
 .back-link{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:rgba(170,182,224,.85);cursor:pointer;background:none;border:none;padding:0;margin-bottom:0;transition:color .15s}
 .back-link:hover{color:#f4f7ff}
 .back-arrow{font-size:14px;line-height:1}
@@ -383,7 +382,6 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
 .form-title{font-size:20.5px;font-weight:600;color:#f4f7ff;line-height:1.2;margin:0}
 .form-subtitle{font-size:13px;color:var(--muted);line-height:1.4}
 .form-field{display:flex;flex-direction:column;gap:5px;text-align:left;font-size:13px;font-weight:500;color:#cbd5e1}
-.field-hint{font-size:11.5px;font-weight:400;color:var(--muted);line-height:1.35}
 .form-input{width:100%;height:40px;padding:0 13px;background:#161d36;border:1px solid #2a355c;border-radius:10px;color:#f4f7ff;font-size:14px;transition:border-color .15s,box-shadow .15s}
 .form-input:focus{outline:none;border-color:#38bdf8;box-shadow:0 0 0 2px rgba(56,189,248,.2)}
 .form-input::placeholder{color:rgba(148,163,184,.65);font-size:13.5px}
