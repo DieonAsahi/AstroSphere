@@ -181,8 +181,8 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
   .stage-bottom{left:12px;right:12px;max-width:none;bottom:calc(min(50vh,470px) + 10px)}
 }
 
-/* Layar HP Lanskap Pendek (Tinggi Layar <= 520px): jadikan panel samping kanan kompak */
-@media (max-height: 520px) {
+/* Layar HP Lanskap Pendek (Tinggi Layar <= 540px): jadikan panel samping kanan kompak */
+@media (max-height: 540px) and (orientation: landscape) {
   .sheet {
     left: auto !important;
     right: calc(10px + var(--safe-r)) !important;

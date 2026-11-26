@@ -230,4 +230,28 @@ onBeforeUnmount(detachKeyGuard);
   outline: 2px solid #7dd3fc;
   outline-offset: 2px;
 }
+
+@media (max-height: 540px) and (orientation: landscape) {
+  .disabled-overlay {
+    padding: calc(6px + var(--safe-t)) calc(12px + var(--safe-r)) calc(6px + var(--safe-b)) calc(12px + var(--safe-l));
+  }
+  .disabled-dialog {
+    padding: 14px 18px 14px;
+    gap: 6px;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    width: min(440px, 100%);
+  }
+  .disabled-icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 0;
+  }
+  .disabled-icon svg { width: 18px; height: 18px; }
+  .disabled-title { font-size: 16px; }
+  .disabled-desc { font-size: 12px; line-height: 1.45; }
+  .disabled-reason-box { padding: 8px 10px; margin-top: 2px; }
+  .reason-text { font-size: 12px; }
+  .disabled-action-btn { height: 36px; min-height: 36px; margin-top: 6px; font-size: 13px; }
+}
 </style>

@@ -728,15 +728,15 @@ function handleQuickStop() {
 
 /* Mobile Landscape: kompak & bebas tumpuk pada tinggi layar terbatas */
 @media (max-height:540px) and (orientation:landscape){
-  .dest{top:calc(26px + var(--safe-t));padding:2px 5px;gap:4px;border-radius:8px}
+  .dest{top:calc(44px + var(--safe-t));padding:2px 5px;gap:4px;border-radius:8px}
   .who{min-height:24px;padding:0 6px;gap:5px;font-size:11.5px}
   .who small{display:none}
   .dest .nm{font-size:11.5px}
   .dest .d{font-size:11px}
   .pill{min-height:24px;padding:0 7px;font-size:11px;gap:3px}
-  .pk{top:calc(56px + var(--safe-t));padding:10px 12px;width:min(320px,calc(100vw - 24px))}
-  .pk-l{max-height:min(44dvh,170px)}
-  .approach-green-card{top:calc(56px + var(--safe-t));padding:3px 10px;gap:7px;border-radius:8px}
+  .pk{top:calc(74px + var(--safe-t));padding:10px 12px;width:min(320px,calc(100vw - 24px))}
+  .pk-l{max-height:min(40dvh,150px)}
+  .approach-green-card{top:calc(74px + var(--safe-t));padding:3px 10px;gap:7px;border-radius:8px}
   .approach-title{font-size:12px}
   .approach-dist{font-size:11px}
   .badge-green-zone{font-size:9.5px;padding:1px 5px}

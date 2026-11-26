@@ -515,7 +515,7 @@ const hasSecondKey = (id) => !!km.value[id]?.[1];
     gap:10px;
   }
 }
-@media (max-height:520px) and (orientation:landscape){
+@media (max-height:540px) and (orientation:landscape){
   .kg{gap:10px}
   .tc{flex-wrap:nowrap;gap:16px;padding:2px 0}
   .phone{width:240px;height:132px;border-radius:18px}

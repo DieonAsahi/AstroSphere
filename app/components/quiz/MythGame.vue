@@ -749,4 +749,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   .body{padding:20px 16px 20px}
   .pick-modern{grid-template-columns:1fr}
 }
+@media (max-height: 540px) and (orientation: landscape) {
+  .body {
+    padding: 10px 16px 12px;
+    gap: 8px;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+  }
+  .pick-modern { gap: 8px; }
+  .btn-pick-action { height: 38px; min-height: 38px; font-size: 13px; }
+  .fb-modern { padding: 10px 12px; gap: 6px; }
+  .quiz-title { font-size: 17px; }
+  .mast-card { padding: 8px 10px; gap: 4px; }
+}
 </style>

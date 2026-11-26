@@ -122,6 +122,11 @@ function saveAndClose() {
   emit('close');
 }
 
+const isFolded = ref(false);
+function toggleFold() {
+  isFolded.value = !isFolded.value;
+}
+
 function onKeyDown(e) {
   if (e.code === 'Escape') {
     e.preventDefault();
@@ -149,29 +154,40 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
     <div class="tle-ghost-topbar" aria-hidden="true">Misi · Profil · Menu</div>
 
     <!-- Toolbar Inspektor & Aksi (meredup & tembus pointer saat sedang menyeret elemen) -->
-    <div class="tle-dock" :class="{ dragging: !!dragState.id }">
+    <div class="tle-dock" :class="{ dragging: !!dragState.id, folded: isFolded }">
       <div class="dock-top">
         <div class="dock-head">
           <span class="dock-eyebrow">EDITOR TATA LETAK SENTUH</span>
-          <span class="dock-hint">Seret elemen di layar untuk memindahkan posisi</span>
+          <span v-if="!isFolded" class="dock-hint">Seret elemen di layar untuk memindahkan posisi</span>
         </div>
         <div class="dock-actions">
-          <button type="button" class="tle-btn ghost" @click="resetToDefault">
-            <UiIcon name="ulang" :size="14" />
-            <span>Reset Default</span>
+          <button
+            type="button"
+            class="tle-btn ghost fold-btn"
+            :title="isFolded ? 'Perluas Toolbar' : 'Lipat Toolbar'"
+            @click="toggleFold"
+          >
+            <UiIcon :name="isFolded ? 'turun' : 'naik'" :size="13" />
+            <span>{{ isFolded ? 'Buka Toolbar' : 'Lipat' }}</span>
           </button>
-          <button type="button" class="tle-btn line" @click="emit('close')">
-            Batal
-          </button>
+          <template v-if="!isFolded">
+            <button type="button" class="tle-btn ghost" @click="resetToDefault">
+              <UiIcon name="ulang" :size="14" />
+              <span>Reset Default</span>
+            </button>
+            <button type="button" class="tle-btn line" @click="emit('close')">
+              Batal
+            </button>
+          </template>
           <button type="button" class="tle-btn primary" @click="saveAndClose">
             <UiIcon name="cek" :size="15" />
-            <span>Simpan Tata Letak</span>
+            <span>{{ isFolded ? 'Simpan' : 'Simpan Tata Letak' }}</span>
           </button>
         </div>
       </div>
 
       <!-- Kontrol Ukuran & Visibilitas Elemen Terpilih -->
-      <div v-if="activeCfg && activeMeta" class="dock-inspector">
+      <div v-if="!isFolded && activeCfg && activeMeta" class="dock-inspector">
         <div class="insp-meta">
           <span class="insp-name">{{ activeMeta.label }}</span>
           <span class="insp-coords num">X {{ Math.round(activeCfg.x) }}% · Y {{ Math.round(activeCfg.y) }}%</span>
@@ -202,12 +218,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
         </button>
       </div>
 
-      <div v-else class="dock-inspector empty">
+      <div v-else-if="!isFolded" class="dock-inspector empty">
         <span class="insp-hint">Pilih salah satu elemen di layar atau pulihkan tombol tersembunyi di bawah.</span>
       </div>
 
       <!-- Daftar Pulihkan Elemen Tersembunyi -->
-      <div v-if="hiddenElements.length" class="dock-hidden">
+      <div v-if="!isFolded && hiddenElements.length" class="dock-hidden">
         <span class="hidden-lbl">Tersembunyi:</span>
         <button
           v-for="el in hiddenElements"
@@ -356,6 +372,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
 .tle-dock.dragging {
   opacity: 0.22;
   pointer-events: none;
+}
+
+.tle-dock.folded {
+  width: auto;
+  min-width: 0;
+  max-width: calc(100vw - 24px - var(--safe-l) - var(--safe-r));
+  padding: 6px 12px;
+  gap: 0;
+}
+
+.tle-dock.folded .dock-top {
+  gap: 8px;
+}
+
+.fold-btn {
+  gap: 5px;
 }
 
 .dock-top {
@@ -747,6 +779,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
     top: calc(10px + var(--safe-t));
     padding: 8px 12px;
     gap: 6px;
+  }
+  .tle-dock.folded {
+    top: calc(6px + var(--safe-t));
+    padding: 4px 10px;
   }
   .dock-hint {
     display: none;

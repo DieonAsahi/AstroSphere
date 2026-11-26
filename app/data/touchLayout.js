@@ -5,11 +5,11 @@ export const TOUCH_SCALE_MIN = 0.75;
 export const TOUCH_SCALE_MAX = 1.35;
 
 export const TOUCH_ELEMENTS = [
-  { id: 'stick', label: 'Kemudi Analog', shortLabel: 'Kemudi', defaultX: 11, defaultY: 74, defaultScale: 1 },
+  { id: 'stick', label: 'Kemudi Analog', shortLabel: 'Kemudi', defaultX: 14, defaultY: 74, defaultScale: 1 },
   { id: 'throttle', label: 'Tuas Kecepatan', shortLabel: 'Kecepatan', defaultX: 89, defaultY: 74, defaultScale: 1 },
   { id: 'rollLeft', label: 'Guling Kiri', shortLabel: 'Guling Kiri', defaultX: 74, defaultY: 82, defaultScale: 1 },
   { id: 'rollRight', label: 'Guling Kanan', shortLabel: 'Guling Kanan', defaultX: 74, defaultY: 60, defaultScale: 1 },
-  { id: 'pause', label: 'Tombol Jeda', shortLabel: 'Jeda', defaultX: 6, defaultY: 22, defaultScale: 1 },
+  { id: 'pause', label: 'Tombol Jeda', shortLabel: 'Jeda', defaultX: 6, defaultY: 36, defaultScale: 1 },
 ];
 
 export const TOUCH_ELEMENT_IDS = TOUCH_ELEMENTS.map((e) => e.id);
