@@ -1,8 +1,11 @@
 <script setup>
 // Menu jeda: Lanjutkan + jalan pintas ke Kuis, Peta, Hanggar, Jurnal, Kontrol, Pengaturan.
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { store, game, unreadCards, isFound } from '~/composables/useGame.js';
 import { QUIZ } from '~/data/quiz.js';
+
+const cardRef = ref(null);
+
 function mode(m) {
   if (m === 'kuis') {
     // pilih planet terdekat bila sudah ditemukan, kalau tidak pertahankan pilihan lama yang sudah terbuka
@@ -32,7 +35,7 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 
 <template>
   <div class="pause" @pointerdown.self="game()?.resume()">
-    <div class="card pp pause-card" role="dialog" aria-modal="true" aria-labelledby="pt">
+    <div ref="cardRef" class="card pp pause-card" role="dialog" aria-modal="true" aria-labelledby="pt">
       <div class="hd">
         <h2 id="pt" class="h2">Jeda</h2>
         <span class="tag green"><UiIcon name="cek" :size="13" />Tersimpan</span>
@@ -74,6 +77,9 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
         <span class="pts"><UiIcon name="bintang" :size="16" />{{ store.progress.points }} bintang</span>
         <button class="btn ghost sm exit-btn" @click="game()?.toSplash()"><UiIcon name="keluar" :size="16" />Keluar ke beranda</button>
       </div>
+
+      <!-- Petunjuk Scroll jika konten melebihi layar -->
+      <UiScrollHint :target="cardRef" />
     </div>
   </div>
 </template>
@@ -132,16 +138,144 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
   .tile-btn{padding:10px 6px;font-size:12.5px}
 }
 @media (max-height:540px) and (orientation:landscape){
-  .pause{padding:calc(8px + var(--safe-t)) calc(14px + var(--safe-r)) calc(8px + var(--safe-b)) calc(14px + var(--safe-l))}
-  .pause-card{width:min(620px,100%);max-height:calc(100dvh - 16px);padding:14px 18px;gap:10px}
-  .h2{font-size:18px}
-  .resume-btn{height:38px;min-height:38px;font-size:14px}
-  .mlist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .mis{padding:8px 10px;gap:8px}
-  .mic{width:28px;height:28px}
-  .grid{gap:8px}
-  .tile-btn{padding:9px 8px;font-size:12.5px;gap:4px}
-  .touch-summary-bar{padding:6px 10px}
-  .foot{padding-top:10px;margin-top:0}
+  .pause{
+    padding:calc(8px + env(safe-area-inset-top, 0px)) calc(12px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+  .pause-card{
+    box-sizing:border-box;
+    width:min(620px, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    max-height:calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:12px 14px;
+    gap:8px;
+    border-radius:12px;
+  }
+  .hd{
+    padding-bottom:0;
+  }
+  .h2{
+    font-size:17px;
+    line-height:1.2;
+  }
+  .resume-btn{
+    height:36px;
+    min-height:36px;
+    font-size:13.5px;
+    gap:6px;
+    border-radius:8px !important;
+  }
+  .mlist{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+    gap:6px;
+    width:100%;
+    min-width:0;
+  }
+  .mis{
+    padding:6px 8px;
+    gap:7px;
+    border-radius:8px;
+    min-width:0;
+    overflow:hidden;
+  }
+  .mic{
+    width:24px;
+    height:24px;
+    border-radius:6px;
+    flex-shrink:0;
+  }
+  .mt{
+    min-width:0;
+    overflow:hidden;
+    flex:1;
+  }
+  .mt small{
+    font-size:9.5px;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:block;
+  }
+  .mt b{
+    font-size:11.5px;
+    line-height:1.25;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:block;
+  }
+  .mis .tag{
+    padding:1px 5px;
+    font-size:10px;
+    gap:3px;
+    flex-shrink:0;
+  }
+  .m-arr{
+    flex-shrink:0;
+  }
+  .grid{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:6px;
+    width:100%;
+    min-width:0;
+  }
+  .tile-btn{
+    padding:7px 6px;
+    font-size:11.5px;
+    gap:3px;
+    border-radius:8px;
+    min-width:0;
+    overflow:hidden;
+  }
+  .tile-label{
+    font-size:11.5px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .tile-badge{
+    top:4px;
+    right:4px;
+    font-size:9px;
+    padding:1px 4px;
+    border-radius:4px;
+  }
+  .touch-summary-bar{
+    padding:5px 8px;
+    gap:6px;
+    border-radius:8px;
+    min-width:0;
+    overflow:hidden;
+  }
+  .tsb-text{
+    font-size:10.5px;
+    line-height:1.25;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
+  }
+  .tsb-act{
+    font-size:10.5px;
+    flex-shrink:0;
+  }
+  .foot{
+    padding-top:6px;
+    margin-top:0;
+    gap:8px;
+  }
+  .pts{
+    font-size:11.5px;
+    gap:4px;
+  }
+  .exit-btn{
+    padding:4px 8px;
+    font-size:11px;
+    border-radius:6px;
+  }
 }
 </style>
