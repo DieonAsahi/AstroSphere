@@ -197,6 +197,8 @@ async function checkAdminRoleRows(client, verifiedUser) {
       return { status: 'offline' };
     }
     if (!rpcError && rpcAdmin === true) {
+      // Pastikan user_id tertaut ke admin_users jika sebelumnya masih NULL
+      await client.rpc('link_admin_user_id').catch(() => {});
       return { status: 'authorized' };
     }
   } catch (err) {
@@ -245,7 +247,11 @@ async function checkAdminRoleRows(client, verifiedUser) {
         }
         return { status: 'unauthorized' };
       }
-      if (byEmail) return { status: 'authorized' };
+      if (byEmail) {
+        // Tautkan user_id akun admin yang terverifikasi ke auth.uid()
+        await client.rpc('link_admin_user_id').catch(() => {});
+        return { status: 'authorized' };
+      }
     } catch (err) {
       if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
         return { status: 'offline' };

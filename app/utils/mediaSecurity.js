@@ -5,7 +5,7 @@
  */
 
 const DANGEROUS_PROTOCOL_REGEX = /^(?:javascript|vbscript|data|file|blob):/i;
-const CONTROL_CHARS_REGEX = /[\r\n\0<>"]/;
+const CONTROL_CHARS_REGEX = /[\u0000-\u001f\u007f<>"]/;
 
 /**
  * Memeriksa apakah sebuah string URL media aman untuk disimpan atau dirender
@@ -16,6 +16,9 @@ export function isSafeMediaUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return false;
   const trimmed = rawUrl.trim();
   if (!trimmed) return false;
+
+  // Tolak karakter backslash (mencegah bypass WHATWG URL parser seperti /\evil.com)
+  if (trimmed.includes('\\')) return false;
 
   // Larang karakter kontrol atau tag HTML dalam URL
   if (CONTROL_CHARS_REGEX.test(trimmed)) return false;

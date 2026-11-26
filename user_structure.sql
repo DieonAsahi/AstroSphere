@@ -429,11 +429,26 @@ GRANT EXECUTE ON FUNCTION public.player_register_username(TEXT, TEXT, TEXT, JSON
 
 -- 5.2 Masuk akun Username + Password & perbarui token sesi (dengan proteksi Rate Limiting 60s / 5 percobaan)
 CREATE TABLE IF NOT EXISTS public.player_login_attempts (
-  username TEXT PRIMARY KEY,
+  username TEXT PRIMARY KEY CHECK (username ~ '^[a-z0-9_]{3,20}$'),
   failed_count INT NOT NULL DEFAULT 0,
   locked_until TIMESTAMPTZ,
   last_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.player_login_attempts'::regclass
+      AND conname = 'player_login_attempts_username_check'
+  ) THEN
+    ALTER TABLE public.player_login_attempts
+      ADD CONSTRAINT player_login_attempts_username_check
+      CHECK (username ~ '^[a-z0-9_]{3,20}$');
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
 
 ALTER TABLE public.player_login_attempts ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.player_login_attempts FROM PUBLIC, anon, authenticated;
@@ -454,9 +469,14 @@ DECLARE
   v_attempt RECORD;
 BEGIN
   v_username := LOWER(TRIM(COALESCE(p_username, '')));
-  IF v_username = '' OR p_password IS NULL OR p_password = '' THEN
+  -- 0. Validasi format awal: tolak jika kosong atau tidak sesuai pola regex 3-20 karakter tanpa mengotori tabel
+  IF v_username = '' OR p_password IS NULL OR p_password = '' OR v_username !~ '^[a-z0-9_]{3,20}$' THEN
     RAISE EXCEPTION 'INVALID_CREDENTIALS';
   END IF;
+
+  -- Pembersihan oportunistik baris lama (> 1 hari) untuk mencegah pembengkakan tabel
+  DELETE FROM public.player_login_attempts
+  WHERE last_attempt_at < NOW() - INTERVAL '1 day';
 
   -- 1. Periksa apakah username sedang terkena cooldown rate limit (kunci sementara 60 detik)
   SELECT failed_count, locked_until INTO v_attempt
@@ -475,17 +495,22 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
-    -- Catat percobaan gagal untuk mencegah enumerasi pengguna
+    -- Netralkan timing attack: jalankan hash dummy agar waktu komputasi identik (~80-120ms)
+    PERFORM crypt(p_password, gen_salt('bf'));
+
+    -- Catat percobaan gagal dengan jendela reset 15 menit
     INSERT INTO public.player_login_attempts (username, failed_count, locked_until, last_attempt_at)
     VALUES (v_username, 1, NULL, NOW())
     ON CONFLICT (username) DO UPDATE SET
       failed_count = CASE
-        WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+        WHEN (player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW())
+          OR (player_login_attempts.last_attempt_at < NOW() - INTERVAL '15 minutes') THEN 1
         ELSE player_login_attempts.failed_count + 1
       END,
       locked_until = CASE
         WHEN (CASE
-          WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+          WHEN (player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW())
+            OR (player_login_attempts.last_attempt_at < NOW() - INTERVAL '15 minutes') THEN 1
           ELSE player_login_attempts.failed_count + 1
         END) >= 5 THEN NOW() + INTERVAL '60 seconds'
         ELSE NULL
@@ -497,17 +522,19 @@ BEGIN
 
   -- 3. Verifikasi kata sandi (bcrypt)
   IF v_row.password_hash <> crypt(p_password, v_row.password_hash) THEN
-    -- Tingkatkan hitungan gagal; kunci selama 60 detik jika sudah 5 kali berturut-turut
+    -- Tingkatkan hitungan gagal dengan jendela reset 15 menit; kunci 60 detik jika 5 kali berturut-turut
     INSERT INTO public.player_login_attempts (username, failed_count, locked_until, last_attempt_at)
     VALUES (v_username, 1, NULL, NOW())
     ON CONFLICT (username) DO UPDATE SET
       failed_count = CASE
-        WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+        WHEN (player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW())
+          OR (player_login_attempts.last_attempt_at < NOW() - INTERVAL '15 minutes') THEN 1
         ELSE player_login_attempts.failed_count + 1
       END,
       locked_until = CASE
         WHEN (CASE
-          WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+          WHEN (player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW())
+            OR (player_login_attempts.last_attempt_at < NOW() - INTERVAL '15 minutes') THEN 1
           ELSE player_login_attempts.failed_count + 1
         END) >= 5 THEN NOW() + INTERVAL '60 seconds'
         ELSE NULL

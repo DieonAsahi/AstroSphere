@@ -400,11 +400,56 @@ AS $$
       WHERE user_id = auth.uid()
          OR (
            email IS NOT NULL
-           AND (COALESCE(auth.jwt()->>'email_verified', 'false'))::boolean IS TRUE
+           AND (
+             (COALESCE(auth.jwt()->>'email_verified', 'false'))::boolean IS TRUE
+             OR (COALESCE(auth.jwt()->'user_metadata'->>'email_verified', 'false'))::boolean IS TRUE
+           )
            AND COALESCE(auth.jwt()->>'email', '') <> ''
            AND lower(trim(email)) = lower(trim(auth.jwt()->>'email'))
          )
     );
+$$;
+
+-- Helper SQL: Menautkan user_id akun Admin yang masih NULL secara aman setelah login terverifikasi
+CREATE OR REPLACE FUNCTION public.link_admin_user_id()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_email TEXT := LOWER(TRIM(COALESCE(auth.jwt()->>'email', '')));
+  v_is_verified BOOLEAN := false;
+BEGIN
+  IF auth.role() <> 'authenticated' OR v_uid IS NULL OR v_email = '' THEN
+    RETURN false;
+  END IF;
+
+  -- Verifikasi bahwa email pengguna benar-benar terverifikasi
+  v_is_verified := (
+    (COALESCE(auth.jwt()->>'email_verified', 'false'))::boolean IS TRUE
+    OR (COALESCE(auth.jwt()->'user_metadata'->>'email_verified', 'false'))::boolean IS TRUE
+    OR EXISTS (
+      SELECT 1 FROM auth.users u
+      WHERE u.id = v_uid
+        AND u.email_confirmed_at IS NOT NULL
+        AND LOWER(TRIM(u.email)) = v_email
+    )
+  );
+
+  IF NOT v_is_verified THEN
+    RETURN false;
+  END IF;
+
+  -- Perbarui user_id hanya jika baris admin_users ada dan user_id masih NULL (atau sudah sesuai v_uid)
+  UPDATE public.admin_users
+  SET user_id = v_uid
+  WHERE LOWER(TRIM(email)) = v_email
+    AND (user_id IS NULL OR user_id = v_uid);
+
+  RETURN FOUND;
+END;
 $$;
 
 -- Helper SQL: Menghitung total poin kuis maksimal yang sah per planet (Anti-Tampering)
@@ -423,6 +468,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.link_admin_user_id() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.link_admin_user_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_planet_max_quiz_score(TEXT) TO anon, authenticated;
 
 -- ==============================================================================
