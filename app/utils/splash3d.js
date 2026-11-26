@@ -53,8 +53,8 @@ void main(){
   vec3 col = tex * gran;
   col *= (0.3 + 0.7 * pow(mu, 0.6)) * mix(vec3(1.0, 0.52, 0.28), vec3(1.0), pow(mu, 0.45));
   float fd = length(N - uFlareDir);
-  col += vec3(1.0, 0.93, 0.78) * uFlare * (2.6 * exp(-fd * fd * 1400.0) + 0.55 * exp(-fd * fd * 110.0));
-  gl_FragColor = vec4(col * 1.3, 1.0);
+  col += vec3(1.0, 0.93, 0.78) * uFlare * (1.85 * exp(-fd * fd * 1400.0) + 0.42 * exp(-fd * fd * 110.0));
+  gl_FragColor = vec4(col * 0.96, 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -136,7 +136,7 @@ void main(){
       col += vec3(1.0, 0.62, 0.36) * cone * (band + trail) * (0.3 + 0.9 * streaks) * fade * outside * 0.42;
     }
   }
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(col * 0.74, 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -181,7 +181,7 @@ async function buildSun(detail) {
     if (map) map.colorSpace = THREE.SRGBColorSpace;
     if (role === 'shell') {
       shell = o;
-      o.material = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: .2, blending: THREE.AdditiveBlending, depthWrite: false });
+      o.material = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: .14, blending: THREE.AdditiveBlending, depthWrite: false });
     } else {
       o.material = new THREE.ShaderMaterial({ vertexShader: CORE_VS, fragmentShader: CORE_FS, uniforms: { ...uni, uMap: { value: map } } });
     }
