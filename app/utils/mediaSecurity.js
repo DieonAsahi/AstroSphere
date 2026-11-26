@@ -25,6 +25,8 @@ export function isSafeMediaUrl(rawUrl) {
 
   // Izinkan path relatif lokal yang diawali '/' (misal: /img/..., /models/..., /images/...)
   if (trimmed.startsWith('/')) {
+    // Larang protocol-relative URL (//example.com) yang mengarah ke domain luar
+    if (trimmed.startsWith('//')) return false;
     // Larang traversal direktori
     if (trimmed.includes('..')) return false;
     return true;

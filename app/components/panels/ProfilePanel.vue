@@ -989,9 +989,9 @@ const FAQ = computed(() => {
             <ul class="credits-list">
               <li v-for="c in MODEL_CREDITS" :key="c.url" class="credit-row">
                 <span class="credit-usage">{{ c.use }}</span>
-                <a :href="c.url" target="_blank" rel="noopener" class="credit-link">{{ c.title }}</a>
+                <a :href="c.url" target="_blank" rel="noopener noreferrer" class="credit-link">{{ c.title }}</a>
                 <span class="credit-author">oleh {{ c.author }}</span>
-                <a :href="LICENSE_URL[c.license]" target="_blank" rel="noopener" class="credit-lic">({{ c.license }})</a>
+                <a :href="LICENSE_URL[c.license]" target="_blank" rel="noopener noreferrer" class="credit-lic">({{ c.license }})</a>
               </li>
             </ul>
           </div>

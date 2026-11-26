@@ -231,12 +231,12 @@ async function handleSave() {
     formError.value = 'Deskripsi pesawat wajib diisi.';
     return;
   }
-  if (isBlankNumber(formData.value.panjang_meter) || Number(formData.value.panjang_meter) <= 0) {
-    formError.value = 'Panjang pesawat harus berupa angka valid lebih besar dari 0 meter.';
+  if (isBlankNumber(formData.value.panjang_meter) || Number(formData.value.panjang_meter) <= 0 || Number(formData.value.panjang_meter) > 1000) {
+    formError.value = 'Panjang pesawat harus berupa angka valid antara 0.1 hingga 1000 meter.';
     return;
   }
-  if (isBlankNumber(formData.value.harga_poin) || Number(formData.value.harga_poin) < 0) {
-    formError.value = 'Harga bintang wajib diisi angka valid (>= 0) dan tidak boleh kosong.';
+  if (isBlankNumber(formData.value.harga_poin) || Number(formData.value.harga_poin) < 0 || Number(formData.value.harga_poin) > 50000) {
+    formError.value = 'Harga bintang wajib diisi angka valid antara 0 hingga 50.000 bintang.';
     return;
   }
   if (

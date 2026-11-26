@@ -385,7 +385,7 @@ CREATE INDEX IF NOT EXISTS idx_facts_body_order
 -- 3. FUNGSI KEAMANAN & HELPER ADMIN (DENGAN search_path AMAN DARI HIJACKING)
 -- ==============================================================================
 
--- Fungsi cek Admin: Mencocokkan user_id ATAU email dari sesi Supabase Auth terautentikasi (FAIL-CLOSED)
+-- Fungsi cek Admin: Mencocokkan user_id ATAU email terverifikasi dari sesi Supabase Auth terautentikasi (FAIL-CLOSED)
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -400,6 +400,7 @@ AS $$
       WHERE user_id = auth.uid()
          OR (
            email IS NOT NULL
+           AND (COALESCE(auth.jwt()->>'email_verified', 'false'))::boolean IS TRUE
            AND COALESCE(auth.jwt()->>'email', '') <> ''
            AND lower(trim(email)) = lower(trim(auth.jwt()->>'email'))
          )
@@ -633,7 +634,10 @@ CREATE POLICY "Admins can modify facts"
 -- 5.9 Revokasi Hak Modifikasi dari Anon & Publik (Anti-Jebol REST API)
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts, public.admin_users FROM anon, PUBLIC;
 GRANT SELECT ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts TO anon, authenticated;
-GRANT ALL ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts, public.admin_users TO authenticated;
+GRANT ALL ON public.planets, public.history_events, public.phenomena, public.questions, public.ships, public.myths, public.facts TO authenticated;
+-- Isolasi ketat admin_users: authenticated HANYA memiliki hak SELECT (modifikasi admin via superadmin RLS)
+REVOKE ALL ON public.admin_users FROM PUBLIC, anon;
+GRANT SELECT ON public.admin_users TO authenticated;
 
 
 -- ==============================================================================

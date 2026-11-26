@@ -239,8 +239,8 @@ async function handleSave() {
     return;
   }
   const pts = Number(formData.value.bobot_poin);
-  if (!Number.isFinite(pts) || pts < 1) {
-    formError.value = 'Bobot poin hadiah minimal bernilai 1.';
+  if (!Number.isFinite(pts) || pts < 1 || pts > 500) {
+    formError.value = 'Bobot poin hadiah harus berupa angka antara 1 hingga 500.';
     return;
   }
   const explanationTrimmed = (formData.value.pembahasan_edukatif || '').trim();
@@ -400,8 +400,8 @@ async function handleImportSubmit() {
       const pts = rawPts !== undefined && rawPts !== null && String(rawPts).trim() !== ''
         ? Number(rawPts)
         : 50;
-      if (!Number.isFinite(pts) || pts < 1) {
-        importError.value = `Baris ${i + 1}: bobot_poin "${rawPts}" harus berupa angka minimal 1.`;
+      if (!Number.isFinite(pts) || pts < 1 || pts > 500) {
+        importError.value = `Baris ${i + 1}: bobot_poin "${rawPts}" harus berupa angka antara 1 hingga 500.`;
         return;
       }
 

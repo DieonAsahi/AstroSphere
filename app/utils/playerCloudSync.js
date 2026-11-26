@@ -93,8 +93,8 @@ function mapSafePlayerError(err, fallback = GENERIC_PUBLIC_ERROR) {
   if (msg.includes('SESSION_INVALID')) {
     return { revoked: true, err: 'Sesi akun telah berakhir atau tidak valid. Silakan masuk kembali.' };
   }
-  if (status === 429 || lower.includes('rate limit') || lower.includes('too many requests')) {
-    return { err: 'Terlalu banyak percobaan. Silakan tunggu beberapa saat lalu coba lagi.' };
+  if (status === 429 || lower.includes('rate limit') || lower.includes('too many requests') || msg.includes('RATE_LIMITED') || code === 'rate_limited') {
+    return { err: 'Terlalu banyak percobaan masuk yang gagal. Silakan tunggu 60 detik sebelum mencoba kembali.' };
   }
   return { err: fallback };
 }
@@ -295,7 +295,7 @@ export async function registerPlayerToCloud(username, password, localStoreData) 
     }
 
     if (!row || !row.user_id || !row.session_token) {
-      console.error('[AstroSphere] player_register_username mengembalikan data tidak lengkap:', row);
+      console.error('[AstroSphere] player_register_username mengembalikan data tidak lengkap (ID atau token sesi hilang).');
       return { ok: false, err: 'Tidak dapat membuat akun saat ini. Silakan coba lagi.' };
     }
 
@@ -357,7 +357,7 @@ export async function loginPlayerToCloud(username, password, localStoreData) {
     }
 
     if (!row || !row.user_id || !row.session_token) {
-      console.error('[AstroSphere] player_login_username mengembalikan data tidak lengkap:', row);
+      console.error('[AstroSphere] player_login_username mengembalikan data tidak lengkap (ID atau token sesi hilang).');
       return { ok: false, err: 'Tidak dapat masuk ke akun saat ini. Silakan coba lagi.' };
     }
 

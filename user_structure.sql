@@ -126,12 +126,15 @@ COMMENT ON COLUMN public.player_progress.settings_data IS 'Pengaturan preferensi
 -- 2. TRIGGER PEMBARUAN WAKTU OTOMATIS (updated_at)
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_player_progress_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trg_player_progress_updated_at ON public.player_progress;
 CREATE TRIGGER trg_player_progress_updated_at
@@ -145,7 +148,10 @@ CREATE TRIGGER trg_player_progress_updated_at
 -- Menahan manipulasi poin, eksploitasi armada pesawat, dan serangan payload flooding
 -- langsung di tingkat engine database PostgreSQL (kebal bypass PostgREST / REST API)
 CREATE OR REPLACE FUNCTION public.validate_player_progress_tamper()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   -- 1. Larang perubahan user_id (mencegah pemalsuan identitas/pencurian akun)
   IF TG_OP = 'UPDATE' AND NEW.user_id <> OLD.user_id THEN
@@ -214,7 +220,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trg_player_progress_tamper ON public.player_progress;
 CREATE TRIGGER trg_player_progress_tamper
@@ -421,7 +427,17 @@ $$;
 REVOKE ALL ON FUNCTION public.player_register_username(TEXT, TEXT, TEXT, JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.player_register_username(TEXT, TEXT, TEXT, JSONB) TO anon, authenticated;
 
--- 5.2 Masuk akun Username + Password & perbarui token sesi
+-- 5.2 Masuk akun Username + Password & perbarui token sesi (dengan proteksi Rate Limiting 60s / 5 percobaan)
+CREATE TABLE IF NOT EXISTS public.player_login_attempts (
+  username TEXT PRIMARY KEY,
+  failed_count INT NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  last_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.player_login_attempts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.player_login_attempts FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.player_login_username(
   p_username TEXT,
   p_password TEXT
@@ -435,12 +451,23 @@ DECLARE
   v_username TEXT;
   v_token TEXT;
   v_row public.player_progress%ROWTYPE;
+  v_attempt RECORD;
 BEGIN
   v_username := LOWER(TRIM(COALESCE(p_username, '')));
   IF v_username = '' OR p_password IS NULL OR p_password = '' THEN
     RAISE EXCEPTION 'INVALID_CREDENTIALS';
   END IF;
 
+  -- 1. Periksa apakah username sedang terkena cooldown rate limit (kunci sementara 60 detik)
+  SELECT failed_count, locked_until INTO v_attempt
+  FROM public.player_login_attempts
+  WHERE username = v_username;
+
+  IF FOUND AND v_attempt.locked_until IS NOT NULL AND v_attempt.locked_until > NOW() THEN
+    RAISE EXCEPTION 'RATE_LIMITED';
+  END IF;
+
+  -- 2. Cari data pemain
   SELECT * INTO v_row
   FROM public.player_progress
   WHERE LOWER(username) = v_username
@@ -448,16 +475,55 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
+    -- Catat percobaan gagal untuk mencegah enumerasi pengguna
+    INSERT INTO public.player_login_attempts (username, failed_count, locked_until, last_attempt_at)
+    VALUES (v_username, 1, NULL, NOW())
+    ON CONFLICT (username) DO UPDATE SET
+      failed_count = CASE
+        WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+        ELSE player_login_attempts.failed_count + 1
+      END,
+      locked_until = CASE
+        WHEN (CASE
+          WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+          ELSE player_login_attempts.failed_count + 1
+        END) >= 5 THEN NOW() + INTERVAL '60 seconds'
+        ELSE NULL
+      END,
+      last_attempt_at = NOW();
+
     RAISE EXCEPTION 'INVALID_CREDENTIALS';
   END IF;
 
+  -- 3. Verifikasi kata sandi (bcrypt)
   IF v_row.password_hash <> crypt(p_password, v_row.password_hash) THEN
+    -- Tingkatkan hitungan gagal; kunci selama 60 detik jika sudah 5 kali berturut-turut
+    INSERT INTO public.player_login_attempts (username, failed_count, locked_until, last_attempt_at)
+    VALUES (v_username, 1, NULL, NOW())
+    ON CONFLICT (username) DO UPDATE SET
+      failed_count = CASE
+        WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+        ELSE player_login_attempts.failed_count + 1
+      END,
+      locked_until = CASE
+        WHEN (CASE
+          WHEN player_login_attempts.locked_until IS NOT NULL AND player_login_attempts.locked_until <= NOW() THEN 1
+          ELSE player_login_attempts.failed_count + 1
+        END) >= 5 THEN NOW() + INTERVAL '60 seconds'
+        ELSE NULL
+      END,
+      last_attempt_at = NOW();
+
     RAISE EXCEPTION 'INVALID_CREDENTIALS';
   END IF;
 
+  -- 4. Periksa apakah akun dinonaktifkan
   IF v_row.is_active = false THEN
     RAISE EXCEPTION 'ACCOUNT_DISABLED:%', COALESCE(v_row.banned_reason, '');
   END IF;
+
+  -- 5. Login berhasil: bersihkan catatan percobaan gagal untuk username ini
+  DELETE FROM public.player_login_attempts WHERE username = v_username;
 
   v_token := encode(gen_random_bytes(32), 'hex');
 
