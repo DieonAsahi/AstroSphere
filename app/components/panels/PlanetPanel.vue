@@ -1,8 +1,7 @@
 <script setup>
-// Mode Planet: pesawat disembunyikan, kamera mengikuti planet yang berevolusi & berotasi.
-// Kartu kanan: ringkasan singkat, 4 fakta, lalu Fenomena / Sejarah / Kuis. Fenomena tiap planet berbeda (data/phenomena.js).
-// "Tebak dulu" (data/learning.js): fenomena yang belum pernah ditebak dibuka dengan pertanyaan; simulasi diputar setelah
-// pemain menebak, dan jawabannya baru dibuka setelah ± 6 detik pengamatan.
+// Mode Planet: pesawat disembunyikan, kamera mengikuti planet/bulan yang berevolusi & berotasi.
+// Kartu kanan: ringkasan singkat, 6 data ilmiah, kotak rotasi, Tahukah Kamu, lalu Sejarah & ★ Kuis.
+// Fenomena hanya untuk planet tertentu (data/phenomena.js).
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { store, game, recordPrediction } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
@@ -20,7 +19,11 @@ const parentPlanet = computed(() => {
   return PLANETS.find((x) => x.id === parentId);
 });
 const planetData = computed(() => getPlanet(p.value.id));
-const bodyFacts = computed(() => getFacts(p.value.id));
+const bodyFacts = computed(() => {
+  const dbFacts = getFacts(p.value.id);
+  if (dbFacts && dbFacts.length) return dbFacts;
+  return FACTS[p.value.id] || [];
+});
 const ph = computed(() => {
   if (isMoon.value) return null;
   const item = getPhenomenon(p.value.id) || (loadedFromDb.value.phenomena ? null : PHENOMENA[p.value.id]);
@@ -51,6 +54,24 @@ const scientificBoxes = computed(() => {
     ? (x.orbitDays ? `${nf(x.orbitDays, 1)} hari` : pd.periode_orbit || '—')
     : (x.periodYears < 2 ? `${nf(x.periodYears * 365.25, 0)} hari` : `${nf(x.periodYears, 2)} tahun`);
 
+  // Fallback suhu dan rentang akurat (NASA Solar System Exploration)
+  const fallbackSuhu = {
+    bulan: '-20 °C',
+    io: '-130 °C',
+    europa: '-160 °C',
+    ganymede: '-163 °C',
+    callisto: '-139 °C',
+    titan: '-179 °C',
+  };
+  const fallbackRentang = {
+    bulan: 'Rentang ekstrem −130 °C hingga 120 °C',
+    io: 'Rentang permukaan −143 °C hingga −112 °C',
+    europa: 'Rentang permukaan −220 °C hingga −130 °C',
+    ganymede: 'Rentang permukaan −203 °C hingga −121 °C',
+    callisto: 'Rentang permukaan −193 °C hingga −108 °C',
+    titan: 'Konstan atmosfer tebal sekitar −179 °C',
+  };
+
   return [
     {
       k: 'Diameter Ekuator',
@@ -60,7 +81,7 @@ const scientificBoxes = computed(() => {
     {
       k: 'Periode Rotasi',
       v: pd.periode_rotasi || rotDay,
-      sub: pd.subteks_rotasi || (retro ? 'Berputar terbalik (retrograd)' : 'Searah jarum jam'),
+      sub: pd.subteks_rotasi || (isMoon.value ? 'Terkunci pasang surut' : (retro ? 'Berputar terbalik (retrograd)' : 'Searah jarum jam')),
     },
     {
       k: 'Periode Orbit',
@@ -74,8 +95,8 @@ const scientificBoxes = computed(() => {
     },
     {
       k: 'Suhu Rata-Rata',
-      v: pd.suhu_rata_c || '—',
-      sub: pd.rentang_suhu || 'Rentang suhu permukaan',
+      v: pd.suhu_rata_c || fallbackSuhu[x.id] || '—',
+      sub: pd.rentang_suhu || fallbackRentang[x.id] || 'Rentang suhu permukaan',
     },
     {
       k: isMoon.value ? 'Usia Objek' : 'Usia Planet',
@@ -84,6 +105,32 @@ const scientificBoxes = computed(() => {
     },
   ];
 });
+
+// Kotak Arah Rotasi (selalu ada untuk 6 bulan dan 8 planet)
+const rotationInfo = computed(() => {
+  const pd = planetData.value;
+  if (pd?.judul_rotasi && pd?.deskripsi_rotasi) {
+    return {
+      judul: pd.judul_rotasi,
+      deskripsi: pd.deskripsi_rotasi,
+    };
+  }
+  if (isMoon.value) {
+    const parentName = parentPlanet.value?.name || (p.value.parent ? p.value.parent.charAt(0).toUpperCase() + p.value.parent.slice(1) : 'Planet Induk');
+    return {
+      judul: 'Sinkronisasi Pasang Surut',
+      deskripsi: `Rotasi terkunci pasang surut mengelilingi ${parentName}. Waktu rotasi pada porosnya sama persis dengan waktu revolusi mengitari induknya, sehingga sisi yang sama selalu menghadap ke planet induk.`,
+    };
+  }
+  const retro = (p.value.tilt || 0) > 90;
+  return {
+    judul: retro ? 'Arah Rotasi Terbalik (Retrograd)' : 'Arah Rotasi Searah (Prograd)',
+    deskripsi: retro
+      ? `Karena kemiringan sumbunya mencapai ${nf(p.value.tilt, 1)}°, planet ini berputar terbalik dibandingkan mayoritas planet lain. Di sini Matahari terbit dari barat.`
+      : `Planet berotasi searah jarum jam relatif terhadap kutub utara ekliptika dengan kemiringan sumbu ${nf(p.value.tilt, 1)}°.`,
+  };
+});
+
 function quiz() { store.quiz.planet = p.value.id; store.quiz.kind = 'planet'; store.quiz.stage = 'intro'; game()?.setMode('kuis'); }
 function openFacts() { store.journalId = p.value.id; store.modal = 'journal'; }
 function history() {
@@ -109,7 +156,7 @@ function choose(i) {
   game()?.click(); game()?.pheno.start(p.value.id);
   clearInterval(timer);
   timer = setInterval(() => {
-    if (!store.pheno.on) { resetGuess(); return; }     // pemain menekan Selesai sebelum jawaban dibuka
+    if (!store.pheno.on) { resetGuess(); return; }
     if (store.pheno.playing) watched.value += .25;
     if (watched.value >= WATCH_S) reveal();
   }, 250);
@@ -130,8 +177,8 @@ const stateIcon = computed(() => ({ siang: 'matahari', malam: 'bulan', panas: 'm
 
 const stageEyebrow = computed(() => {
   if (isMoon.value) {
-    const parentName = parentPlanet.value?.name || (p.value.parent ? p.value.parent.toUpperCase() : 'BUMI');
-    return `SATELIT ALAMI ${parentName.toUpperCase()}`;
+    const parentName = parentPlanet.value?.name || (p.value.parent ? p.value.parent.charAt(0).toUpperCase() + p.value.parent.slice(1) : 'Bumi');
+    return `Satelit Alami ${parentName}`;
   }
   const order = planetData.value?.urutan_planet || p.value.order;
   if (order) {
@@ -143,7 +190,7 @@ const stageEyebrow = computed(() => {
 
 <template>
   <div>
-    <!-- JUDUL PLANET DI KIRI ATAS (SEJAJAR RAPI DENGAN TOMBOL TERBANG LAGI) -->
+    <!-- JUDUL PLANET / BULAN DI KIRI ATAS (SEJAJAR RAPI DENGAN TOMBOL TERBANG LAGI) -->
     <div class="stage-title">
       <span class="stage-eyebrow">{{ stageEyebrow }}</span>
       <h1 class="h1">{{ planetData?.nama || p.name }}</h1>
@@ -154,14 +201,14 @@ const stageEyebrow = computed(() => {
     <div v-else class="stage-bottom"><div class="card flat mini"><UiOrbitInset :body="p.id" :w="120" :h="80" /></div></div>
 
     <!-- CARD PANEL KANAN (DESAIN OBSERVATORIUM BERSIH & TERSTRUKTUR) -->
-    <aside class="sheet card" aria-label="Tentang planet">
+    <aside class="sheet card" aria-label="Tentang objek">
       <Transition name="fade" mode="out-in">
         <!-- TEBAK DULU -->
         <div v-if="asking" key="ask" class="sheet-body sheet-scroll sbody scroll">
           <UiPredictCard :q="pq" @pick="choose" />
         </div>
 
-        <!-- INFO PLANET -->
+        <!-- INFO PLANET / BULAN -->
         <div v-else-if="!store.pheno.on" key="info" class="sheet-body sheet-scroll sbody scroll">
           <!-- 1. BLOK RINGKASAN PLANET / BULAN -->
           <div class="summary-card">
@@ -223,14 +270,14 @@ const stageEyebrow = computed(() => {
             </div>
             <div class="sci-source">
               <UiIcon name="info" :size="12" />
-              <span>Sumber data: {{ planetData?.sumber_referensi || p.sumber_referensi || 'NASA Planetary Fact Sheet' }}</span>
+              <span>Sumber data: {{ planetData?.sumber_referensi || p.sumber_referensi || 'NASA Solar System Exploration' }}</span>
             </div>
           </div>
 
           <!-- 3. KOTAK ARAH ROTASI (PLY-02) -->
-          <div v-if="planetData?.judul_rotasi" class="rot-box">
-            <div class="rh"><UiIcon name="ulang" :size="15" /><b>{{ planetData.judul_rotasi }}</b></div>
-            <p>{{ planetData.deskripsi_rotasi }} <span class="rot-source">— {{ planetData?.sumber_referensi || p.sumber_referensi || 'NASA' }}</span></p>
+          <div v-if="rotationInfo" class="rot-box">
+            <div class="rh"><UiIcon name="ulang" :size="15" /><b>{{ rotationInfo.judul }}</b></div>
+            <p>{{ rotationInfo.deskripsi }} <span class="rot-source">— {{ planetData?.sumber_referensi || p.sumber_referensi || 'NASA Solar System Exploration' }}</span></p>
           </div>
 
           <!-- 4. KARTU INTERAKTIF FENOMENA -->
@@ -281,7 +328,7 @@ const stageEyebrow = computed(() => {
               <UiIcon name="sejarah" :size="17" />Sejarah
             </button>
             <button class="btn-foot star" @click="quiz">
-              <UiIcon name="bintang" :size="17" />Kuis
+              <UiIcon name="bintang" :size="17" />★ Kuis
             </button>
           </div>
         </template>
