@@ -335,13 +335,17 @@ function downloadPdf() {
       width: 100%;
       margin: 0 0 16px 0;
       text-align: center;
+      background: #f1f5f9;
+      border-radius: 10px;
+      overflow: hidden;
     }
     .event-img {
       width: 100%;
-      max-height: 220px;
-      object-fit: cover;
+      max-height: 240px;
+      object-fit: contain;
       border-radius: 10px;
       display: block;
+      background: #f1f5f9;
     }
     .meta-card {
       width: 100%;
@@ -1022,18 +1026,19 @@ function downloadPdf() {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(148, 174, 255, 0.16);
-  background: rgba(11, 16, 36, 0.6);
+  background: #070b18;
   margin-top: 2px;
 }
 .ev-card-banner img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #070b18;
   transition: transform 0.3s ease;
 }
 .ev-card:hover .ev-card-banner img {
-  transform: scale(1.03);
+  transform: scale(1.02);
 }
 .ev-text {
   display: flex;
@@ -1170,13 +1175,14 @@ function downloadPdf() {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(148, 174, 255, 0.16);
-  background: rgba(15, 23, 42, 0.6);
+  background: #070b18;
 }
 .media-img {
   width: 100%;
-  max-height: 190px;
-  object-fit: cover;
+  max-height: 220px;
+  object-fit: contain;
   display: block;
+  background: #070b18;
 }
 .meta-box {
   display: flex;
