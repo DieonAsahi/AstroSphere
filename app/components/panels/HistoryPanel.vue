@@ -238,6 +238,7 @@ function downloadPdf() {
   const lead = ev.ringkasan_singkat || ev.body || '';
   const narrative = ev.deskripsi || ev.detail || '';
   const refSource = ev.sumber_referensi || 'NASA / Arsip Eksplorasi Antariksa Internasional';
+  const imageUrl = isSafeMediaUrl(ev.gambar_url) && !brokenImages.value[ev.id] ? ev.gambar_url.trim() : '';
 
   showToast('Mempersiapkan dokumen PDF untuk dicetak/disimpan...');
 
@@ -329,6 +330,18 @@ function downloadPdf() {
       color: #0f172a;
       line-height: 1.3;
       margin: 0 0 16px 0;
+    }
+    .event-image-container {
+      width: 100%;
+      margin: 0 0 16px 0;
+      text-align: center;
+    }
+    .event-img {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 10px;
+      display: block;
     }
     .meta-card {
       width: 100%;
@@ -436,6 +449,11 @@ function downloadPdf() {
   <div class="meta-micro">${escapeHtml(planetName.toUpperCase())} · SEJARAH & OBSERVASI // ${escapeHtml(yearText)}</div>
   <h1>${escapeHtml(title)}</h1>
 
+  ${imageUrl ? `
+  <div class="event-image-container">
+    <img id="pdf-event-img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(title)}" class="event-img">
+  </div>` : ''}
+
   <table class="meta-card">
     <tr>
       <td class="meta-label">Kategori:</td>
@@ -477,14 +495,29 @@ function downloadPdf() {
   doc.write(html);
   doc.close();
 
-  setTimeout(() => {
+  const triggerPrint = () => {
     try {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
     } catch (e) {
       console.error('Print error:', e);
     }
-  }, 350);
+  };
+
+  const imgEl = doc.getElementById('pdf-event-img');
+  if (imgEl && !imgEl.complete) {
+    let triggered = false;
+    const onDone = () => {
+      if (triggered) return;
+      triggered = true;
+      triggerPrint();
+    };
+    imgEl.onload = onDone;
+    imgEl.onerror = onDone;
+    setTimeout(onDone, 1200);
+  } else {
+    setTimeout(triggerPrint, 350);
+  }
 }
 </script>
 
@@ -559,28 +592,27 @@ function downloadPdf() {
                 </span>
               </div>
 
-              <!-- Isi Ringkas Kartu -->
-              <div class="ev-body">
-                <div
-                  v-if="e.gambar_url && isSafeMediaUrl(e.gambar_url) && !brokenImages[e.id]"
-                  class="ev-thumb"
-                >
-                  <img
-                    :src="e.gambar_url"
-                    :alt="e.judul || e.title"
-                    loading="lazy"
-                    @error="onImageError(e.id)"
-                  />
+              <!-- Banner Gambar Ramping 16:9 di Atas Isi Kartu -->
+              <div
+                v-if="e.gambar_url && isSafeMediaUrl(e.gambar_url) && !brokenImages[e.id]"
+                class="ev-card-banner"
+              >
+                <img
+                  :src="e.gambar_url"
+                  :alt="e.judul || e.title"
+                  loading="lazy"
+                  @error="onImageError(e.id)"
+                />
+              </div>
+
+              <!-- Isi Teks Kartu -->
+              <div class="ev-text">
+                <h3 class="ev-title">{{ e.judul || e.title }}</h3>
+                <div v-if="(e.nama_wahana || e.actor) || (e.karakteristik_fisik && e.karakteristik_fisik !== '—')" class="ev-meta">
+                  <span v-if="e.nama_wahana || e.actor" class="ev-actor-chip">{{ e.nama_wahana || e.actor }}</span>
+                  <span v-if="e.karakteristik_fisik && e.karakteristik_fisik !== '—'" class="ev-char">{{ e.karakteristik_fisik }}</span>
                 </div>
-                <div class="ev-text">
-                  <h3 class="ev-title">{{ e.judul || e.title }}</h3>
-                  <div class="ev-meta">
-                    <span class="ev-actor-chip">{{ e.nama_wahana || e.actor }}</span>
-                    <span v-if="e.karakteristik_fisik" class="ev-dot">·</span>
-                    <span v-if="e.karakteristik_fisik" class="ev-char">{{ e.karakteristik_fisik }}</span>
-                  </div>
-                  <p class="ev-desc">{{ e.ringkasan_singkat || e.body }}</p>
-                </div>
+                <p class="ev-desc">{{ e.ringkasan_singkat || e.body }}</p>
               </div>
 
               <!-- Baris Aksi Kartu -->
@@ -983,30 +1015,32 @@ function downloadPdf() {
   color: #cfd6ee;
   border-color: rgba(207, 214, 238, 0.3);
 }
-.ev-body {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-.ev-thumb {
-  flex: none;
-  width: 58px;
-  height: 58px;
+.ev-card-banner {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 125px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(148, 174, 255, 0.16);
+  background: rgba(11, 16, 36, 0.6);
+  margin-top: 2px;
 }
-.ev-thumb img {
+.ev-card-banner img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+.ev-card:hover .ev-card-banner img {
+  transform: scale(1.03);
 }
 .ev-text {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  flex: 1;
+  width: 100%;
 }
 .ev-title {
   margin: 0;
@@ -1036,8 +1070,11 @@ function downloadPdf() {
   font-weight: 500;
   max-width: 100%;
 }
-.ev-dot {
+.ev-actor-chip + .ev-char::before {
+  content: "·";
+  margin-right: 6px;
   color: rgba(148, 174, 255, 0.4);
+  font-weight: bold;
 }
 .ev-char {
   color: #94a3b8;
@@ -1360,9 +1397,8 @@ function downloadPdf() {
   .ev-card {
     padding: 10px 12px;
   }
-  .ev-thumb {
-    width: 48px;
-    height: 48px;
+  .ev-card-banner {
+    max-height: 115px;
   }
 }
 @media (max-height: 540px) and (orientation: landscape) {
@@ -1385,6 +1421,9 @@ function downloadPdf() {
   .sbody {
     padding: 0 !important;
     gap: 8px !important;
+  }
+  .ev-card-banner {
+    max-height: 90px !important;
   }
   .h3 {
     font-size: 15px !important;
