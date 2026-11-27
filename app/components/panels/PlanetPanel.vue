@@ -949,20 +949,101 @@ const stageEyebrow = computed(() => {
     font-size: 11.5px !important;
     line-height: 1.4 !important;
   }
-  .data-grid {
-    padding: 6px 8px !important;
+  .sci-section {
     gap: 6px !important;
   }
-  .data-item .val {
-    font-size: 11.5px !important;
+  .facts.grid-sci {
+    padding: 0 !important;
+    gap: 6px !important;
   }
-  .data-item .lbl {
+  .fact {
+    padding: 6px 8px !important;
+    gap: 2px !important;
+    border-radius: 8px !important;
+  }
+  .f-lbl {
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.04em !important;
+  }
+  .fact b.num {
+    font-size: 12.5px !important;
+    line-height: 1.2 !important;
+    margin: 1px 0 !important;
+  }
+  .f-sub {
     font-size: 9.5px !important;
+    line-height: 1.25 !important;
   }
-  .spin-card,
-  .facts-trigger-card {
-    padding: 8px 10px !important;
+  .phc {
+    padding: 7px 9px !important;
+    gap: 8px !important;
+    border-radius: 8px !important;
+  }
+  .phc .ic {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
+  }
+  .phc .ic :deep(svg),
+  .phc .ic svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  .phc small {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+  .phc b {
     font-size: 11.5px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+  .phc :deep(svg:last-child),
+  .phc>svg:last-child {
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0 !important;
+  }
+  .dyk {
+    padding: 7px 9px !important;
+    gap: 8px !important;
+    border-radius: 8px !important;
+  }
+  .dyk :deep(svg),
+  .dyk svg {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+  }
+  .dyk .t {
+    font-size: 11.5px !important;
+    line-height: 1.2 !important;
+  }
+  .dyk small {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+  .dyk .tag.star {
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+  }
+  .rot-box {
+    padding: 7px 9px !important;
+    gap: 4px !important;
+    border-radius: 8px !important;
+  }
+  .rot-box .rh b {
+    font-size: 11.5px !important;
+  }
+  .rot-box p {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
   }
   .mission-callout {
     padding: 8px 10px !important;
@@ -996,11 +1077,21 @@ const stageEyebrow = computed(() => {
     border-top: 1px solid rgba(148, 174, 255, 0.14) !important;
     background: transparent !important;
   }
+  .sfoot .row2 {
+    gap: 6px !important;
+  }
   .btn-foot {
-    height: 34px !important;
-    min-height: 34px !important;
-    font-size: 12px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    font-size: 11.5px !important;
     padding: 0 8px !important;
+    border-radius: 8px !important;
+    gap: 5px !important;
+  }
+  .btn-foot :deep(svg),
+  .btn-foot svg {
+    width: 15px !important;
+    height: 15px !important;
   }
   .stage-title {
     max-width: calc(100vw - min(285px, 43vw) - 30px) !important;

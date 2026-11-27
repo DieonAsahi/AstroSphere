@@ -257,19 +257,60 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
     font-size:11.5px !important;
     line-height:1.4 !important;
   }
+  .sci-section {
+    gap: 6px !important;
+  }
   .facts.grid-sci{
-    padding:6px 8px !important;
-    gap:6px !important;
+    padding: 0 !important;
+    gap: 6px !important;
+  }
+  .fact {
+    padding: 6px 8px !important;
+    gap: 2px !important;
+    border-radius: 8px !important;
+  }
+  .f-lbl {
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.04em !important;
   }
   .fact b.num{
-    font-size:11.5px !important;
+    font-size: 12.5px !important;
+    line-height: 1.2 !important;
+    margin: 1px 0 !important;
   }
-  .fact small{
-    font-size:9.5px !important;
+  .f-sub {
+    font-size: 9.5px !important;
+    line-height: 1.25 !important;
   }
   .topic-head{
     padding:6px 8px !important;
     font-size:11.5px !important;
+  }
+  .tp {
+    border-radius: 8px !important;
+  }
+  .th {
+    padding: 7px 9px !important;
+    font-size: 11.5px !important;
+    gap: 6px !important;
+  }
+  .tb {
+    padding: 0 9px 9px !important;
+    gap: 6px !important;
+  }
+  .tb p {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
+  }
+  .safe-box {
+    padding: 7px 9px !important;
+    gap: 6px !important;
+    border-radius: 8px !important;
+  }
+  .safe-box p {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
   }
   .sfoot{
     position:static !important;
@@ -279,11 +320,21 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
     border-top:1px solid rgba(148,174,255,.14) !important;
     background:transparent !important;
   }
+  .sfoot .row2 {
+    gap: 6px !important;
+  }
   .btn-foot{
-    height:34px !important;
-    min-height:34px !important;
-    font-size:12px !important;
-    padding:0 8px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    font-size: 11.5px !important;
+    padding: 0 8px !important;
+    border-radius: 8px !important;
+    gap: 5px !important;
+  }
+  .btn-foot :deep(svg),
+  .btn-foot svg {
+    width: 15px !important;
+    height: 15px !important;
   }
   .stage-title{
     max-width:calc(100vw - min(285px, 43vw) - 30px) !important;

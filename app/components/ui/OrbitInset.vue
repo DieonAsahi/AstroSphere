@@ -99,7 +99,8 @@ function draw() {
 
   let m = 1;
   for (const [a, b] of d.pts) m = Math.max(m, Math.abs(a), Math.abs(b));
-  const s = ((Math.min(W, H) / 2) / m) * 0.9;
+  const maxRadius = Math.max(5, (Math.min(W, H) - 15) / 2);
+  const s = maxRadius / m;
 
   x.setLineDash([3, 3]);
   x.strokeStyle = 'rgba(170, 180, 222, 0.45)';
@@ -158,8 +159,8 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 }
 @media (max-height: 540px) and (orientation: landscape){
   .oi{
-    width:42px;
-    height:26px;
+    width:36px;
+    height:30px;
     border-radius:6px;
   }
 }

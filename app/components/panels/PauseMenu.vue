@@ -249,21 +249,17 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
     border-radius:4px;
   }
   .touch-summary-bar{
-    padding:5px 8px;
+    padding:6px 10px;
     gap:8px;
     border-radius:8px;
     background:rgba(56,189,248,.12);
     border:1px solid rgba(56,189,248,.35);
     min-width:0;
-    overflow:hidden;
   }
   .tsb-text{
-    font-size:10.5px;
-    line-height:1.25;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    min-width:0;
+    font-size:12px !important;
+    line-height:1.35 !important;
+    white-space:normal !important;
     color:var(--text);
   }
   .foot{

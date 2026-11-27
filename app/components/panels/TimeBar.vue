@@ -89,56 +89,75 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
 }
 @media (max-height:540px) and (orientation:landscape){
   .tbar{
-    gap:4px !important;
-    padding:2px 5px !important;
-    height:30px !important;
-    min-height:30px !important;
+    gap:6px !important;
+    padding:4px 8px !important;
+    min-height:38px !important;
+    height:38px !important;
+    align-items:center !important;
     border-radius:8px !important;
-    max-width:min(320px, calc(100vw - min(285px, 43vw) - 24px)) !important;
+    max-width:min(340px, calc(100vw - min(285px, 43vw) - 24px)) !important;
+    box-sizing:border-box !important;
   }
   .tbar :deep(.oi),
   .tbar .oi{
-    width:42px !important;
-    height:26px !important;
+    width:36px !important;
+    height:30px !important;
     border-radius:6px !important;
+    flex-shrink:0 !important;
   }
   .date{
     min-width:0 !important;
     white-space:nowrap !important;
     line-height:1 !important;
+    display:flex !important;
+    align-items:center !important;
   }
   .date b{
-    font-size:11px !important;
+    font-size:11.5px !important;
     white-space:nowrap !important;
   }
   .date small{display:none !important}
   .tbar :deep(.ib.sm),
   .tbar .ib.sm{
-    width:24px !important;
-    height:24px !important;
-    min-width:24px !important;
-    min-height:24px !important;
+    width:26px !important;
+    height:26px !important;
+    min-width:26px !important;
+    min-height:26px !important;
     border-radius:6px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    flex-shrink:0 !important;
   }
   .tbar :deep(.ib.sm svg),
   .tbar .ib.sm svg{
-    width:14px !important;
-    height:14px !important;
+    width:15px !important;
+    height:15px !important;
   }
   .seg{
     padding:1px !important;
     gap:2px !important;
+    height:28px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    box-sizing:border-box !important;
   }
   .seg button{
     min-width:32px !important;
-    height:22px !important;
-    padding:2px 8px !important;
-    font-size:10.5px !important;
+    height:26px !important;
+    padding:0 8px !important;
+    font-size:11px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
     box-sizing:border-box !important;
   }
   .tg{
-    padding-left:4px !important;
-    gap:3px !important;
+    padding-left:6px !important;
+    gap:4px !important;
+    display:flex !important;
+    align-items:center !important;
+    height:26px !important;
   }
 }
 </style>
