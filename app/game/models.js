@@ -11,13 +11,7 @@ export const REMAINING_PLANET_IDS = [];
 export const PLANET_MODEL_IDS = ALL_PLANET_IDS;
 export const DECOR_MODEL_IDS = ['black_hole']; // lubang hitam di langit (di luar tata surya), dimuat belakangan
 
-let loader = null;
-function getLoader() {
-  if (!loader) {
-    loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  }
-  return loader;
-}
+const getLoader = () => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const modelCache = new Map();
 const pendingLoads = new Map();
 

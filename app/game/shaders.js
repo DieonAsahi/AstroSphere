@@ -146,14 +146,14 @@ void main(){
     float bands = sin(lat * uBand + fbm(sp * vec3(1.0, 6.0, 1.0), 3) * 1.3) * 0.5 + 0.5;
     float bands2 = sin(lat * uBand * 2.3 + warp * 3.0) * 0.5 + 0.5;
     alb = mix(uC1, uC2, smoothstep(0.2, 0.8, bands));
-    alb = mix(alb, uC3, smoothstep(0.35, 0.85, bands2) * 0.85);
+    alb = mix(alb, uC3, smoothstep(0.55, 0.95, bands2) * 0.55);
     float fine = fbm(vec3(p.x * 4.0, p.y * 18.0, p.z * 4.0) + warp * 2.0 + vec3(uTime * 0.004, 0.0, 0.0), max(oct - 1, 2)) * 0.5 + 0.5;
-    alb = mix(alb, uC4, smoothstep(0.65, 0.92, fine) * 0.28);
+    alb = mix(alb, uC4, smoothstep(0.55, 0.9, fine) * 0.45);
     vec3 sc = normalize(vec3(0.6, -0.3, 0.74));
     float sd = distance(p, sc);
     float sw = fbm(p * 9.0 + sd * 6.0, 3);
     float storm = smoothstep(0.2, 0.07, sd + sw * 0.03) * uStorm;
-    alb = mix(alb, uC5, storm * 0.95);
+    alb = mix(alb, uC5, storm * 0.9);
     h = fine * 0.3;
     spec = 0.04;
   } else if (uType == 2) {
@@ -248,7 +248,7 @@ void main(){
     }
   }
   diff *= rs;
-  vec3 col = alb * (uSunColor * diff * 0.98 + vec3(0.014, 0.016, 0.022));
+  vec3 col = alb * (uSunColor * diff * 1.15 + vec3(0.012, 0.014, 0.02));
   vec3 H = normalize(L + V);
   col += uSunColor * pow(max(dot(N, H), 0.0), 80.0) * spec * term * rs * 0.9;
   if (cloud > 0.0) {
@@ -260,7 +260,7 @@ void main(){
   col += vec3(1.0, 0.72, 0.38) * night * dark * 0.9;
   col += emis;
   float fr = pow(1.0 - max(dot(N, V), 0.0), 4.0);
-  col += uAtmo * fr * smoothstep(-0.3, 0.6, ndlG) * 0.22;
+  col += uAtmo * fr * smoothstep(-0.3, 0.6, ndlG) * 0.35;
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -586,7 +586,7 @@ void main(){
     }
   }
   diff *= rs;
-  vec3 col = alb * (uSunColor * diff * 0.98 + vec3(0.015, 0.017, 0.024));
+  vec3 col = alb * (uSunColor * diff * 0.98 + vec3(0.014, 0.016, 0.022));
   float fr = pow(1.0 - max(dot(Ng, V), 0.0), 4.0);
   col += uAtmo * fr * smoothstep(-0.3, 0.6, ndlG) * 0.22;
   float a = uCloud > 0.5 ? tex.a * uOpacity : 1.0;
