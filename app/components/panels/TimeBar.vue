@@ -89,34 +89,53 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
 }
 @media (max-height:540px) and (orientation:landscape){
   .tbar{
-    gap:5px;
-    padding:3px 6px;
+    gap:4px !important;
+    padding:2px 5px !important;
+    height:30px !important;
+    min-height:30px !important;
     border-radius:8px !important;
-    max-width:min(320px, calc(100vw - min(285px, 43vw) - 24px));
+    max-width:min(290px, calc(100vw - min(285px, 43vw) - 24px)) !important;
   }
   .tbar :deep(.oi),
   .tbar .oi{
-    width:64px !important;
-    height:42px !important;
-    border-radius:8px !important;
+    width:42px !important;
+    height:26px !important;
+    border-radius:6px !important;
   }
-  .date{min-width:0}
-  .date b{font-size:12px}
-  .date small{display:none}
+  .date{
+    min-width:0 !important;
+    white-space:nowrap !important;
+    line-height:1 !important;
+  }
+  .date b{
+    font-size:11px !important;
+    white-space:nowrap !important;
+  }
+  .date small{display:none !important}
   .tbar :deep(.ib.sm),
   .tbar .ib.sm{
-    width:26px !important;
-    height:26px !important;
-    min-width:26px !important;
-    min-height:26px !important;
+    width:24px !important;
+    height:24px !important;
+    min-width:24px !important;
+    min-height:24px !important;
     border-radius:6px !important;
   }
   .tbar :deep(.ib.sm svg),
   .tbar .ib.sm svg{
-    width:15px;
-    height:15px;
+    width:14px !important;
+    height:14px !important;
   }
-  .seg button{height:24px;padding:0 5px;font-size:11px}
-  .tg{padding-left:5px;gap:4px}
+  .seg{
+    padding:1px !important;
+  }
+  .seg button{
+    height:22px !important;
+    padding:0 4px !important;
+    font-size:10px !important;
+  }
+  .tg{
+    padding-left:4px !important;
+    gap:3px !important;
+  }
 }
 </style>

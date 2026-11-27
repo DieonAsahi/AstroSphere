@@ -275,7 +275,7 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
     position:static !important;
     flex:none !important;
     margin-top:10px !important;
-    padding:6px 0 0 !important;
+    padding:8px 0 36px 0 !important;
     border-top:1px solid rgba(148,174,255,.14) !important;
     background:transparent !important;
   }

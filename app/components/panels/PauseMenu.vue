@@ -246,8 +246,10 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
   }
   .touch-summary-bar{
     padding:5px 8px;
-    gap:6px;
+    gap:8px;
     border-radius:8px;
+    background:rgba(56,189,248,.12);
+    border:1px solid rgba(56,189,248,.35);
     min-width:0;
     overflow:hidden;
   }
@@ -258,10 +260,18 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
     overflow:hidden;
     text-overflow:ellipsis;
     min-width:0;
+    color:var(--text);
   }
   .tsb-act{
-    font-size:10.5px;
+    font-size:11px !important;
+    font-weight:600 !important;
+    color:#fff !important;
+    background:rgba(56,189,248,.25) !important;
+    border:1px solid rgba(56,189,248,.6) !important;
+    padding:3px 8px !important;
+    border-radius:6px !important;
     flex-shrink:0;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
   }
   .foot{
     padding-top:6px;

@@ -294,12 +294,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
         <small>Kanan</small>
       </div>
 
-      <!-- Pratinjau Tombol Jeda & Pilot View -->
+      <!-- Pratinjau Tombol Pilot View -->
       <div v-else-if="el.id === 'pause'" class="prev-pause-col">
-        <div class="prev-pause">
-          <UiIcon name="jeda" :size="18" />
-          <small>Jeda</small>
-        </div>
         <div class="prev-pause prev-cam">
           <UiIcon name="mata" :size="18" />
           <small>Pilot</small>

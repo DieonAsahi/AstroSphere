@@ -435,26 +435,26 @@ onBeforeUnmount(() => { bootCancelled = true; live?.dispose(); live = null; live
 }
 @media (max-width:768px) and (max-height:700px){ .hero{top:50%;transform:translate(-50%,-50%)} .note{display:none} }
 @media (max-height:540px) and (orientation:landscape){
-  .top{padding:calc(10px + var(--safe-t)) calc(18px + var(--safe-r)) 0 calc(18px + var(--safe-l))}
-  .brand{font-size:17px;gap:8px}
-  .user-pill{padding:3px 10px 3px 4px;gap:7px}
-  .user-name{font-size:12.5px}
-  .hero{top:calc(50% + 12px);left:50%;transform:translate(-50%,-50%);width:min(680px,calc(100vw - 36px));gap:9px}
-  .hero .h1{font-size:clamp(22px,3.4vw,30px);white-space:normal;line-height:1.12}
-  .hero .lead{font-size:13px;line-height:1.42;max-width:54ch}
-  .cta{flex-direction:row;flex-wrap:wrap;width:auto;max-width:none;gap:10px;margin-top:2px}
-  .cta .btn{min-width:168px;width:auto;height:40px;min-height:40px;font-size:14px}
-  .acct{width:auto;max-width:none;gap:8px}
-  .acct .btn{flex:0 0 auto;min-width:106px;height:34px;min-height:34px;font-size:13px}
-  .note{display:block;font-size:12px}
-  .formwrap,.login .formwrap,.register .formwrap{align-items:flex-start;padding:calc(46px + var(--safe-t)) calc(24px + var(--safe-r)) calc(12px + var(--safe-b)) calc(24px + var(--safe-l))}
-  .form{width:min(395px,100%);margin:auto 0;padding:16px 20px;gap:10px}
-  .form-header{gap:4px;margin-bottom:2px}
-  .form-title{font-size:18px}
-  .form-subtitle{font-size:12px}
-  .form-field{gap:4px;font-size:12.5px}
-  .form-input,.form-submit-btn,.google-btn,.guest-btn{height:38px;min-height:38px;font-size:13px}
-  .eye-btn{top:1px}
+  .top{padding:calc(8px + var(--safe-t)) calc(16px + var(--safe-r)) 0 calc(16px + var(--safe-l))}
+  .brand{font-size:16px;gap:7px}
+  .user-pill{padding:3px 9px 3px 4px;gap:6px}
+  .user-name{font-size:12px}
+  .hero{top:calc(50% + 8px);left:50%;transform:translate(-50%,-50%);width:min(640px,calc(100vw - 36px));gap:6px}
+  .hero .h1{font-size:clamp(18px,2.8vw,23px);white-space:normal;line-height:1.15}
+  .hero .lead{font-size:11.5px;line-height:1.35;max-width:52ch}
+  .cta{flex-direction:row;flex-wrap:wrap;width:auto;max-width:none;gap:8px;margin-top:2px}
+  .cta .btn{min-width:130px;width:auto;height:34px;min-height:34px;font-size:12.5px;padding:0 14px;border-radius:8px !important}
+  .acct{width:auto;max-width:none;gap:6px}
+  .acct .btn{flex:0 0 auto;min-width:88px;height:30px;min-height:30px;font-size:11.5px;padding:0 10px;border-radius:8px !important}
+  .note{display:block;font-size:11px;margin-top:2px}
+  .formwrap,.login .formwrap,.register .formwrap{align-items:flex-start;padding:calc(38px + var(--safe-t)) calc(16px + var(--safe-r)) calc(8px + var(--safe-b)) calc(16px + var(--safe-l))}
+  .form{width:min(360px,100%);margin:auto 0;padding:12px 16px;gap:8px;border-radius:12px;max-height:calc(100dvh - 48px);overflow-y:auto}
+  .form-header{gap:3px;margin-bottom:2px}
+  .form-title{font-size:16px}
+  .form-subtitle{font-size:11px}
+  .form-field{gap:3px;font-size:11.5px}
+  .form-input,.form-submit-btn,.google-btn,.guest-btn{height:32px;min-height:32px;font-size:12px;border-radius:8px !important}
+  .eye-btn{top:0}
 }
 @media (max-width:720px) and (max-height:540px) and (orientation:landscape){
   .login .formwrap,.register .formwrap{justify-content:center}

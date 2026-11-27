@@ -1461,5 +1461,53 @@ function downloadPdf() {
     min-height: 34px !important;
     font-size: 12px !important;
   }
+  .back-btn {
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 9px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
+    gap: 4px !important;
+  }
+  .detail-container {
+    gap: 8px !important;
+    padding-bottom: 36px !important;
+  }
+  .detail-title {
+    font-size: 15px !important;
+  }
+  .media-img {
+    max-height: 120px !important;
+    object-fit: cover !important;
+  }
+  .meta-box {
+    padding: 8px 10px !important;
+    gap: 5px !important;
+  }
+  .ev-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  .ev-year {
+    font-size: 13px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .badge-tag {
+    font-size: 10px !important;
+    padding: 1px 6px !important;
+    white-space: nowrap !important;
+    max-width: 60% !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+  }
+  .tl {
+    padding-bottom: 36px !important;
+  }
 }
 </style>

@@ -9,7 +9,7 @@ export const TOUCH_ELEMENTS = [
   { id: 'throttle', label: 'Tuas Kecepatan', shortLabel: 'Kecepatan', defaultX: 89, defaultY: 74, defaultScale: 1 },
   { id: 'rollLeft', label: 'Guling Kiri', shortLabel: 'Guling Kiri', defaultX: 74, defaultY: 82, defaultScale: 1 },
   { id: 'rollRight', label: 'Guling Kanan', shortLabel: 'Guling Kanan', defaultX: 74, defaultY: 60, defaultScale: 1 },
-  { id: 'pause', label: 'Tombol Jeda', shortLabel: 'Jeda', defaultX: 6, defaultY: 20, defaultScale: 1 },
+  { id: 'pause', label: 'View Pilot (Kokpit)', shortLabel: 'Pilot', defaultX: 6, defaultY: 20, defaultScale: 1 },
 ];
 
 export const TOUCH_ELEMENT_IDS = TOUCH_ELEMENTS.map((e) => e.id);

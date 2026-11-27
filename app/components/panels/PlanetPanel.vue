@@ -964,11 +964,35 @@ const stageEyebrow = computed(() => {
     padding: 8px 10px !important;
     font-size: 11.5px !important;
   }
+  .mission-callout {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+  .mission-callout .mc-title {
+    font-size: 12px !important;
+  }
+  .mission-callout .mc-desc {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .mission-callout .btn.star {
+    white-space: normal !important;
+    line-height: 1.25 !important;
+    font-size: 11.5px !important;
+    height: auto !important;
+    min-height: 34px !important;
+    padding: 6px 10px !important;
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
   .sfoot {
     position: static !important;
     flex: none !important;
     margin-top: 10px !important;
-    padding: 6px 0 0 !important;
+    padding: 8px 0 36px 0 !important;
     border-top: 1px solid rgba(148, 174, 255, 0.14) !important;
     background: transparent !important;
   }

@@ -619,7 +619,7 @@ onBeforeUnmount(() => {
     position:static !important;
     flex:none !important;
     margin-top:10px !important;
-    padding:6px 0 0 !important;
+    padding:8px 0 36px 0 !important;
     border-top:1px solid rgba(148,174,255,.14) !important;
     background:transparent !important;
   }
@@ -633,8 +633,53 @@ onBeforeUnmount(() => {
     left:calc(16px + var(--safe-l)) !important;
     transform:none !important;
     bottom:calc(8px + var(--safe-b)) !important;
-    width:calc(100vw - min(285px, 43vw) - 36px) !important;
-    max-width:340px !important;
+    width:auto !important;
+    max-width:min(260px, calc(100vw - min(285px, 43vw) - 36px)) !important;
+    padding:3px 6px !important;
+    gap:6px !important;
+    border-radius:10px !important;
+  }
+  .hangar-nav-btn{
+    width:28px !important;
+    height:28px !important;
+    min-height:28px !important;
+    border-radius:6px !important;
+  }
+  .hangar-nav-btn :deep(svg),
+  .hangar-nav-btn svg{
+    width:15px !important;
+    height:15px !important;
+  }
+  .hangar-ship-card{
+    min-width:130px !important;
+    max-width:170px !important;
+    padding:2px 4px !important;
+    gap:2px !important;
+  }
+  .ship-name-text{
+    font-size:12px !important;
+  }
+  .ship-counter{
+    font-size:9.5px !important;
+  }
+  .ship-card-top{
+    gap:6px !important;
+  }
+  .ship-card-meta{
+    gap:6px !important;
+  }
+  .ship-status-pill{
+    font-size:9.5px !important;
+    padding:1px 5px !important;
+    border-radius:4px !important;
+    height:17px !important;
+  }
+  .ship-dot-bar{
+    width:8px !important;
+    height:2.5px !important;
+  }
+  .ship-dot-bar.active{
+    width:14px !important;
   }
   .ship-chip{
     height:46px !important;
@@ -661,6 +706,6 @@ onBeforeUnmount(() => {
   .sb-val{
     font-size:12.5px !important;
   }
-  .desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11.5px !important;line-height:1.35 !important}
+  .desc{display:block !important;overflow:visible !important;font-size:11.5px !important;line-height:1.4 !important}
 }
 </style>

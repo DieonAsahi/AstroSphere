@@ -158,9 +158,9 @@ onBeforeUnmount(() => cancelAnimationFrame(raf));
 }
 @media (max-height: 540px) and (orientation: landscape){
   .oi{
-    width:64px;
-    height:42px;
-    border-radius:8px;
+    width:42px;
+    height:26px;
+    border-radius:6px;
   }
 }
 </style>

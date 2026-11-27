@@ -128,14 +128,14 @@ onBeforeUnmount(() => {
     gap:4px;
     padding:3px 10px;
     border-radius:999px;
-    background:rgba(11, 16, 36, 0.94);
-    border:1px solid rgba(255, 201, 71, 0.55);
+    background:#070b18;
+    border:1px solid rgba(255, 201, 71, 0.6);
     color:var(--star, #ffc947);
     font-family:var(--font);
     font-size:10.5px;
     font-weight:500;
     line-height:1.2;
-    box-shadow:0 4px 14px rgba(0, 0, 0, 0.65), 0 0 10px rgba(255, 201, 71, 0.25);
+    box-shadow:0 4px 14px rgba(0, 0, 0, 0.85), 0 0 12px rgba(255, 201, 71, 0.3);
     pointer-events:auto;
     cursor:pointer;
     z-index:35;

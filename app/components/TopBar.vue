@@ -200,7 +200,7 @@ onBeforeUnmount(closeMissionMenu);
   .l{height:32px;gap:6px}
   .brand{font-size:15px;gap:6px}
   .brand :deep(svg),.brand svg{width:20px;height:20px}
-  .back{height:32px;min-height:32px;max-height:32px;padding:0 10px;font-size:12px;gap:5px}
+  .back{height:32px;min-height:32px;max-height:32px;padding:0 9px;font-size:11.5px;border-radius:8px !important;gap:4px}
   .l .tag{height:32px;min-height:32px;font-size:10px;padding:0 8px}
   .r{gap:6px}
   .mission-top-btn{height:32px;min-height:32px;padding:0 9px;font-size:11.5px;gap:4px}

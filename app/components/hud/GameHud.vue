@@ -284,7 +284,7 @@ function handleQuickStop() {
       <div v-if="store.look?.freeLook" class="free-look-banner hud-el">
         <span class="free-look-dot" />
         <span class="free-look-text">
-          <b>Mode Kamera Bebas</b> &bull; Klik kanan 1&times; atau klik kiri 2&times; untuk kembali
+          <b>Mode Kamera Bebas</b> &bull; {{ store.touch ? 'Ketuk 2x untuk keluar' : 'Klik kanan 1× atau klik kiri 2× untuk kembali' }}
         </span>
       </div>
     </Transition>
@@ -483,24 +483,12 @@ function handleQuickStop() {
       <span v-if="store.hud.rollCd > 0" class="roll-cd-bar"><i :style="{ width: `${Math.round((1 - store.hud.rollCd) * 100)}%` }" /></span>
     </button>
 
-    <!-- 4. TOMBOL JEDA & KAMERA PILOT CEPAT MOBILE -->
+    <!-- 4. TOMBOL KAMERA PILOT CEPAT MOBILE -->
     <div
       v-if="store.touch && store.phase === 'playing' && !touchLayout.pause.hidden"
       class="touch-pause-col hud-el custom-pos"
       :style="hudPosStyle('pause')"
     >
-      <button
-        type="button"
-        class="touch-pause"
-        aria-label="Buka Menu Jeda"
-        title="Jeda Permainan"
-        @pointerdown.stop
-        @click="onPauseTap"
-      >
-        <UiIcon name="jeda" :size="18" />
-        <span class="touch-pause-lbl">Jeda</span>
-      </button>
-
       <button
         type="button"
         class="touch-cam"
@@ -785,7 +773,15 @@ function handleQuickStop() {
 
 /* Mobile Landscape: kompak & bebas tumpuk pada tinggi layar terbatas */
 @media (max-height:540px) and (orientation:landscape){
-  .dest{top:calc(44px + var(--safe-t));padding:2px 5px;gap:4px;border-radius:8px}
+  .dest{
+    top:calc(42px + var(--safe-t));
+    padding:2px 5px;
+    gap:4px;
+    border-radius:8px;
+    left:50%;
+    transform:translateX(-50%);
+    max-width:min(340px, calc(100vw - min(285px, 43vw) - 30px));
+  }
   .who{min-height:24px;padding:0 6px;gap:5px;font-size:11.5px}
   .who small{display:none}
   .dest .nm{font-size:11.5px}
@@ -793,6 +789,18 @@ function handleQuickStop() {
   .pill{min-height:24px;padding:0 7px;font-size:11px;gap:3px}
   .pk{top:calc(74px + var(--safe-t));padding:10px 12px;width:min(320px,calc(100vw - 24px))}
   .pk-l{max-height:min(40dvh,150px)}
+  .free-look-banner{
+    top:calc(74px + var(--safe-t));
+    left:50%;
+    transform:translateX(-50%);
+    padding:3px 10px;
+    font-size:11px;
+    border-radius:8px;
+    z-index:25;
+  }
+  .free-look-text{
+    font-size:11px !important;
+  }
   .approach-green-card{
     top:calc(42px + var(--safe-t));
     right:calc(10px + var(--safe-r));
@@ -802,6 +810,7 @@ function handleQuickStop() {
     gap:6px;
     border-radius:8px;
     z-index:12;
+    max-width:min(260px, 35vw);
   }
   .approach-green-card :deep(.planet-dot),
   .approach-green-card .planet-dot{
