@@ -83,7 +83,9 @@ onMounted(async () => {
     try {
       if (!isAdminRemembered() && !isAdminTabSessionActive()) {
         clearAdminSessionStorage();
-        await client.auth.signOut().catch(() => {});
+        // Jangan memanggil client.auth.signOut() di sini agar tab browser lain yang sedang aktif tidak terputus
+        checkingSession.value = false;
+        return;
       } else {
         if (isAdminRemembered() && !isAdminTabSessionActive()) {
           setAdminTabSessionActive();

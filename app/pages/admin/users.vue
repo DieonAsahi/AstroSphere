@@ -118,6 +118,12 @@ const paginatedUsers = computed(() => {
   return filteredUsers.value.slice(start, start + itemsPerPage);
 });
 
+watch(totalPages, (tp) => {
+  if (currentPage.value > tp) {
+    currentPage.value = Math.max(1, tp);
+  }
+});
+
 function resetFilters() {
   selectedStatus.value = 'all';
   selectedProvider.value = 'all';
@@ -236,6 +242,9 @@ async function confirmDeleteUser() {
       detailUser.value = null;
     }
     await loadUsers();
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = Math.max(1, totalPages.value);
+    }
   } catch (err) {
     showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus akun pengguna.'));
   } finally {

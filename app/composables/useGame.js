@@ -15,6 +15,7 @@ import {
   loginPlayerToCloud,
   logoutPlayerFromCloud,
   scheduleCloudSave,
+  flushScheduledCloudSave,
   cancelScheduledCloudSave,
   checkPlayerAccountStatus,
   sanitizeUsername,
@@ -974,7 +975,12 @@ if (typeof window !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       verifyActiveAccountStatus();
+    } else if (document.visibilityState === 'hidden') {
+      flushScheduledCloudSave().catch(() => {});
     }
+  });
+  window.addEventListener('pagehide', () => {
+    flushScheduledCloudSave().catch(() => {});
   });
   window.addEventListener('focus', () => {
     verifyActiveAccountStatus();

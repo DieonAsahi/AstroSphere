@@ -215,7 +215,7 @@ watch([selectedPlanet, selectedEra, searchQuery], () => {
 
 watch(totalPages, (tp) => {
   if (currentPage.value > tp) {
-    currentPage.value = tp;
+    currentPage.value = Math.max(1, tp);
   }
 });
 
@@ -262,6 +262,37 @@ function closeModal() {
 function closeImportModal() {
   if (saving.value) return;
   importModalOpen.value = false;
+}
+
+async function isHistoryImageInUse(imageUrl, excludeEventId) {
+  if (!imageUrl || typeof imageUrl !== 'string') return false;
+  const trimmed = imageUrl.trim();
+  if (!trimmed) return false;
+
+  // 1. Cek dari daftar peristiwa lokal
+  const localInUse = events.value.some(
+    (e) => e.event_id !== excludeEventId && (e.gambar_url || '').trim() === trimmed
+  );
+  if (localInUse) return true;
+
+  // 2. Verifikasi kueri langsung ke Supabase DB jika client tersedia
+  const client = getSupabaseClient();
+  if (client) {
+    try {
+      let query = client
+        .from('history_events')
+        .select('event_id')
+        .eq('gambar_url', trimmed);
+      if (excludeEventId) {
+        query = query.neq('event_id', excludeEventId);
+      }
+      const { data, error: qErr } = await query.limit(1);
+      if (!qErr && Array.isArray(data) && data.length > 0) {
+        return true;
+      }
+    } catch {}
+  }
+  return false;
 }
 
 async function handleSave() {
@@ -336,11 +367,14 @@ async function handleSave() {
         .eq('event_id', formData.value.event_id);
       if (updErr) throw updErr;
 
-      // Hapus foto lama di Storage jika URL berubah (dilakukan SETELAH update DB berhasil)
+      // Hapus foto lama di Storage jika URL berubah (dilakukan SETELAH update DB berhasil dan dipastikan tidak dipakai record lain)
       if (oldImageUrl && oldImageUrl !== cleanImageUrl) {
-        deleteStorageFileByUrl(oldImageUrl).catch((err) => {
-          console.warn('[Admin History] Gagal membersihkan foto lama:', err);
-        });
+        const inUse = await isHistoryImageInUse(oldImageUrl, formData.value.event_id);
+        if (!inUse) {
+          deleteStorageFileByUrl(oldImageUrl).catch((err) => {
+            console.warn('[Admin History] Gagal membersihkan foto lama:', err);
+          });
+        }
       }
 
       showNotification('success', `Peristiwa "${payload.judul}" berhasil diperbarui.`);
@@ -378,16 +412,22 @@ async function handleDelete() {
 
     if (delErr) throw delErr;
 
-    // Hapus file gambar dari Storage jika berasal dari bucket astrosphere-assets
+    // Hapus file gambar dari Storage jika berasal dari bucket astrosphere-assets dan tidak digunakan oleh event lain
     if (imageToDelete) {
-      deleteStorageFileByUrl(imageToDelete).catch((err) => {
-        console.warn('[Admin History] Gagal menghapus foto dari storage:', err);
-      });
+      const inUse = await isHistoryImageInUse(imageToDelete, deletingEvent.value.event_id);
+      if (!inUse) {
+        deleteStorageFileByUrl(imageToDelete).catch((err) => {
+          console.warn('[Admin History] Gagal menghapus foto dari storage:', err);
+        });
+      }
     }
 
     showNotification('success', `Peristiwa "${deletingEvent.value.judul}" telah dihapus.`);
     deletingEvent.value = null;
     await loadHistoryEvents();
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = Math.max(1, totalPages.value);
+    }
   } catch (err) {
     showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus peristiwa.'));
   } finally {

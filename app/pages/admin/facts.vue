@@ -152,6 +152,12 @@ const paginatedFacts = computed(() => {
   return filteredFacts.value.slice(start, start + itemsPerPage);
 });
 
+watch(totalPages, (tp) => {
+  if (currentPage.value > tp) {
+    currentPage.value = Math.max(1, tp);
+  }
+});
+
 function selectBodyFilter(bodyId) {
   selectedBody.value = bodyId;
   currentPage.value = 1;
@@ -320,6 +326,9 @@ async function handleDelete() {
     showNotification('success', `Kartu fakta "${deletingFact.value.judul}" telah dihapus.`);
     deletingFact.value = null;
     await loadFacts();
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = Math.max(1, totalPages.value);
+    }
   } catch (err) {
     showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus kartu fakta.'));
   } finally {

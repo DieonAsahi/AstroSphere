@@ -126,7 +126,7 @@ watch([selectedPlanet, searchQuery], () => {
 
 watch(totalPages, (tp) => {
   if (currentPage.value > tp) {
-    currentPage.value = tp;
+    currentPage.value = Math.max(1, tp);
   }
 });
 
@@ -305,6 +305,9 @@ async function handleDelete() {
     showNotification('success', 'Soal kuis telah dihapus.');
     deletingQuestion.value = null;
     await loadQuestions();
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = Math.max(1, totalPages.value);
+    }
   } catch (err) {
     showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus soal.'));
   } finally {

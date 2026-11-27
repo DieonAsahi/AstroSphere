@@ -105,7 +105,9 @@ async function loadDashboardData() {
     if (shipsRes.error) throw shipsRes.error;
     if (factsRes.error) throw factsRes.error;
     if (mythsRes.error) throw mythsRes.error;
-    if (usersRes?.error) throw usersRes.error;
+    if (usersRes?.error) {
+      console.warn('[AstroSphere Admin] Gagal memuat ringkasan pemain:', usersRes.error);
+    }
 
     const planets = planetsRes.data || [];
     const history = historyRes.data || [];

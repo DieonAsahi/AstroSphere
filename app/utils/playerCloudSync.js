@@ -593,6 +593,7 @@ export async function syncGooglePlayerSession(user, localStoreData) {
 let saveTimer = null;
 let isSaving = false;
 let saveGeneration = 0;
+let pendingSaveArgs = null;
 
 export function cancelScheduledCloudSave() {
   saveGeneration += 1;
@@ -600,6 +601,7 @@ export function cancelScheduledCloudSave() {
     clearTimeout(saveTimer);
     saveTimer = null;
   }
+  pendingSaveArgs = null;
 }
 
 // Keluar Akun (bersihkan antrean simpan & sesi Auth jika Google)
@@ -618,142 +620,169 @@ export async function logoutPlayerFromCloud(sessionOrUserId = null, { localOnly 
   return { ok: true };
 }
 
-// Simpan Progres Otomatis dengan Jeda (Debounce 2 Detik)
-export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallback, onRevokedCallback) {
+async function executeCloudSave(args) {
+  if (!args) return;
+  const { sessionOrUserId, payloadGetter, onSavedCallback, onRevokedCallback, gen } = args;
+  if (gen !== saveGeneration) return;
+
   const { userId, authProvider, sessionToken } = resolveSessionArg(sessionOrUserId);
   if (!userId) return;
-  if (saveTimer) clearTimeout(saveTimer);
-  const gen = ++saveGeneration;
 
-  saveTimer = setTimeout(async () => {
-    saveTimer = null;
-    if (gen !== saveGeneration) return;
-    const client = getSupabaseClient();
-    if (!client || isSaving || isBrowserOffline()) return;
+  const client = getSupabaseClient();
+  if (!client || isSaving || isBrowserOffline()) return;
 
-    isSaving = true;
-    try {
-      const payload = payloadGetter();
-      if (!payload || gen !== saveGeneration) return;
+  isSaving = true;
+  try {
+    const payload = payloadGetter();
+    if (!payload || gen !== saveGeneration) return;
 
-      if (authProvider === 'username' && sessionToken) {
-        const { error: rpcErr } = await client.rpc('player_sync_username', {
-          p_user_id: userId,
-          p_session_token: sessionToken,
-          p_progress: {
-            points: payload.points,
-            earned: payload.earned,
-            selected_ship: payload.selected_ship,
-            owned_ships: payload.owned_ships,
-            astro_id: payload.astro_id,
-            progress_data: payload.progress_data,
-            settings_data: payload.settings_data,
-          },
-          p_game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
-        });
+    if (authProvider === 'username' && sessionToken) {
+      const { error: rpcErr } = await client.rpc('player_sync_username', {
+        p_user_id: userId,
+        p_session_token: sessionToken,
+        p_progress: {
+          points: payload.points,
+          earned: payload.earned,
+          selected_ship: payload.selected_ship,
+          owned_ships: payload.owned_ships,
+          astro_id: payload.astro_id,
+          progress_data: payload.progress_data,
+          settings_data: payload.settings_data,
+        },
+        p_game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
+      });
 
-        if (gen !== saveGeneration) return;
-        if (rpcErr) {
-          if (isOfflineOrNetworkError(rpcErr) || isBrowserOffline()) return;
-          const mapped = mapSafePlayerError(rpcErr);
-          if (mapped.banned || mapped.revoked) {
-            onRevokedCallback?.({
-              banned: !!mapped.banned,
-              bannedReason: mapped.bannedReason || '',
-              reason: mapped.err,
-            });
-            return;
-          }
-          console.error('[AstroSphere] Gagal sinkronisasi otomatis akun username:', rpcErr);
+      if (gen !== saveGeneration) return;
+      if (rpcErr) {
+        if (isOfflineOrNetworkError(rpcErr) || isBrowserOffline()) return;
+        const mapped = mapSafePlayerError(rpcErr);
+        if (mapped.banned || mapped.revoked) {
+          onRevokedCallback?.({
+            banned: !!mapped.banned,
+            bannedReason: mapped.bannedReason || '',
+            reason: mapped.err,
+          });
           return;
         }
-
-        onSavedCallback?.();
+        console.error('[AstroSphere] Gagal sinkronisasi otomatis akun username:', rpcErr);
         return;
       }
 
-      // Jalur Google OAuth: periksa status is_active di player_progress dahulu sebelum cek/putus Auth agar alasan terbaca
-      const { data: statusPrecheck, error: statusPreErr } = await client
+      onSavedCallback?.();
+      return;
+    }
+
+    // Jalur Google OAuth: periksa status is_active di player_progress dahulu sebelum cek/putus Auth agar alasan terbaca
+    const { data: statusPrecheck, error: statusPreErr } = await client
+      .from('player_progress')
+      .select('is_active, banned_reason')
+      .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
+      .maybeSingle();
+
+    if (gen !== saveGeneration) return;
+    if (!statusPreErr) {
+      if (!statusPrecheck || statusPrecheck.is_active === false) {
+        const reason = String(statusPrecheck?.banned_reason || '').trim();
+        onRevokedCallback?.({
+          banned: statusPrecheck?.is_active === false,
+          bannedReason: reason,
+          reason: statusPrecheck?.is_active === false
+            ? formatBannedMessage(reason)
+            : 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
+        });
+        return;
+      }
+    } else if (isOfflineOrNetworkError(statusPreErr) || isBrowserOffline()) {
+      return;
+    }
+
+    const { data: authCheck, error: authCheckErr } = await client.auth.getUser();
+    if (gen !== saveGeneration) return;
+    if (authCheckErr || !authCheck?.user) {
+      if (isOfflineOrNetworkError(authCheckErr) || isBrowserOffline()) return;
+      const banned = isBannedAuthError(authCheckErr);
+      onRevokedCallback?.({
+        banned,
+        bannedReason: '',
+        reason: banned ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
+      });
+      return;
+    }
+
+    const updateData = {
+      points: payload.points,
+      earned: payload.earned,
+      selected_ship: payload.selected_ship,
+      owned_ships: payload.owned_ships,
+      progress_data: payload.progress_data,
+      game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
+      settings_data: payload.settings_data,
+      updated_at: new Date().toISOString(),
+    };
+    if (payload.astro_id) {
+      updateData.astro_id = payload.astro_id;
+    }
+
+    const { error } = await client.from('player_progress').update(updateData).eq('user_id', userId);
+    if (gen !== saveGeneration) return;
+
+    if (error) {
+      const { data: rowStatus } = await client
         .from('player_progress')
         .select('is_active, banned_reason')
         .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
         .maybeSingle();
 
       if (gen !== saveGeneration) return;
-      if (!statusPreErr) {
-        if (!statusPrecheck || statusPrecheck.is_active === false) {
-          const reason = String(statusPrecheck?.banned_reason || '').trim();
-          onRevokedCallback?.({
-            banned: statusPrecheck?.is_active === false,
-            bannedReason: reason,
-            reason: statusPrecheck?.is_active === false
-              ? formatBannedMessage(reason)
-              : 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
-          });
-          return;
-        }
-      } else if (isOfflineOrNetworkError(statusPreErr) || isBrowserOffline()) {
-        return;
-      }
-
-      const { data: authCheck, error: authCheckErr } = await client.auth.getUser();
-      if (gen !== saveGeneration) return;
-      if (authCheckErr || !authCheck?.user) {
-        if (isOfflineOrNetworkError(authCheckErr) || isBrowserOffline()) return;
-        const banned = isBannedAuthError(authCheckErr);
+      if (!rowStatus || rowStatus.is_active === false) {
+        const reason = String(rowStatus?.banned_reason || '').trim();
         onRevokedCallback?.({
-          banned,
-          bannedReason: '',
-          reason: banned ? formatBannedMessage() : 'Sesi akun tidak lagi valid atau telah dihapus.',
+          banned: rowStatus?.is_active === false,
+          bannedReason: reason,
+          reason: rowStatus?.is_active === false
+            ? formatBannedMessage(reason)
+            : 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
         });
         return;
       }
-
-      const updateData = {
-        points: payload.points,
-        earned: payload.earned,
-        selected_ship: payload.selected_ship,
-        owned_ships: payload.owned_ships,
-        progress_data: payload.progress_data,
-        game_state: payload.game_state && typeof payload.game_state === 'object' ? payload.game_state : {},
-        settings_data: payload.settings_data,
-        updated_at: new Date().toISOString(),
-      };
-      if (payload.astro_id) {
-        updateData.astro_id = payload.astro_id;
-      }
-
-      const { error } = await client.from('player_progress').update(updateData).eq('user_id', userId);
-      if (gen !== saveGeneration) return;
-
-      if (error) {
-        const { data: rowStatus } = await client
-          .from('player_progress')
-          .select('is_active, banned_reason')
-          .or(`user_id.eq.${userId},auth_user_id.eq.${userId}`)
-          .maybeSingle();
-
-        if (gen !== saveGeneration) return;
-        if (!rowStatus || rowStatus.is_active === false) {
-          const reason = String(rowStatus?.banned_reason || '').trim();
-          onRevokedCallback?.({
-            banned: rowStatus?.is_active === false,
-            bannedReason: reason,
-            reason: rowStatus?.is_active === false
-              ? formatBannedMessage(reason)
-              : 'Akun Anda tidak ditemukan atau telah dihapus oleh pengelola.',
-          });
-          return;
-        }
-      } else {
-        onSavedCallback?.();
-      }
-    } catch (err) {
-      console.error('[AstroSphere] Gagal sinkronisasi otomatis:', err);
-    } finally {
-      isSaving = false;
+    } else {
+      onSavedCallback?.();
     }
+  } catch (err) {
+    console.error('[AstroSphere] Gagal sinkronisasi otomatis:', err);
+  } finally {
+    isSaving = false;
+  }
+}
+
+// Simpan Progres Otomatis dengan Jeda (Debounce 2 Detik)
+export function scheduleCloudSave(sessionOrUserId, payloadGetter, onSavedCallback, onRevokedCallback) {
+  const { userId } = resolveSessionArg(sessionOrUserId);
+  if (!userId) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  const gen = ++saveGeneration;
+  pendingSaveArgs = { sessionOrUserId, payloadGetter, onSavedCallback, onRevokedCallback, gen };
+
+  saveTimer = setTimeout(async () => {
+    saveTimer = null;
+    const args = pendingSaveArgs;
+    pendingSaveArgs = null;
+    if (!args || gen !== saveGeneration) return;
+    await executeCloudSave(args);
   }, 2000);
+}
+
+// Langsung eksekusi sinkronisasi jika ada simpanan yang tertahan di timer debounce (misal saat tab ditutup / backgrounded)
+export async function flushScheduledCloudSave() {
+  if (!saveTimer && !pendingSaveArgs) return;
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  const args = pendingSaveArgs;
+  pendingSaveArgs = null;
+  if (!args) return;
+  await executeCloudSave(args);
 }
 
 // Pemeriksaan ringan status aktif akun (username & Google) untuk deteksi real-time penonaktifan

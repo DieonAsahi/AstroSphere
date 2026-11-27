@@ -142,6 +142,12 @@ const paginatedMyths = computed(() => {
   return filteredMyths.value.slice(start, start + itemsPerPage);
 });
 
+watch(totalPages, (tp) => {
+  if (currentPage.value > tp) {
+    currentPage.value = Math.max(1, tp);
+  }
+});
+
 function resetFilters() {
   selectedBody.value = 'all';
   selectedType.value = 'all';
@@ -327,6 +333,9 @@ async function handleDelete() {
     showNotification('success', 'Pernyataan Mitos atau Fakta berhasil dihapus.');
     deletingMyth.value = null;
     await loadMyths();
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = Math.max(1, totalPages.value);
+    }
   } catch (err) {
     showNotification('error', formatSupabaseError(err, 'Tidak bisa menghapus pernyataan.'));
   } finally {

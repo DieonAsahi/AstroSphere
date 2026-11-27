@@ -19,8 +19,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // 1. Cek sesi tab vs preferensi 'Ingat saya'
     if (!isAdminRemembered() && !isAdminTabSessionActive()) {
       clearAdminSessionStorage();
-      const client = getSupabaseClient();
-      if (client) await client.auth.signOut().catch(() => {});
+      // Jangan panggil client.auth.signOut() di sini agar tidak memutus sesi tab admin lain di localStorage
       return navigateTo('/admin/login');
     }
 
