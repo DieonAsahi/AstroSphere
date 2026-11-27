@@ -802,23 +802,26 @@ function handleQuickStop() {
     font-size:11px !important;
   }
   .approach-green-card{
-    top:calc(42px + var(--safe-t));
-    right:calc(10px + var(--safe-r));
-    left:auto;
-    transform:none;
-    padding:3px 8px;
-    gap:6px;
-    border-radius:8px;
-    z-index:12;
-    max-width:min(260px, 35vw);
+    top:auto !important;
+    right:auto !important;
+    bottom:calc(8px + var(--safe-b)) !important;
+    left:50% !important;
+    transform:translateX(-50%) !important;
+    padding:4px 10px !important;
+    gap:6px !important;
+    border-radius:8px !important;
+    z-index:12 !important;
+    max-width:min(270px, 44vw) !important;
+    font-size:10.5px !important;
+    box-sizing:border-box !important;
   }
   .approach-green-card :deep(.planet-dot),
   .approach-green-card .planet-dot{
-    --s:18px !important;
+    --s:16px !important;
   }
-  .approach-title{font-size:11.5px}
-  .approach-dist{font-size:10.5px}
-  .badge-green-zone{font-size:8.5px;padding:1px 4px;border-radius:4px}
+  .approach-title{font-size:10.5px !important}
+  .approach-dist{font-size:9.5px !important}
+  .badge-green-zone{font-size:8px !important;padding:1px 4px !important;border-radius:4px !important}
   .cockpit-stick-wrap{padding:5px 7px;gap:3px}
   .stick-base{width:72px;height:72px}
   .stick-knob{width:32px;height:32px;margin-left:-16px;margin-top:-16px}

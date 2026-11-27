@@ -1479,11 +1479,33 @@ function downloadPdf() {
   }
   .media-img {
     max-height: 120px !important;
-    object-fit: cover !important;
+    object-fit: contain !important;
+    background: #070b18 !important;
+    display: block !important;
   }
   .meta-box {
     padding: 8px 10px !important;
-    gap: 5px !important;
+    gap: 6px !important;
+  }
+  .meta-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    gap: 2px !important;
+    padding-bottom: 5px !important;
+    width: 100% !important;
+  }
+  .meta-label {
+    width: auto !important;
+    font-size: 10px !important;
+    color: #94a3b8 !important;
+    text-align: left !important;
+  }
+  .meta-val {
+    width: 100% !important;
+    font-size: 11.5px !important;
+    text-align: left !important;
   }
   .ev-header {
     display: flex !important;

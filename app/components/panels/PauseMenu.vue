@@ -68,14 +68,16 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
       <!-- Ringkasan Kontrol Sentuh Cepat (khusus perangkat sentuh) -->
       <button v-if="store.touch" type="button" class="touch-summary-bar" @click="store.modal = 'controls'">
         <UiIcon name="sentuh" :size="15" />
-        <span class="tsb-text">Kemudi Analog · Tuas Kecepatan · Guling Kiri/Kanan · Jeda · Seret Kamera</span>
-        <span class="tsb-act">Panduan</span>
+        <span class="tsb-text">Kemudi Analog · Tuas Kecepatan · Guling Kiri/Kanan · View Pilot · Seret Kamera</span>
       </button>
 
       <!-- Bagian Bawah -->
       <div class="foot">
         <span class="pts"><UiIcon name="bintang" :size="16" />{{ store.progress.points }} bintang</span>
-        <button class="btn ghost sm exit-btn" @click="game()?.toSplash()"><UiIcon name="keluar" :size="16" />Keluar ke beranda</button>
+        <div class="foot-actions">
+          <button v-if="store.touch" type="button" class="btn ghost sm guide-btn" @click="store.modal = 'controls'"><UiIcon name="sentuh" :size="15" />Panduan</button>
+          <button type="button" class="btn ghost sm exit-btn" @click="game()?.toSplash()"><UiIcon name="keluar" :size="16" />Keluar ke beranda</button>
+        </div>
       </div>
 
       <!-- Petunjuk Scroll jika konten melebihi layar -->
@@ -122,14 +124,16 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
 
 /* 4. Bagian Bawah */
 .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:16px;margin-top:4px;border-top:1px solid rgba(148,174,255,.14)}
+.foot-actions{display:flex;align-items:center;gap:8px}
 .pts{display:flex;align-items:center;gap:6px;color:var(--star);font-family:var(--display);font-weight:500;font-size:13px}
+.guide-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:12.5px;color:#7dd3fc;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);transition:all .15s;cursor:pointer}
+.guide-btn:hover{background:rgba(56,189,248,.2);color:#fff}
 .exit-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);transition:all .15s}
 .exit-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
 
 .touch-summary-bar{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.22);color:#7dd3fc;text-align:left;cursor:pointer;transition:background .15s}
 .touch-summary-bar:hover{background:rgba(56,189,248,.14)}
 .tsb-text{flex:1;font-size:11.5px;line-height:1.35;color:var(--muted)}
-.tsb-act{font-family:var(--display);font-size:11.5px;font-weight:500;color:#38bdf8;white-space:nowrap}
 
 @media (max-width:480px){
   .pause{padding:16px 12px}
@@ -262,30 +266,35 @@ function startMission(id) { game()?.setMode('misi', { mission: id }); }
     min-width:0;
     color:var(--text);
   }
-  .tsb-act{
-    font-size:11px !important;
-    font-weight:600 !important;
-    color:#fff !important;
-    background:rgba(56,189,248,.25) !important;
-    border:1px solid rgba(56,189,248,.6) !important;
-    padding:3px 8px !important;
-    border-radius:6px !important;
-    flex-shrink:0;
-    box-shadow:0 2px 6px rgba(0,0,0,.25);
-  }
   .foot{
     padding-top:6px;
     margin-top:0;
     gap:8px;
   }
+  .foot-actions{
+    gap:6px;
+  }
   .pts{
     font-size:11.5px;
     gap:4px;
+  }
+  .guide-btn{
+    padding:4px 9px;
+    font-size:11px;
+    border-radius:6px;
+    height:28px;
+    min-height:28px;
+    gap:4px;
+    color:#38bdf8;
+    background:rgba(56,189,248,.16);
+    border:1px solid rgba(56,189,248,.45);
   }
   .exit-btn{
     padding:4px 8px;
     font-size:11px;
     border-radius:6px;
+    height:28px;
+    min-height:28px;
   }
 }
 </style>

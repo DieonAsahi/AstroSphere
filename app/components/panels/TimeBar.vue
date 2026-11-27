@@ -94,7 +94,7 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
     height:30px !important;
     min-height:30px !important;
     border-radius:8px !important;
-    max-width:min(290px, calc(100vw - min(285px, 43vw) - 24px)) !important;
+    max-width:min(320px, calc(100vw - min(285px, 43vw) - 24px)) !important;
   }
   .tbar :deep(.oi),
   .tbar .oi{
@@ -127,11 +127,14 @@ watch(() => [store.toggles.orbit, store.toggles.axis], () => game()?.applyObsTog
   }
   .seg{
     padding:1px !important;
+    gap:2px !important;
   }
   .seg button{
+    min-width:32px !important;
     height:22px !important;
-    padding:0 4px !important;
-    font-size:10px !important;
+    padding:2px 8px !important;
+    font-size:10.5px !important;
+    box-sizing:border-box !important;
   }
   .tg{
     padding-left:4px !important;
