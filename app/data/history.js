@@ -11,10 +11,90 @@ export const ERAS = [
   { id: 'antariksa', label: 'Antariksa (1957–kini)', from: 1957, to: 99999 },
 ];
 
-const ev = (id, year, actor, kind, locationType, title, body, detail, loc) => ({ id, year, actor, kind, locationType, title, body, detail, lat: loc?.[0] ?? null, lon: loc?.[1] ?? null, status: 'demo' });
+export const POI_STORAGE_BASE = 'https://czkakizdvroprrhwbewv.supabase.co/storage/v1/object/public/astrosphere-assets/poi';
+
+export const POI_IMAGE_MAP = {
+  'mer-1631': `${POI_STORAGE_BASE}/mercury-caloris-basin.webp`,
+  'mer-1974': `${POI_STORAGE_BASE}/mercury-enterprise-rupes.webp`,
+  'mer-2011': `${POI_STORAGE_BASE}/mercury-polar-ice.webp`,
+  'mer-2018': `${POI_STORAGE_BASE}/mercury-rembrandt-basin.webp`,
+  'ven-1610': `${POI_STORAGE_BASE}/venus-maxwell-montes.webp`,
+  'ven-1962': `${POI_STORAGE_BASE}/venus-pancake-domes.webp`,
+  'ven-1970': `${POI_STORAGE_BASE}/venus-maat-mons.webp`,
+  'ven-1975': `${POI_STORAGE_BASE}/venus-venera9-surface.webp`,
+  'ven-1990': `${POI_STORAGE_BASE}/venus-maxwell-montes.webp`,
+  'bum-1957': `${POI_STORAGE_BASE}/earth-xray-radio-1895.webp`,
+  'bum-1961': `${POI_STORAGE_BASE}/earth-57-apollo-11.webp`,
+  'bum-1967': `${POI_STORAGE_BASE}/earth-57-apollo-11.webp`,
+  'bum-1968': `${POI_STORAGE_BASE}/earth-57-apollo-11.webp`,
+  'bum-1986': `${POI_STORAGE_BASE}/earth-54-wright-flyer.webp`,
+  'bum-1990': `${POI_STORAGE_BASE}/earth-59-iss-station.webp`,
+  'bum-1998': `${POI_STORAGE_BASE}/earth-59-iss-station.webp`,
+  'bum-2003': `${POI_STORAGE_BASE}/earth-59-iss-station.webp`,
+  'bul-1959': `${POI_STORAGE_BASE}/moon-luna2-1959.webp`,
+  'bul-1966': `${POI_STORAGE_BASE}/moon-luna9-1966.webp`,
+  'bul-1969': `${POI_STORAGE_BASE}/moon-apollo11-1969.webp`,
+  'bul-2019': `${POI_STORAGE_BASE}/moon-change4-2019.webp`,
+  'bul-2023': `${POI_STORAGE_BASE}/moon-chandrayaan3-2023.webp`,
+  'mar-1610': `${POI_STORAGE_BASE}/mars-olympus-mons.webp`,
+  'mar-1659': `${POI_STORAGE_BASE}/mars-valles-marineris.webp`,
+  'mar-1877': `${POI_STORAGE_BASE}/mars-polar-icecap.webp`,
+  'mar-1965': `${POI_STORAGE_BASE}/mars-olympus-mons.webp`,
+  'mar-1971': `${POI_STORAGE_BASE}/mars-valles-marineris.webp`,
+  'mar-1976': `${POI_STORAGE_BASE}/mars-gale-crater-curiosity.webp`,
+  'mar-1997': `${POI_STORAGE_BASE}/mars-gale-crater-curiosity.webp`,
+  'mar-2012': `${POI_STORAGE_BASE}/mars-gale-crater-curiosity.webp`,
+  'mar-2021': `${POI_STORAGE_BASE}/mars-jezero-perseverance.webp`,
+  'jup-1610': `${POI_STORAGE_BASE}/jupiter-great-red-spot.webp`,
+  'jup-1973': `${POI_STORAGE_BASE}/jupiter-polar-cyclones.webp`,
+  'jup-1979': `${POI_STORAGE_BASE}/jupiter-io-volcano.webp`,
+  'jup-1995': `${POI_STORAGE_BASE}/jupiter-europa-ocean.webp`,
+  'jup-2016': `${POI_STORAGE_BASE}/jupiter-polar-cyclones.webp`,
+  'sat-1610': `${POI_STORAGE_BASE}/saturn-rings-cassini.webp`,
+  'sat-1655': `${POI_STORAGE_BASE}/saturn-titan-lakes.webp`,
+  'sat-1979': `${POI_STORAGE_BASE}/saturn-north-hexagon.webp`,
+  'sat-2004': `${POI_STORAGE_BASE}/saturn-rings-cassini.webp`,
+  'sat-2005': `${POI_STORAGE_BASE}/saturn-titan-lakes.webp`,
+  'sat-2017': `${POI_STORAGE_BASE}/saturn-enceladus-plumes.webp`,
+  'ura-1781': `${POI_STORAGE_BASE}/uranus-axial-tilt.webp`,
+  'ura-1977': `${POI_STORAGE_BASE}/uranus-diamond-rain.webp`,
+  'ura-1986': `${POI_STORAGE_BASE}/uranus-miranda-verona-rupes.webp`,
+  'nep-1846a': `${POI_STORAGE_BASE}/neptune-mathematical-discovery.webp`,
+  'nep-1846b': `${POI_STORAGE_BASE}/neptune-triton-geysers.webp`,
+  'nep-1989': `${POI_STORAGE_BASE}/neptune-great-dark-spot.webp`,
+  'io-1610': `${POI_STORAGE_BASE}/io-discovery-1610.webp`,
+  'io-1979': `${POI_STORAGE_BASE}/io-pele-volcano-1979.webp`,
+  'eur-1979': `${POI_STORAGE_BASE}/europa-lineae-1979.webp`,
+  'eur-1997': `${POI_STORAGE_BASE}/europa-subsurface-ocean-1997.webp`,
+  'gan-1996': `${POI_STORAGE_BASE}/ganymede-magnetic-1996.webp`,
+  'gan-2023': `${POI_STORAGE_BASE}/ganymede-juice-mission-2023.webp`,
+  'cal-1979': `${POI_STORAGE_BASE}/callisto-valhalla-1979.webp`,
+  'cal-1998': `${POI_STORAGE_BASE}/callisto-ancient-crust-1998.webp`,
+  'tit-1655': `${POI_STORAGE_BASE}/titan-huygens-1655.webp`,
+  'tit-2005': `${POI_STORAGE_BASE}/titan-huygens-landing-2005.webp`,
+  'tit-2007': `${POI_STORAGE_BASE}/titan-kraken-mare-2007.webp`,
+};
+
+const ev = (id, year, actor, kind, locationType, title, body, detail, loc, customImg) => ({
+  id,
+  year,
+  actor,
+  kind,
+  locationType,
+  title,
+  body,
+  detail,
+  lat: loc?.[0] ?? null,
+  lon: loc?.[1] ?? null,
+  status: 'demo',
+  gambar_url: customImg || POI_IMAGE_MAP[id] || '',
+});
 // Kenangan: awak yang gugur dalam tugas. Tanpa titik/lintasan di 3D; kartu berisi apa yang terjadi, penyebab, pelajaran, dan nama awak.
 // Sumber: NASA Day of Remembrance, NASA Safety & Mission Assurance (Challenger/Columbia), Rogers Commission, CAIB.
-const mem = (id, year, date, actor, title, body, cause, lesson, crew) => ({ ...ev(id, year, actor, 'Kenangan', 'memorial', title, body, cause), memorial: { date, cause, lesson, crew } });
+const mem = (id, year, date, actor, title, body, cause, lesson, crew, customImg) => ({
+  ...ev(id, year, actor, 'Kenangan', 'memorial', title, body, cause, null, customImg),
+  memorial: { date, cause, lesson, crew }
+});
 
 export const HISTORY = {
   merkurius: [

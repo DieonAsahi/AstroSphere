@@ -459,7 +459,7 @@ function fillHistoryFallback() {
       kategori_poi: e.locationType || 'Titik Observasi',
       nama_wahana: e.actor || '',
       karakteristik_fisik: '',
-      gambar_url: '',
+      gambar_url: e.gambar_url || '',
       sumber_referensi: 'NASA / Arsip Sejarah Antariksa',
       era_label: e.year < 1609 ? 'Kuno' : e.year < 1957 ? 'Teleskopik' : 'Era Antariksa',
     }));

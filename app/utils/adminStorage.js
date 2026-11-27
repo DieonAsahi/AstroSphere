@@ -80,3 +80,66 @@ export async function uploadAdminAsset(file, folder = 'history') {
     return { ok: false, error: 'Terjadi kendala saat mengunggah aset. Silakan coba lagi.' };
   }
 }
+
+/**
+ * Mengekstrak path relatif berkas di dalam bucket 'astrosphere-assets'.
+ * Mengembalikan null jika URL tidak berasal dari bucket 'astrosphere-assets'.
+ */
+export function extractStoragePathFromUrl(publicUrl, bucket = ASSET_BUCKET) {
+  if (!publicUrl || typeof publicUrl !== 'string') return null;
+  const trimmed = publicUrl.trim();
+  const pattern = new RegExp(`/storage/v1/object/(?:public|sign)/${bucket}/([^?#]+)`);
+  const match = trimmed.match(pattern);
+  if (!match || !match[1]) return null;
+
+  try {
+    const decoded = decodeURIComponent(match[1]);
+    // Cegah path traversal
+    if (decoded.includes('..') || decoded.startsWith('/') || decoded.startsWith('\\')) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Menghapus berkas dari Supabase Storage berdasarkan URL publiknya.
+ * Hanya mengeksekusi penghapusan jika berkas benar-benar berasal dari bucket 'astrosphere-assets'.
+ */
+export async function deleteStorageFileByUrl(publicUrl) {
+  const filePath = extractStoragePathFromUrl(publicUrl, ASSET_BUCKET);
+  if (!filePath) {
+    return { ok: false, skipped: true, message: 'Bukan berkas dari bucket astrosphere-assets.' };
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return { ok: false, error: 'Layanan penyimpanan belum tersedia.' };
+  }
+  if (isBrowserOffline()) {
+    return { ok: false, error: OFFLINE_ACTION_NOTICE };
+  }
+
+  try {
+    const { data, error } = await client.storage
+      .from(ASSET_BUCKET)
+      .remove([filePath]);
+
+    if (error) {
+      if (isOfflineOrNetworkError(error) || isBrowserOffline()) {
+        return { ok: false, error: OFFLINE_ACTION_NOTICE };
+      }
+      return { ok: false, error: 'Tidak bisa menghapus berkas lawas dari penyimpanan.' };
+    }
+
+    return { ok: true, path: filePath, data };
+  } catch (err) {
+    if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
+      return { ok: false, error: OFFLINE_ACTION_NOTICE };
+    }
+    return { ok: false, error: 'Terjadi kendala saat menghapus berkas penyimpanan.' };
+  }
+}
+

@@ -23,9 +23,11 @@ graphify-out/
 # Berkas Privat, Seed Data & Arsip Lama
 /docs/
 /supabase/
-/structure.sql
 /src/
 /agent/
+/poi-upload/
+all-poi-items.json
+scratch/
 *.xlsx
 scratch_*
 measure_*

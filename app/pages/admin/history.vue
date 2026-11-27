@@ -3,7 +3,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { getSupabaseClient } from '~/utils/supabaseClient.js';
 import { formatSupabaseError, downloadSafeCsv, parseAdminJsonBatch } from '~/utils/adminAuth.js';
-import { uploadAdminAsset } from '~/utils/adminStorage.js';
+import { uploadAdminAsset, deleteStorageFileByUrl } from '~/utils/adminStorage.js';
 import { isSafeMediaUrl } from '~/utils/mediaSecurity.js';
 
 definePageMeta({
@@ -219,9 +219,12 @@ watch(totalPages, (tp) => {
   }
 });
 
+const originalImageUrl = ref('');
+
 function openCreateModal() {
   formError.value = '';
   isEditing.value = false;
+  originalImageUrl.value = '';
   formData.value = { ...DEFAULT_EVENT };
   modalViewMode.value = 'EDIT';
   modalOpen.value = true;
@@ -230,6 +233,7 @@ function openCreateModal() {
 function openEditModal(eventItem) {
   formError.value = '';
   isEditing.value = true;
+  originalImageUrl.value = eventItem.gambar_url || '';
   formData.value = {
     event_id: eventItem.event_id,
     planet_id: eventItem.planet_id,
@@ -325,11 +329,20 @@ async function handleSave() {
     };
 
     if (isEditing.value && formData.value.event_id) {
+      const oldImageUrl = originalImageUrl.value;
       const { error: updErr } = await client
         .from('history_events')
         .update(payload)
         .eq('event_id', formData.value.event_id);
       if (updErr) throw updErr;
+
+      // Hapus foto lama di Storage jika URL berubah (dilakukan SETELAH update DB berhasil)
+      if (oldImageUrl && oldImageUrl !== cleanImageUrl) {
+        deleteStorageFileByUrl(oldImageUrl).catch((err) => {
+          console.warn('[Admin History] Gagal membersihkan foto lama:', err);
+        });
+      }
+
       showNotification('success', `Peristiwa "${payload.judul}" berhasil diperbarui.`);
     } else {
       const { error: insErr } = await client
@@ -354,6 +367,8 @@ async function handleDelete() {
   const client = getSupabaseClient();
   if (!client) return;
 
+  const imageToDelete = deletingEvent.value.gambar_url || '';
+
   saving.value = true;
   try {
     const { error: delErr } = await client
@@ -362,6 +377,14 @@ async function handleDelete() {
       .eq('event_id', deletingEvent.value.event_id);
 
     if (delErr) throw delErr;
+
+    // Hapus file gambar dari Storage jika berasal dari bucket astrosphere-assets
+    if (imageToDelete) {
+      deleteStorageFileByUrl(imageToDelete).catch((err) => {
+        console.warn('[Admin History] Gagal menghapus foto dari storage:', err);
+      });
+    }
+
     showNotification('success', `Peristiwa "${deletingEvent.value.judul}" telah dihapus.`);
     deletingEvent.value = null;
     await loadHistoryEvents();
@@ -377,7 +400,7 @@ async function handleImageUpload(e) {
   if (!file) return;
 
   uploadingImage.value = true;
-  const res = await uploadAdminAsset(file, 'history');
+  const res = await uploadAdminAsset(file, 'poi');
   uploadingImage.value = false;
 
   if (res.ok) {
