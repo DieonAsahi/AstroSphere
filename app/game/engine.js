@@ -9,9 +9,9 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SKY_VS, SKY_FS, STARS_VS, STARS_FS } from './shaders.js';
 import { clamp, lerp, damp, smooth, dead, nextFrame, DEG, TAU, KM, fmtDist, fmtEta, fmtInt, fmtSpeedKm, daysSinceJ2000, fmtSimDate, dateFromDays, isTouchDevice } from './util.js';
-import { buildSystem, updateBodies, latLonToLocal, upgradePlanetModel } from './system.js';
+import { buildSystem, updateBodies, latLonToLocal, upgradePlanetModel, hasValidPlanetTexture } from './system.js';
 import { initShipFactory, buildShip, setShipModels, updateShipFx } from './ships.js';
-import { loadCoreModels, loadSingleModel, REMAINING_PLANET_IDS, loadDecor } from './models.js';
+import { loadCoreModels, loadSingleModel, ALL_PLANET_IDS, REMAINING_PLANET_IDS, loadDecor } from './models.js';
 import { createLab, LAB_DURATION } from './lab.js';
 import { createAudio } from './audio.js';
 import { createHazards } from './hazards.js';
@@ -1390,7 +1390,6 @@ export function createEngine(el) {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     running(true);
     if (settings.graphics === 'tinggi') setTimeout(loadBlackHole, 3000);
-    setTimeout(queueBackgroundPlanets, 1500);
   }
   let loopOn = false;
   function running(onOff) {
@@ -1562,22 +1561,21 @@ export function createEngine(el) {
 
   let bgPlanetsLoading = false;
   async function queueBackgroundPlanets() {
+    // Seluruh model planet telah dimuat di Tahap 2 boot; fungsi ini hanya jaring pengaman pasif
     if (bgPlanetsLoading || !sys || !models) return;
     bgPlanetsLoading = true;
-    for (const id of REMAINING_PLANET_IDS) {
+    for (const id of (ALL_PLANET_IDS || [])) {
       if (models.planets[id]) continue;
-      // Jeda di antara muat model agar game tetap stabil 60 FPS
-      await new Promise((r) => setTimeout(r, 1200));
       try {
         const model = await loadSingleModel('planets', id);
-        if (model) {
+        if (model && hasValidPlanetTexture(model)) {
           models.planets[id] = model;
           if (sys?.byId[id]) {
             upgradePlanetModel(sys.byId[id], model, U);
           }
         }
       } catch (err) {
-        console.warn(`[AstroSphere] Gagal memuat model planet ${id} di latar belakang:`, err);
+        console.warn(`[AstroSphere] Pengaman pemuatan model planet ${id}:`, err);
       }
     }
   }
@@ -1596,7 +1594,7 @@ export function createEngine(el) {
       bakeSky();
       setGameLoadStep(1, 1);
 
-      // Tahap 2/5: Planet inti & seluruh pesawat Hanggar (Astra, Orion, Nova)
+      // Tahap 2/5: Seluruh model planet (8 planet + Bulan) & seluruh armada pesawat Hanggar (Astra, Orion, Nova)
       const activeShips = getActiveShipIds();
       const hangarShips = [...new Set([...SHIP_IDS, ...activeShips].filter((id) => SHIPS[id]))];
       const primaryShip = activeShips.includes(store.progress.selectedShip) ? store.progress.selectedShip : activeShips[0];
@@ -1613,6 +1611,20 @@ export function createEngine(el) {
       orbitsVisible(false);
       buildDust();
       scene.add(shipRoot);
+      // Pre-warm tekstur seluruh planet di WebGL context agar mulus tanpa frame drop
+      if (renderer) {
+        for (const b of sys.bodies) {
+          if (b.mesh) {
+            b.mesh.traverse((o) => {
+              if (o.isMesh && o.material?.uniforms) {
+                const u = o.material.uniforms;
+                if (u.uMap?.value?.isTexture) try { renderer.initTexture(u.uMap.value); } catch {}
+                if (u.uNormalMap?.value?.isTexture) try { renderer.initTexture(u.uNormalMap.value); } catch {}
+              }
+            });
+          }
+        }
+      }
       hazards = createHazards({
         scene, camera, ship, sys, store, sfx, markersEl: el.markers, toast,
         shakeBy: (v) => { if (!settings.reduceMotion) shake = Math.max(shake, v); },

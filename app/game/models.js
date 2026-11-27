@@ -5,12 +5,19 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { SHIP_IDS } from '../data/ships.js';
 
-export const CORE_PLANET_IDS = ['bumi', 'bulan'];
-export const REMAINING_PLANET_IDS = ['merkurius', 'venus', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
-export const PLANET_MODEL_IDS = [...CORE_PLANET_IDS, ...REMAINING_PLANET_IDS];
+export const ALL_PLANET_IDS = ['bumi', 'bulan', 'merkurius', 'venus', 'mars', 'jupiter', 'saturnus', 'uranus', 'neptunus'];
+export const CORE_PLANET_IDS = ALL_PLANET_IDS;
+export const REMAINING_PLANET_IDS = [];
+export const PLANET_MODEL_IDS = ALL_PLANET_IDS;
 export const DECOR_MODEL_IDS = ['black_hole']; // lubang hitam di langit (di luar tata surya), dimuat belakangan
 
-const getLoader = () => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+let loader = null;
+function getLoader() {
+  if (!loader) {
+    loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  }
+  return loader;
+}
 const modelCache = new Map();
 const pendingLoads = new Map();
 
@@ -64,11 +71,9 @@ export function loadSingleModel(kind, id) {
  */
 export async function loadCoreModels(shipInput = SHIP_IDS, onProgress = () => {}) {
   const list = Array.isArray(shipInput) ? shipInput : [shipInput];
-  const shipIds = [...new Set(list.filter((id) => SHIP_IDS.includes(id)))];
-  if (!shipIds.length) shipIds.push(SHIP_IDS[0]);
+  const shipIds = [...new Set([...SHIP_IDS, ...list.filter((id) => SHIP_IDS.includes(id))])];
   const jobs = [
-    ['planets', 'bumi'],
-    ['planets', 'bulan'],
+    ...ALL_PLANET_IDS.map((id) => ['planets', id]),
     ...shipIds.map((id) => ['ships', id]),
   ];
   const out = { planets: {}, ships: {}, decor: {}, failed: [] };

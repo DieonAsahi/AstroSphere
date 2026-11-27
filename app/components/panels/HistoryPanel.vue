@@ -1074,7 +1074,7 @@ function downloadPdf() {
   content: "·";
   margin-right: 6px;
   color: rgba(148, 174, 255, 0.4);
-  font-weight: bold;
+  font-weight: 600;
 }
 .ev-char {
   color: #94a3b8;

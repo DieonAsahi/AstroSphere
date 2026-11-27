@@ -117,10 +117,30 @@ function buildFromModel(def, model) {
       glowMats.push({ mat: o.material, base });
     } else if (o.material && r !== 'plumeMesh') {
       o.material.envMapIntensity = 1.1;
+      if (o.material.map) {
+        o.material.map.colorSpace = THREE.SRGBColorSpace;
+        o.material.map.needsUpdate = true;
+      }
     }
   });
+  if (!engines.length) {
+    engines.push(new THREE.Vector3(0, 0, 2.4));
+  }
   const { flames, sprites, radius } = engineFx(g, engines, def);
   return { group: g, flames, sprites, plumes, glowMats, engines, radius, def, pending: false };
+}
+
+function buildFallbackShip(def) {
+  const g = new THREE.Group();
+  g.userData.isShip = true;
+  const geo = new THREE.ConeGeometry(0.8, 4.5, 6);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshStandardMaterial({ color: def.color || '#38bdf8', roughness: 0.35, metalness: 0.8 });
+  const m = new THREE.Mesh(geo, mat);
+  g.add(m);
+  const engines = [new THREE.Vector3(0, 0, 2.2)];
+  const { flames, sprites, radius } = engineFx(g, engines, def);
+  return { group: g, flames, sprites, plumes: [], glowMats: [], engines, radius, def, pending: true };
 }
 
 export function glowTexture() {
@@ -136,7 +156,5 @@ export function glowTexture() {
 export function buildShip(id) {
   const def = SHIPS[id] || SHIPS.astra;
   if (SHIP_MODELS[def.id]) return buildFromModel(def, SHIP_MODELS[def.id]);
-  // GLB belum siap: grup kosong sementara (tanpa model cadangan)
-  const g = new THREE.Group(); g.userData.isShip = true;
-  return { group: g, flames: [], sprites: [], plumes: [], glowMats: [], engines: [], radius: .22, def, pending: true };
+  return buildFallbackShip(def);
 }

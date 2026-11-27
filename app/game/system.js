@@ -10,6 +10,26 @@ import { SUN, PLANETS, MOONS, BELT, radiusOf } from '../data/solarSystem.js';
 
 const col3 = (h) => new THREE.Color(h);
 
+/**
+ * Memeriksa apakah model GLB planet memiliki tekstur peta warna (map) yang valid.
+ * Mencegah bola polos jika model GLB rusak atau tidak memiliki tekstur permukaan.
+ */
+export function hasValidPlanetTexture(model) {
+  if (!model) return false;
+  let hasValid = false;
+  model.traverse((m) => {
+    if (!m.isMesh) return;
+    const role = roleOf(m);
+    if (role === 'core' || !role) {
+      const mat = m.material;
+      if (mat && mat.map && mat.map.isTexture) {
+        hasValid = true;
+      }
+    }
+  });
+  return hasValid;
+}
+
 // Planet dari model GLB (sudah dinormalkan: radius 1, utara +Y, bujur 0° +X — lihat scripts/optimize-models.mjs).
 // Material model diganti shader bertekstur yang diterangi Matahari (TPLANET_FS / TRING_FS).
 // o: { sunPos, sunColor (objek uniform), center (Vector3 hidup), atmo (Color), ring {inner, outer, seed} dalam satuan R | null,
@@ -23,11 +43,17 @@ export function texturedPlanet(model, o) {
   inst.traverse((m) => {
     if (!m.isMesh) return;
     const src = m.material, role = roleOf(m);
+    if (!src) return;
     const map = src.map || whiteTexture();
+    if (map && map.isTexture) {
+      map.colorSpace = THREE.SRGBColorSpace;
+      map.needsUpdate = true;
+    }
+    const tintColor = src.color ? src.color.clone() : new THREE.Color(1, 1, 1);
     if (role === 'ring') {
       const blend = !!src.transparent;
       m.material = new THREE.ShaderMaterial({ vertexShader: TPLANET_VS, fragmentShader: TRING_FS,
-        uniforms: { uMap: { value: map }, uMapM: { value: texMatrix(src.map) }, uTint: { value: src.color.clone() }, uOpacity: { value: src.opacity ?? 1 },
+        uniforms: { uMap: { value: map }, uMapM: { value: texMatrix(src.map) }, uTint: { value: tintColor }, uOpacity: { value: src.opacity ?? 1 },
           uAlphaTest: { value: src.alphaTest > 0 ? src.alphaTest : (blend ? .01 : 0) }, uCenter: { value: o.center }, uPR: { value: o.R },
           uSunPos: o.sunPos, uRingN: { value: o.ringN }, uSunColor: o.sunColor },
         transparent: blend, depthWrite: !blend, side: THREE.DoubleSide });
@@ -36,7 +62,7 @@ export function texturedPlanet(model, o) {
       const cloud = role === 'cloud';
       m.material = new THREE.ShaderMaterial({ vertexShader: TPLANET_VS, fragmentShader: o.fragmentShader || TPLANET_FS,
         uniforms: Object.assign({
-          uMap: { value: map }, uMapM: { value: texMatrix(src.map) }, uTint: { value: src.color.clone() }, uOpacity: { value: src.opacity ?? 1 }, uCloud: { value: cloud ? 1 : 0 },
+          uMap: { value: map }, uMapM: { value: texMatrix(src.map) }, uTint: { value: tintColor }, uOpacity: { value: src.opacity ?? 1 }, uCloud: { value: cloud ? 1 : 0 },
           uNormalMap: { value: src.normalMap || whiteTexture() }, uHasNormal: { value: src.normalMap ? 1 : 0 },
           uNormalScale: { value: src.normalScale ? src.normalScale.clone() : new THREE.Vector2(1, 1) },
           uSunPos: o.sunPos, uSunColor: o.sunColor, uAtmo: { value: o.atmo }, uCenter: { value: o.center },
@@ -54,6 +80,11 @@ export function texturedPlanet(model, o) {
  */
 export function upgradePlanetModel(body, model, U) {
   if (!body || !model || body.textured) return;
+  // Pengaman Anti-Polos: pertahankan mesh prosedural jika model tidak memiliki map tekstur valid
+  if (!hasValidPlanetTexture(model)) {
+    console.warn(`[AstroSphere] Abaikan upgrade ${body.id}: model tidak memiliki tekstur valid.`);
+    return;
+  }
   const mu = model.userData || {};
   const ring = mu.ringOuter > 0 ? { inner: mu.ringInner, outer: mu.ringOuter, seed: body.ring?.seed ?? 1.7 } : body.ring;
   if (ring && body.ringMesh && mu.ringOuter > 0) {
@@ -81,16 +112,13 @@ export function upgradePlanetModel(body, model, U) {
   body.axis.remove(body.spinMesh);
   body.axis.add(newSpinMesh);
 
-  // Bersihkan geometri dan material mesh prosedural lama dari memori WebGL
+  // Bersihkan material lama, TETAPI JANGAN dispose geometri (geoHi/geoLo) karena digunakan bersama oleh planet lain!
   const oldSpinMesh = body.spinMesh;
-  if (oldSpinMesh) {
-    if (oldSpinMesh.geometry) oldSpinMesh.geometry.dispose();
-    if (oldSpinMesh.material) {
-      if (Array.isArray(oldSpinMesh.material)) {
-        oldSpinMesh.material.forEach((m) => m && m.dispose && m.dispose());
-      } else if (oldSpinMesh.material.dispose) {
-        oldSpinMesh.material.dispose();
-      }
+  if (oldSpinMesh && oldSpinMesh.material) {
+    if (Array.isArray(oldSpinMesh.material)) {
+      oldSpinMesh.material.forEach((m) => m && m.dispose && m.dispose());
+    } else if (oldSpinMesh.material.dispose) {
+      oldSpinMesh.material.dispose();
     }
   }
 
@@ -160,14 +188,18 @@ export function buildSystem(scene, U, { touch, models = null }) {
     axis.rotation.set(0, 0, (d.tilt || 0) * DEG);
     holder.add(axis); scene.add(holder);
     const ringN = new THREE.Vector3(0, 1, 0).applyEuler(axis.rotation);
-    const model = models?.planets?.[d.id] || null;
-    const mu = model ? model.userData : null;
+    const rawModel = models?.planets?.[d.id] || null;
+    const canUseModel = rawModel && hasValidPlanetTexture(rawModel);
+    const mu = canUseModel ? rawModel.userData : null;
     // Model bercincin membawa mesh cincinnya sendiri; jari-jari dari model dipakai untuk bayangan cincin & kamera.
-    const ring = model ? (mu.ringOuter > 0 ? { inner: mu.ringInner, outer: mu.ringOuter, seed: d.ring?.seed ?? 1.7 } : null) : d.ring;
+    const ring = canUseModel ? (mu.ringOuter > 0 ? { inner: mu.ringInner, outer: mu.ringOuter, seed: d.ring?.seed ?? 1.7 } : null) : d.ring;
     let spinMesh;
-    if (model) {
-      spinMesh = texturedPlanet(model, { sunPos: U.uSunPos, sunColor: U.uSunColor, center: pos, atmo: col3(d.atmo).multiplyScalar(d.atmoStr ? 1 : 0), ring, ringN, R });
+    if (canUseModel) {
+      spinMesh = texturedPlanet(rawModel, { sunPos: U.uSunPos, sunColor: U.uSunColor, center: pos, atmo: col3(d.atmo).multiplyScalar(d.atmoStr ? 1 : 0), ring, ringN, R });
     } else {
+      if (rawModel) {
+        console.warn(`[AstroSphere] Model planet ${d.id} tidak memiliki tekstur valid, mempertahankan shader prosedural.`);
+      }
       const mat = new THREE.ShaderMaterial({
         vertexShader: PLANET_VS, fragmentShader: PLANET_FS,
         uniforms: {
@@ -193,7 +225,7 @@ export function buildSystem(scene, U, { touch, models = null }) {
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       atm.scale.setScalar(Ra); atm.renderOrder = 2; axis.add(atm);
     }
-    if (ring && !model) {
+    if (ring && !canUseModel) {
       const rg = new THREE.RingGeometry(ring.inner * R, ring.outer * R, 256, 6);
       ringMesh = new THREE.Mesh(rg, new THREE.ShaderMaterial({ vertexShader: RING_VS, fragmentShader: RING_FS,
         uniforms: { uCenter: { value: pos }, uIn: { value: ring.inner * R }, uOut: { value: ring.outer * R }, uSeed: { value: ring.seed },
@@ -207,7 +239,7 @@ export function buildSystem(scene, U, { touch, models = null }) {
     ax.material.dashSize = R * .12; ax.material.gapSize = R * .07; ax.computeLineDistances(); ax.visible = false; axis.add(ax);
     // Wadah POI permukaan: anak dari mesh yang berputar (body-fixed)
     const poiRoot = new THREE.Group(); spinMesh.add(poiRoot);
-    const body = Object.assign({}, d, { radius: R, pos, holder, axis, spinMesh, mesh: spinMesh, atm, ring, ringMesh, axisLine: ax, poiRoot, ringN, textured: !!model,
+    const body = Object.assign({}, d, { radius: R, pos, holder, axis, spinMesh, mesh: spinMesh, atm, ring, ringMesh, axisLine: ax, poiRoot, ringN, textured: !!canUseModel,
       color: d.color, approach: R * 6 + 60, isMoon: !!isMoon, spinPhase0: (d.seed * 1.37) % TAU });
     bodies.push(body); byId[d.id] = body;
     return body;
