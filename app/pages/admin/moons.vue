@@ -388,123 +388,155 @@ onMounted(() => {
           <div class="modal-mode-tabs">
             <button
               type="button"
-              class="tab-btn"
-              :class="{ active: modalViewMode === 'EDIT' }"
+              :class="{ on: modalViewMode === 'EDIT' }"
               @click="modalViewMode = 'EDIT'"
             >
-              Formulir Edit
+              Formulir
             </button>
             <button
               type="button"
-              class="tab-btn"
-              :class="{ active: modalViewMode === 'PREVIEW' }"
+              :class="{ on: modalViewMode === 'PREVIEW' }"
               @click="modalViewMode = 'PREVIEW'"
             >
               Pratinjau Observasi
             </button>
-            <button type="button" class="btn-close" aria-label="Tutup" @click="closeModal">
-              <UiIcon name="tutup" :size="16" />
+            <button type="button" class="btn-close-modal" :disabled="saving" @click="closeModal">
+              <UiIcon name="tutup" :size="18" />
             </button>
           </div>
         </div>
 
         <!-- NOTIFIKASI ERROR FORMULIR -->
-        <div v-if="formError" class="modal-alert error">
+        <div v-if="formError" class="dash-alert error" role="alert">
           <UiIcon name="silang" :size="16" />
           <span>{{ formError }}</span>
         </div>
 
         <!-- MODE 1: FORMULIR EDIT -->
-        <form v-if="modalViewMode === 'EDIT'" class="modal-body" @submit.prevent="handleSave">
-          <div class="form-grid">
-            <div class="field-group span-2">
-              <label class="adm-label">Nama Satelit</label>
-              <input v-model="formData.nama" type="text" class="adm-input" required />
+        <form v-if="modalViewMode === 'EDIT'" class="modal-body scroll" @submit.prevent="handleSave">
+          <!-- BAGIAN 1: IDENTITAS & MATERI -->
+          <div class="form-section">
+            <span class="fs-title">1. Identitas &amp; Deskripsi Materi</span>
+            <div class="grid-2">
+              <label class="field">
+                <span>Nama Satelit</span>
+                <input v-model="formData.nama" required type="text" />
+              </label>
+              <label class="field">
+                <span>Planet Induk</span>
+                <select v-model="formData.parent_planet_id" required>
+                  <option v-for="p in PARENT_OPTIONS" :key="p.id" :value="p.id">Planet {{ p.name }}</option>
+                </select>
+              </label>
             </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Planet Induk</label>
-              <select v-model="formData.parent_planet_id" class="adm-select" required>
-                <option v-for="p in PARENT_OPTIONS" :key="p.id" :value="p.id">Planet {{ p.name }}</option>
-              </select>
+            <div class="grid-2">
+              <label class="field">
+                <span>Kategori Objek</span>
+                <input value="Satelit Alami (MOON)" type="text" disabled />
+              </label>
+              <label class="field">
+                <span>Sumber Referensi Ilmiah</span>
+                <input v-model="formData.sumber_referensi" type="text" placeholder="misal: NASA Solar System Exploration" />
+              </label>
             </div>
+            <label class="field">
+              <span>Uraian Ringkasan Materi Edukatif</span>
+              <textarea v-model="formData.deskripsi_materi" required rows="3" placeholder="Ringkasan materi edukatif untuk dipelajari pengguna pada simulasi 3D..." />
+            </label>
+          </div>
 
-            <div class="field-group span-4">
-              <label class="adm-label">Ringkasan Materi Edukatif</label>
-              <textarea v-model="formData.deskripsi_materi" rows="4" class="adm-textarea" required />
-              <small class="field-hint">Ditampilkan di panel observasi satelit pada simulasi 3D publik.</small>
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Diameter Ekuator (km)</label>
-              <input v-model.number="formData.diameter_km" type="number" class="adm-input" required />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Perbandingan Ukuran Bumi</label>
-              <input v-model="formData.perbandingan_bumi" type="text" class="adm-input" placeholder="contoh: 0.27× ukuran Bumi" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Periode Rotasi Poros</label>
-              <input v-model="formData.periode_rotasi" type="text" class="adm-input" placeholder="contoh: 27.3 Hari Bumi" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Subteks Rotasi</label>
-              <input v-model="formData.subteks_rotasi" type="text" class="adm-input" placeholder="contoh: Terkunci Pasang Surut" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Periode Orbit Mengitari Induk</label>
-              <input v-model="formData.periode_orbit" type="text" class="adm-input" placeholder="contoh: 27.3 Hari Bumi" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Subteks Orbit</label>
-              <input v-model="formData.subteks_orbit" type="text" class="adm-input" placeholder="contoh: Mengelilingi Bumi" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Kemiringan Sumbu</label>
-              <input v-model="formData.kemiringan_sumbu" type="text" class="adm-input" placeholder="contoh: 6.68°" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Suhu Rata-rata</label>
-              <input v-model="formData.suhu_rata_c" type="text" class="adm-input" placeholder="contoh: -20 °C" />
-            </div>
-
-            <div class="field-group span-4">
-              <label class="adm-label">Rentang Suhu Permukaan</label>
-              <input v-model="formData.rentang_suhu" type="text" class="adm-input" placeholder="contoh: Rentang ekstrem −130 °C hingga 120 °C" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Judul Dinamika Rotasi</label>
-              <input v-model="formData.judul_rotasi" type="text" class="adm-input" placeholder="contoh: Sinkronisasi Pasang Surut" />
-            </div>
-
-            <div class="field-group span-2">
-              <label class="adm-label">Sumber Referensi Ilmiah</label>
-              <input v-model="formData.sumber_referensi" type="text" class="adm-input" placeholder="NASA Solar System Exploration" />
-            </div>
-
-            <div class="field-group span-4">
-              <label class="adm-label">Deskripsi Rotasi &amp; Orbit</label>
-              <textarea v-model="formData.deskripsi_rotasi" rows="2" class="adm-textarea" placeholder="Jelaskan fenomena rotasi atau gravitasi pasang surut satelit ini..." />
-            </div>
-
-            <div class="field-group span-4 checkbox-row">
-              <label class="checkbox-label">
-                <input v-model="formData.is_active" type="checkbox" class="adm-checkbox" />
-                <span>Aktif di Publik (Bila dinonaktifkan, satelit disembunyikan di 3D dan bertanda Sedang Perbaikan di Peta)</span>
+          <!-- BAGIAN 2: DIMENSI & SKALA -->
+          <div class="form-section">
+            <span class="fs-title">2. Dimensi Fisik &amp; Skala</span>
+            <div class="grid-2">
+              <label class="field">
+                <span>Diameter Ekuator (km)</span>
+                <input v-model.number="formData.diameter_km" required type="number" />
+              </label>
+              <label class="field">
+                <span>Perbandingan Skala Ukuran Bumi</span>
+                <input v-model="formData.perbandingan_bumi" type="text" placeholder="misal: 0.27× ukuran Bumi" />
               </label>
             </div>
           </div>
 
+          <!-- BAGIAN 3: 6 METRIK DATA ILMIAH OBSERVASI -->
+          <div class="form-section">
+            <span class="fs-title">3. 6 Metrik Data Ilmiah Observasi</span>
+            <div class="grid-2">
+              <label class="field">
+                <span>1. Periode Rotasi Poros</span>
+                <input v-model="formData.periode_rotasi" type="text" placeholder="misal: 27.3 Hari Bumi" />
+              </label>
+              <label class="field">
+                <span>Subteks Rotasi</span>
+                <input v-model="formData.subteks_rotasi" type="text" placeholder="misal: Terkunci Pasang Surut" />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label class="field">
+                <span>2. Periode Orbit Mengitari Induk</span>
+                <input v-model="formData.periode_orbit" type="text" placeholder="misal: 27.3 Hari Bumi" />
+              </label>
+              <label class="field">
+                <span>Subteks Orbit</span>
+                <input v-model="formData.subteks_orbit" type="text" placeholder="misal: Mengelilingi Bumi" />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label class="field">
+                <span>3. Kemiringan Sumbu (Tilt)</span>
+                <input v-model="formData.kemiringan_sumbu" type="text" placeholder="misal: 6.68°" />
+              </label>
+              <label class="field">
+                <span>4. Suhu Rata-rata</span>
+                <input v-model="formData.suhu_rata_c" type="text" placeholder="misal: -20 °C" />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label class="field">
+                <span>Rentang Suhu Permukaan</span>
+                <input v-model="formData.rentang_suhu" type="text" placeholder="misal: Rentang ekstrem −130 °C hingga 120 °C" />
+              </label>
+              <label class="field">
+                <span>5. Usia Geologis</span>
+                <input v-model="formData.usia_planet" type="text" placeholder="misal: ± 4,5 miliar tahun" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Subteks Usia Geologis</span>
+              <input v-model="formData.subteks_usia" type="text" placeholder="misal: Terbentuk bersama Tata Surya" />
+            </label>
+          </div>
+
+          <!-- BAGIAN 4: ARAH & DINAMIKA ROTASI -->
+          <div class="form-section">
+            <span class="fs-title">4. Penjelasan Arah &amp; Dinamika Rotasi</span>
+            <label class="field">
+              <span>Judul Dinamika Rotasi</span>
+              <input v-model="formData.judul_rotasi" type="text" placeholder="misal: Sinkronisasi Pasang Surut" />
+            </label>
+            <label class="field">
+              <span>Deskripsi Penjelasan Rotasi &amp; Orbit</span>
+              <textarea v-model="formData.deskripsi_rotasi" rows="2" placeholder="Penjelasan fenomena rotasi atau gravitasi pasang surut satelit ini..." />
+            </label>
+          </div>
+
+          <!-- STATUS AKTIF DI SIMULASI PUBLIK -->
+          <div class="form-section">
+            <span class="fs-title">5. Status Simulasi Publik</span>
+            <label class="checkbox-label">
+              <input v-model="formData.is_active" type="checkbox" class="adm-checkbox" />
+              <span>Aktif di Simulasi Publik (Bila dinonaktifkan, satelit disembunyikan dari 3D dan ditandai Sedang Perbaikan pada navigasi)</span>
+            </label>
+          </div>
+
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" @click="closeModal">Batal</button>
+            <button type="button" class="btn-cancel" :disabled="saving" @click="closeModal">Batal</button>
             <button type="submit" class="btn-save" :disabled="saving">
               <UiIcon v-if="saving" name="ulang" :size="16" class="spin-active" />
               <span>{{ saving ? 'Menyimpan Perubahan…' : 'Simpan Materi Satelit' }}</span>
@@ -512,8 +544,8 @@ onMounted(() => {
           </div>
         </form>
 
-        <!-- MODE 2: PRATINJAU OBSERVASI -->
-        <div v-else class="modal-body preview-body">
+        <!-- MODE 2: PRATINJAU OBSERVASI (TETAP GELAP) -->
+        <div v-else class="modal-body preview-body scroll">
           <div class="preview-stage-eyebrow">SATELIT ALAMI {{ getParentName(formData.parent_planet_id).toUpperCase() }}</div>
           <h2 class="preview-title">{{ formData.nama }}</h2>
 
@@ -566,35 +598,28 @@ onMounted(() => {
     </div>
 
     <!-- MODAL KONFIRMASI STATUS -->
-    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="cancelToggleActive">
-      <div class="modal-card modal-confirm">
-        <div class="modal-header">
-          <h3 class="modal-title">Konfirmasi Perubahan Ketersediaan</h3>
-          <button type="button" class="btn-close" aria-label="Tutup" @click="cancelToggleActive">
-            <UiIcon name="tutup" :size="16" />
-          </button>
-        </div>
-        <div class="modal-body confirm-content">
-          <p>
-            Apakah Anda yakin ingin <b>{{ confirmStatusTarget.nextState ? 'mengaktifkan kembali' : 'menonaktifkan' }}</b> satelit
-            <span class="text-highlight">{{ confirmStatusTarget.item.nama }}</span>?
-          </p>
-          <p class="confirm-hint">
-            <span v-if="!confirmStatusTarget.nextState">Satelit ini akan disembunyikan dari simulasi 3D publik dan ditandai sebagai <em>Sedang Perbaikan</em> pada peta navigasi.</span>
-            <span v-else>Satelit ini akan segera dapat dikunjungi dan diteliti kembali oleh seluruh pemain secara publik.</span>
-          </p>
-        </div>
+    <div v-if="confirmStatusTarget" class="modal-backdrop" @click.self="!togglingId && cancelToggleActive()">
+      <div class="modal-card adm-confirm-card small">
+        <h3 class="modal-title">
+          {{ confirmStatusTarget.nextState ? 'Aktifkan Satelit?' : 'Nonaktifkan Satelit?' }}
+        </h3>
+        <p class="modal-desc">
+          <template v-if="confirmStatusTarget.nextState">
+            Ingin mengaktifkan kembali <b>Satelit {{ confirmStatusTarget.item.nama }}</b> agar objek 3D tampil kembali di ruang angkasa dan dapat dikunjungi?
+          </template>
+          <template v-else>
+            Ingin menonaktifkan <b>Satelit {{ confirmStatusTarget.item.nama }}</b>? Objek 3D akan disembunyikan sementara dan ditandai <b>Sedang Perbaikan</b> di Peta Tata Surya.
+          </template>
+        </p>
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" @click="cancelToggleActive">Batal</button>
+          <button type="button" class="btn-cancel" :disabled="!!togglingId" @click="cancelToggleActive">Batal</button>
           <button
             type="button"
-            class="btn-save"
-            :class="{ 'btn-danger': !confirmStatusTarget.nextState }"
-            :disabled="togglingId === confirmStatusTarget.item.planet_id"
+            :class="confirmStatusTarget.nextState ? 'btn-save' : 'btn-warn'"
+            :disabled="!!togglingId"
             @click="confirmToggleActive"
           >
-            <UiIcon v-if="togglingId === confirmStatusTarget.item.planet_id" name="ulang" :size="16" class="spin-active" />
-            <span>{{ confirmStatusTarget.nextState ? 'Aktifkan Satelit' : 'Nonaktifkan Satelit' }}</span>
+            {{ togglingId ? 'Memproses…' : (confirmStatusTarget.nextState ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan') }}
           </button>
         </div>
       </div>
@@ -606,7 +631,7 @@ onMounted(() => {
 .admin-moons-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .page-head {
@@ -618,41 +643,35 @@ onMounted(() => {
 }
 
 .page-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: #f1f5f9;
   margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .page-desc {
-  font-family: 'Poppins', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: #94a3b8;
-  margin: 4px 0 0;
+  margin: 4px 0 0 0;
+  font-size: 13.5px;
+  color: #64748b;
 }
 
 .btn-refresh {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
   padding: 8px 14px;
-  font-family: 'Poppins', sans-serif;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #94a3b8;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s;
 }
 
 .btn-refresh:hover:not(:disabled) {
-  background: rgba(51, 65, 85, 0.7);
-  color: #e2e8f0;
-  border-color: rgba(148, 163, 184, 0.3);
+  background-color: #f1f5f9;
 }
 
 .spin-active {
@@ -670,31 +689,31 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 13px;
   border-radius: 8px;
+  font-size: 13.5px;
 }
 
 .dash-alert.success {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #4ade80;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
 }
 
 .dash-alert.error {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
 }
 
 .card-section {
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   overflow: hidden;
 }
 
 .table-wrap {
+  padding: 0;
   overflow-x: auto;
 }
 
@@ -702,16 +721,15 @@ onMounted(() => {
 .empty-state {
   padding: 48px 24px;
   text-align: center;
-  color: #94a3b8;
-  font-family: 'Poppins', sans-serif;
+  color: #64748b;
   font-size: 14px;
 }
 
 .spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(148, 163, 184, 0.2);
-  border-top-color: #38bdf8;
+  border: 3px solid #cbd5e1;
+  border-top-color: #2563eb;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto 12px;
@@ -720,39 +738,37 @@ onMounted(() => {
 .adm-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Poppins', sans-serif;
-  font-size: 13px;
   text-align: left;
+  font-size: 13.5px;
 }
 
 .adm-table th {
+  background-color: #f8fafc;
   padding: 12px 16px;
-  background: rgba(30, 41, 59, 0.6);
-  color: #94a3b8;
   font-weight: 500;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
 }
 
 .adm-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-  color: #cbd5e1;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
   vertical-align: middle;
 }
 
-.adm-table tr:hover td {
-  background: rgba(30, 41, 59, 0.35);
+.adm-table tbody tr:hover {
+  background-color: #f8fafc;
 }
 
 .order-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 11px;
   font-weight: 600;
+  color: #2563eb;
+  background-color: #eff6ff;
+  padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  font-size: 12px;
 }
 
 .moon-name-cell {
@@ -762,104 +778,56 @@ onMounted(() => {
 }
 
 .moon-name-cell b {
-  color: #f8fafc;
-  font-weight: 600;
+  display: block;
+  color: #0f172a;
 }
 
 .moon-name-cell small {
-  font-size: 11px;
-  color: #64748b;
+  color: #94a3b8;
+  font-size: 11.5px;
 }
 
 .parent-badge {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background-color: #f1f5f9;
+  color: #475569;
   font-size: 11px;
   font-weight: 500;
-  border-radius: 6px;
-  background: rgba(148, 163, 184, 0.12);
-  color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
-.small-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 11.5px;
-  color: #94a3b8;
-}
-
-.adm-switch-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: #94a3b8;
-  font-family: 'Poppins', sans-serif;
+.small-meta span {
+  display: block;
   font-size: 12px;
-}
-
-.adm-switch-track {
-  width: 34px;
-  height: 18px;
-  border-radius: 10px;
-  background: rgba(148, 163, 184, 0.25);
-  position: relative;
-  transition: background 0.2s ease;
-}
-
-.adm-switch-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s ease;
-}
-
-.adm-switch-btn.on .adm-switch-track {
-  background: rgba(34, 197, 94, 0.4);
-}
-
-.adm-switch-btn.on .adm-switch-thumb {
-  transform: translateX(16px);
-  background: #22c55e;
+  color: #64748b;
 }
 
 .btn-edit {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 6px 12px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
   border-radius: 6px;
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s;
 }
 
 .btn-edit:hover {
-  background: rgba(56, 189, 248, 0.2);
-  border-color: rgba(56, 189, 248, 0.4);
+  background-color: #dbeafe;
 }
 
 /* MODAL STYLES */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 50;
+  z-index: 100;
+  background-color: rgba(15, 23, 42, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -867,20 +835,20 @@ onMounted(() => {
 }
 
 .modal-card {
-  width: min(840px, 100%);
+  width: 100%;
+  max-width: 780px;
   max-height: 90vh;
-  background: #0f172a;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background-color: #ffffff;
   border-radius: 14px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .modal-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  padding: 18px 22px;
+  border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -889,174 +857,164 @@ onMounted(() => {
 }
 
 .modal-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: #f8fafc;
   margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .modal-sub {
-  font-family: 'Poppins', sans-serif;
+  margin: 2px 0 0 0;
   font-size: 12px;
-  color: #94a3b8;
-  margin: 2px 0 0;
+  color: #64748b;
 }
 
 .modal-mode-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.tab-btn {
+.modal-mode-tabs button {
   padding: 6px 12px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
   border-radius: 6px;
-  background: rgba(30, 41, 59, 0.7);
-  color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #475569;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.tab-btn.active {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.35);
+.modal-mode-tabs button.on {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }
 
-.btn-close {
-  background: transparent;
+.btn-close-modal {
   border: none;
-  color: #94a3b8;
+  background: none;
+  padding: 6px;
   cursor: pointer;
-  padding: 4px;
+  color: #94a3b8;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
 }
 
-.btn-close:hover {
-  color: #f1f5f9;
-  background: rgba(148, 163, 184, 0.1);
-}
-
-.modal-alert.error {
-  margin: 12px 20px 0;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 12.5px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
+.btn-close-modal:hover {
+  color: #0f172a;
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 20px 22px;
   overflow-y: auto;
-  flex: 1;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.field-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 18px;
 }
 
-.span-2 {
-  grid-column: span 2;
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
 }
 
-.span-4 {
-  grid-column: span 4;
-}
-
-.adm-label {
-  font-family: 'Poppins', sans-serif;
+.fs-title {
   font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #2563eb;
+  letter-spacing: 0.03em;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  color: #334155;
   font-weight: 500;
-  color: #cbd5e1;
 }
 
-.adm-input,
-.adm-select,
-.adm-textarea {
-  width: 100%;
-  box-sizing: border-box;
+.field input,
+.field textarea,
+.field select {
   padding: 8px 12px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 13px;
-  color: #f8fafc;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 8px;
-  outline: none;
-  transition: border-color 0.15s ease;
+  border: 1px solid #cbd5e1;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #0f172a;
+  background-color: #ffffff;
 }
 
-.adm-input:focus,
-.adm-select:focus,
-.adm-textarea:focus {
-  border-color: #38bdf8;
+.field input,
+.field select {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
 }
 
-.field-hint {
-  font-size: 11px;
+.field input:disabled {
+  background-color: #f1f5f9;
   color: #64748b;
+  cursor: not-allowed;
 }
 
-.checkbox-row {
-  margin-top: 6px;
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: #2563eb;
 }
 
 .checkbox-label {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Poppins', sans-serif;
   font-size: 12.5px;
-  color: #cbd5e1;
+  color: #334155;
+  font-weight: 500;
   cursor: pointer;
+  line-height: 1.45;
 }
 
 .modal-footer {
-  padding: 14px 20px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .btn-cancel {
   padding: 8px 16px;
-  font-family: 'Poppins', sans-serif;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
   font-size: 13px;
   font-weight: 500;
-  border-radius: 8px;
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #475569;
   cursor: pointer;
+  transition: background-color 0.15s;
 }
 
 .btn-cancel:hover {
-  background: rgba(148, 163, 184, 0.08);
-  color: #f1f5f9;
+  background-color: #f1f5f9;
 }
 
 .btn-save {
@@ -1064,69 +1022,93 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 18px;
-  font-family: 'Poppins', sans-serif;
+  border-radius: 6px;
+  border: none;
+  background-color: #2563eb;
   font-size: 13px;
   font-weight: 500;
-  border-radius: 8px;
-  background: #38bdf8;
-  color: #0f172a;
-  border: none;
+  color: #ffffff;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: background-color 0.15s;
 }
 
 .btn-save:hover:not(:disabled) {
-  opacity: 0.9;
+  background-color: #1d4ed8;
 }
 
-.btn-danger {
-  background: #ef4444;
+.btn-warn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  background-color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
   color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s;
 }
 
-/* PREVIEW BODY */
+.btn-warn:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* CONFIRM MODAL */
+.adm-confirm-card {
+  max-width: 440px;
+}
+.adm-confirm-card.small {
+  padding: 22px 24px;
+}
+
+.modal-desc {
+  margin: 10px 0 20px 0;
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.modal-desc b {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* PREVIEW BODY (TETAP GELAP) */
 .preview-body {
-  background: rgba(10, 14, 32, 0.95);
-  border-radius: 8px;
-  margin: 12px;
-  border: 1px solid rgba(148, 174, 255, 0.15);
+  background-color: #0b1021;
+  border-radius: 0 0 14px 14px;
 }
 
 .preview-stage-eyebrow {
-  font-family: 'Poppins', sans-serif;
   font-size: 11px;
   font-weight: 600;
-  color: #38bdf8;
+  color: #5ed1ff;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .preview-title {
-  font-family: 'Poppins', sans-serif;
   font-size: 24px;
   font-weight: 600;
-  color: #f8fafc;
+  color: #ffffff;
   margin: 4px 0 16px;
 }
 
 .preview-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .preview-sec-head {
-  font-family: 'Poppins', sans-serif;
   font-size: 11px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #a6b2de;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin: 0 0 8px;
 }
 
 .preview-desc {
-  font-family: 'Poppins', sans-serif;
   font-size: 13.5px;
-  line-height: 1.6;
+  line-height: 1.55;
   color: #cbd5e1;
   margin: 0;
 }
@@ -1139,8 +1121,8 @@ onMounted(() => {
 
 .p-card {
   padding: 10px 12px;
-  background: rgba(30, 41, 59, 0.45);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -1149,19 +1131,20 @@ onMounted(() => {
 
 .p-label {
   font-size: 10.5px;
-  color: #94a3b8;
+  color: #a6b2de;
   text-transform: uppercase;
 }
 
 .p-val {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #5ed1ff;
+  margin: 2px 0;
 }
 
 .p-sub {
-  font-size: 10.5px;
-  color: #64748b;
+  font-size: 11px;
+  color: #a6b2de;
 }
 
 .preview-src {
@@ -1173,39 +1156,12 @@ onMounted(() => {
   margin-top: 10px;
 }
 
-/* CONFIRM MODAL */
-.modal-confirm {
-  width: min(440px, 100%);
-}
-
-.confirm-content {
-  font-family: 'Poppins', sans-serif;
-  font-size: 13.5px;
-  color: #cbd5e1;
-  line-height: 1.6;
-}
-
-.text-highlight {
-  color: #38bdf8;
-  font-weight: 600;
-}
-
-.confirm-hint {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 8px;
-}
-
 @media (max-width: 640px) {
-  .form-grid {
+  .grid-2 {
     grid-template-columns: 1fr;
-  }
-  .span-2,
-  .span-4 {
-    grid-column: span 1;
   }
   .preview-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

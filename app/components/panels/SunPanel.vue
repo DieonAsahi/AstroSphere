@@ -257,6 +257,31 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
     font-size:11.5px !important;
     line-height:1.4 !important;
   }
+  .tag-ph {
+    font-size: 9.5px !important;
+    padding: 2px 7px !important;
+  }
+  .live {
+    padding: 7px 9px !important;
+    gap: 8px !important;
+    border-radius: 8px !important;
+  }
+  .live .ico {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 6px !important;
+  }
+  .live .ico :deep(svg),
+  .live .ico svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .live b {
+    font-size: 12px !important;
+  }
+  .live small {
+    font-size: 10.5px !important;
+  }
   .sci-section {
     gap: 6px !important;
   }

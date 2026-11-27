@@ -618,6 +618,39 @@ const f3 = (v) => (+v).toFixed(3);
     font-size:12px !important;
     padding:0 8px !important;
   }
+  .dia figcaption {
+    padding: 6px 8px !important;
+  }
+  .dia figcaption b {
+    font-size: 12px !important;
+  }
+  .dia figcaption small {
+    font-size: 10px !important;
+  }
+  .why {
+    padding: 8px 10px !important;
+  }
+  .why h3 {
+    font-size: 12px !important;
+    margin-bottom: 3px !important;
+  }
+  .why p {
+    font-size: 10.5px !important;
+    line-height: 1.35 !important;
+  }
+  .lbl {
+    font-size: 11px !important;
+    margin-bottom: 4px !important;
+  }
+  .povs {
+    gap: 4px !important;
+  }
+  .povs .chip {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+  }
   .stage-title{
     top:calc(40px + var(--safe-t)) !important;
     max-width:calc(100vw - min(285px, 43vw) - 30px) !important;

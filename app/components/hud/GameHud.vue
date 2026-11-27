@@ -811,17 +811,41 @@ function handleQuickStop() {
     gap:6px !important;
     border-radius:8px !important;
     z-index:12 !important;
-    max-width:min(270px, 44vw) !important;
-    font-size:10.5px !important;
+    width:max-content !important;
+    max-width:min(320px, 52vw) !important;
+    font-size:10px !important;
     box-sizing:border-box !important;
+    overflow:hidden !important;
   }
   .approach-green-card :deep(.planet-dot),
   .approach-green-card .planet-dot{
     --s:16px !important;
+    flex-shrink:0 !important;
   }
-  .approach-title{font-size:10.5px !important}
-  .approach-dist{font-size:9.5px !important}
-  .badge-green-zone{font-size:8px !important;padding:1px 4px !important;border-radius:4px !important}
+  .approach-txt{
+    min-width:0 !important;
+    overflow:hidden !important;
+    gap:6px !important;
+  }
+  .badge-green-zone{
+    font-size:8px !important;
+    padding:1px 4px !important;
+    border-radius:4px !important;
+    white-space:nowrap !important;
+    flex-shrink:0 !important;
+  }
+  .approach-title{
+    font-size:10px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    min-width:0 !important;
+  }
+  .approach-dist{
+    font-size:9.5px !important;
+    white-space:nowrap !important;
+    flex-shrink:0 !important;
+  }
   .cockpit-stick-wrap{padding:5px 7px;gap:3px}
   .stick-base{width:72px;height:72px}
   .stick-knob{width:32px;height:32px;margin-left:-16px;margin-top:-16px}

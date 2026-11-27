@@ -7,9 +7,13 @@ import {
   adminLogin,
   verifyAdminSession,
   readLastActivityTimestamp,
+  recordAdminActivity,
   isAdminSessionIdleExpired,
   clearAdminSessionStorage,
   readLoginRateLimit,
+  isAdminRemembered,
+  isAdminTabSessionActive,
+  setAdminTabSessionActive,
   LOGIN_COOLDOWN_MS,
 } from '~/utils/adminAuth.js';
 import { useNetworkStatus, OFFLINE_ADMIN_NOTICE } from '~/utils/networkError.js';
@@ -24,6 +28,7 @@ const { isOffline } = useNetworkStatus();
 
 const email = ref('');
 const password = ref('');
+const rememberMe = ref(false);
 const showPassword = ref(false);
 const loading = ref(false);
 const checkingSession = ref(true);
@@ -64,6 +69,7 @@ function startCooldownTimer() {
 
 onMounted(async () => {
   startCooldownTimer();
+  rememberMe.value = isAdminRemembered();
 
   if (route.query.reason === 'idle_timeout') {
     infoMessage.value = 'Sesi Anda telah berakhir otomatis karena tidak ada aktivitas selama 5 menit. Silakan masuk kembali.';
@@ -75,27 +81,37 @@ onMounted(async () => {
   const client = getSupabaseClient();
   if (client) {
     try {
-      const lastAt = readLastActivityTimestamp();
-      if (lastAt !== null && isAdminSessionIdleExpired(lastAt)) {
+      if (!isAdminRemembered() && !isAdminTabSessionActive()) {
         clearAdminSessionStorage();
         await client.auth.signOut().catch(() => {});
       } else {
-        const check = await verifyAdminSession();
-        if (check.status === 'authorized') {
-          router.replace('/admin');
-          return;
+        if (isAdminRemembered() && !isAdminTabSessionActive()) {
+          setAdminTabSessionActive();
+          recordAdminActivity();
         }
-        if (check.status === 'offline') {
-          // Pertahankan sesi lokal saat perangkat sedang offline tanpa menghapus penyimpanan admin
-          checkingSession.value = false;
-          return;
-        }
-        if (check.status === 'unauthorized') {
+        const lastAt = readLastActivityTimestamp();
+        if (lastAt !== null && isAdminSessionIdleExpired(lastAt)) {
           clearAdminSessionStorage();
           await client.auth.signOut().catch(() => {});
-        } else if (check.reason === 'expired' || check.reason === 'invalid_user') {
-          clearAdminSessionStorage();
-          await client.auth.signOut().catch(() => {});
+        } else {
+          const check = await verifyAdminSession();
+          if (check.status === 'authorized') {
+            setAdminTabSessionActive();
+            router.replace('/admin');
+            return;
+          }
+          if (check.status === 'offline') {
+            // Pertahankan sesi lokal saat perangkat sedang offline tanpa menghapus penyimpanan admin
+            checkingSession.value = false;
+            return;
+          }
+          if (check.status === 'unauthorized') {
+            clearAdminSessionStorage();
+            await client.auth.signOut().catch(() => {});
+          } else if (check.reason === 'expired' || check.reason === 'invalid_user') {
+            clearAdminSessionStorage();
+            await client.auth.signOut().catch(() => {});
+          }
         }
       }
     } catch {}
@@ -118,7 +134,7 @@ async function handleLogin() {
   }
 
   loading.value = true;
-  const res = await adminLogin(email.value, password.value);
+  const res = await adminLogin(email.value, password.value, { rememberMe: rememberMe.value });
   loading.value = false;
 
   if (!res.ok) {
@@ -209,6 +225,19 @@ async function handleLogin() {
                 <UiIcon :name="showPassword ? 'silang' : 'mata'" :size="18" />
               </button>
             </div>
+          </div>
+
+          <!-- Opsi Ingat Saya -->
+          <div class="remember-wrap">
+            <label class="remember-label">
+              <input
+                v-model="rememberMe"
+                type="checkbox"
+                class="adm-checkbox"
+                :disabled="loading || cooldownSeconds > 0"
+              />
+              <span>Ingat saya</span>
+            </label>
           </div>
 
           <button
@@ -407,6 +436,30 @@ async function handleLogin() {
 }
 .btn-toggle-pw:hover {
   color: #475569;
+}
+
+.remember-wrap {
+  display: flex;
+  align-items: center;
+  margin-top: -4px;
+}
+.remember-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+}
+.remember-label:hover {
+  color: #0f172a;
+}
+.adm-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
 }
 
 .btn-submit-login {

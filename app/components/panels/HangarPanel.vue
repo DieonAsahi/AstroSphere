@@ -707,5 +707,10 @@ onBeforeUnmount(() => {
     font-size:12.5px !important;
   }
   .desc{display:block !important;overflow:visible !important;font-size:11.5px !important;line-height:1.4 !important}
+  .stat-row{
+    grid-template-columns:85px 1fr !important;
+    gap:8px !important;
+    font-size:11px !important;
+  }
 }
 </style>

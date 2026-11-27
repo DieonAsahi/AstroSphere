@@ -1528,6 +1528,43 @@ function downloadPdf() {
     text-overflow: ellipsis !important;
     overflow: hidden !important;
   }
+  .memo-card {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+  }
+  .memo-header {
+    font-size: 11.5px !important;
+  }
+  .memo-sec {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .memo-crew li {
+    font-size: 10.5px !important;
+    padding: 2px 6px !important;
+  }
+  .desc-section {
+    gap: 6px !important;
+  }
+  .desc-lead {
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+  }
+  .desc-body {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+  .ref-box {
+    padding: 8px 10px !important;
+  }
+  .ref-val {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+  .fine {
+    font-size: 10px !important;
+    margin: 8px 0 0 0 !important;
+  }
   .tl {
     padding-bottom: 36px !important;
   }

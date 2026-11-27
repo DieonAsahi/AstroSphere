@@ -4,7 +4,11 @@ import {
   verifyAdminSession,
   isAdminSessionIdleExpired,
   readLastActivityTimestamp,
+  recordAdminActivity,
   clearAdminSessionStorage,
+  isAdminRemembered,
+  isAdminTabSessionActive,
+  setAdminTabSessionActive,
 } from '~/utils/adminAuth.js';
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -12,6 +16,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.path === '/admin/login') return;
 
   if (process.client) {
+    // 1. Cek sesi tab vs preferensi 'Ingat saya'
+    if (!isAdminRemembered() && !isAdminTabSessionActive()) {
+      clearAdminSessionStorage();
+      const client = getSupabaseClient();
+      if (client) await client.auth.signOut().catch(() => {});
+      return navigateTo('/admin/login');
+    }
+
+    // Bila user mencentang 'Ingat saya' dan membuka tab/jendela browser baru:
+    if (isAdminRemembered() && !isAdminTabSessionActive()) {
+      setAdminTabSessionActive();
+      recordAdminActivity();
+    }
+
+    // 2. Cek batas kedaluwarsa idle 5 menit (hanya berlaku saat tab sedang berjalan)
     const lastAt = readLastActivityTimestamp();
     if (isAdminSessionIdleExpired(lastAt)) {
       clearAdminSessionStorage();
@@ -27,6 +46,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
     const check = await verifyAdminSession();
     if (check.status === 'authorized' || check.status === 'offline') {
+      // Pastikan penanda sesi tab aktif
+      setAdminTabSessionActive();
       // Saat offline tetapi memiliki sesi lokal, biarkan admin.vue menampilkan layar offline ramah tanpa mencabut sesi
       return;
     }

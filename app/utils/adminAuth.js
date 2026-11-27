@@ -12,6 +12,8 @@ export const ADMIN_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 300.000 ms (5 menit)
 export const ADMIN_IDLE_WARNING_MS = 30 * 1000;      // 30 detik terakhir
 export const ADMIN_ACTIVITY_STORAGE_KEY = 'astrosphere_admin_last_activity_at';
 export const ADMIN_LOGIN_ATTEMPTS_KEY = 'astrosphere_admin_login_attempts';
+export const ADMIN_REMEMBER_KEY = 'astrosphere_admin_remember';
+export const ADMIN_TAB_SESSION_KEY = 'astrosphere_admin_tab_active';
 export const MAX_LOGIN_ATTEMPTS = 5;
 export const LOGIN_COOLDOWN_MS = 30 * 1000;          // 30 detik cooldown
 
@@ -103,10 +105,14 @@ export function clearAdminSessionStorage(
   localStore = getSafeStorage('local'),
   sessionStore = getSafeStorage('session')
 ) {
+  clearAdminTabSessionActive(sessionStore);
+  clearAdminRememberPreference(localStore);
   for (const store of [localStore, sessionStore]) {
     if (!store) continue;
     try {
       store.removeItem(ADMIN_ACTIVITY_STORAGE_KEY);
+      store.removeItem(ADMIN_REMEMBER_KEY);
+      store.removeItem(ADMIN_TAB_SESSION_KEY);
       const keysToClear = [];
       for (let i = 0; i < store.length; i++) {
         const key = store.key(i);
@@ -117,6 +123,56 @@ export function clearAdminSessionStorage(
       for (const k of keysToClear) store.removeItem(k);
     } catch {}
   }
+}
+
+export function isAdminRemembered(storage = getSafeStorage('local')) {
+  if (!storage) return false;
+  try {
+    return storage.getItem(ADMIN_REMEMBER_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setAdminRememberPreference(remember, storage = getSafeStorage('local')) {
+  if (!storage) return;
+  try {
+    if (remember) {
+      storage.setItem(ADMIN_REMEMBER_KEY, 'true');
+    } else {
+      storage.removeItem(ADMIN_REMEMBER_KEY);
+    }
+  } catch {}
+}
+
+export function clearAdminRememberPreference(storage = getSafeStorage('local')) {
+  if (!storage) return;
+  try {
+    storage.removeItem(ADMIN_REMEMBER_KEY);
+  } catch {}
+}
+
+export function isAdminTabSessionActive(storage = getSafeStorage('session')) {
+  if (!storage) return false;
+  try {
+    return storage.getItem(ADMIN_TAB_SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setAdminTabSessionActive(storage = getSafeStorage('session')) {
+  if (!storage) return;
+  try {
+    storage.setItem(ADMIN_TAB_SESSION_KEY, '1');
+  } catch {}
+}
+
+export function clearAdminTabSessionActive(storage = getSafeStorage('session')) {
+  if (!storage) return;
+  try {
+    storage.removeItem(ADMIN_TAB_SESSION_KEY);
+  } catch {}
 }
 
 export function isAdminSessionIdleExpired(
@@ -380,7 +436,7 @@ export async function verifyIsAdmin(user) {
 /**
  * Alur Login Admin Lengkap
  */
-export async function adminLogin(emailInput, passwordInput) {
+export async function adminLogin(emailInput, passwordInput, options = {}) {
   const rateLimit = readLoginRateLimit();
   const now = Date.now();
   if (rateLimit.lockedUntil > now) {
@@ -443,6 +499,8 @@ export async function adminLogin(emailInput, passwordInput) {
 
     resetLoginRateLimit();
     recordAdminActivity();
+    setAdminRememberPreference(Boolean(options?.rememberMe));
+    setAdminTabSessionActive();
     return { ok: true, user: data.user };
   } catch (err) {
     if (isOfflineOrNetworkError(err) || isBrowserOffline()) {
