@@ -115,6 +115,25 @@ function formatYear(yr) {
 
 const scroller = ref(null);
 
+function resetScrollTop() {
+  nextTick(() => {
+    if (scroller.value) {
+      scroller.value.scrollTop = 0;
+    }
+    // Pastikan tidak ada elemen di bagian bawah yang otomatis menerima fokus dan memicu auto-scroll
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+      if (scroller.value && scroller.value.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+    }
+    requestAnimationFrame(() => {
+      if (scroller.value) {
+        scroller.value.scrollTop = 0;
+      }
+    });
+  });
+}
+
 function scrollToSelected() {
   nextTick(() => {
     const elNode = scroller.value?.querySelector('.ev-card.is-active');
@@ -139,6 +158,7 @@ onMounted(() => {
 
   // Bersihkan pilihan saat pertama kali masuk mode Sejarah
   resetSelection();
+  resetScrollTop();
 
   window.addEventListener('keydown', handleKeyDown, true);
 });
@@ -148,7 +168,17 @@ onBeforeUnmount(() => {
   resetSelection();
 });
 
-watch(() => store.sejarah.selected, scrollToSelected);
+watch(viewMode, () => {
+  resetScrollTop();
+});
+
+watch(() => store.sejarah.selected, (newId) => {
+  if (viewMode.value === 'detail') {
+    resetScrollTop();
+  } else if (newId) {
+    scrollToSelected();
+  }
+});
 
 // Aksi memilih kartu
 function selectCard(eventItem, openDetail = true) {
@@ -161,6 +191,7 @@ function selectCard(eventItem, openDetail = true) {
   game()?.selectEvent(eventItem.id);
   if (openDetail) {
     viewMode.value = 'detail';
+    resetScrollTop();
   }
 }
 
@@ -174,7 +205,7 @@ function resetSelection() {
 // Kembali ke tampilan daftar
 function backToList() {
   viewMode.value = 'list';
-  scrollToSelected();
+  resetScrollTop();
 }
 
 // Watch pergantian filter: bersihkan titik POI dan reset pilihan (ATURAN 1)
@@ -182,6 +213,7 @@ watch(selectedEra, () => {
   store.sejarah.era = selectedEra.value;
   resetSelection();
   viewMode.value = 'list';
+  resetScrollTop();
 });
 
 // Watch pergantian planet (body) untuk mereset filter dan bersihkan titik
@@ -189,6 +221,7 @@ watch(body, () => {
   selectedEra.value = 'semua';
   resetSelection();
   viewMode.value = 'list';
+  resetScrollTop();
 });
 
 // Watch perubahan daftar ketika data Supabase baru selesai dimuat
@@ -1006,6 +1039,7 @@ function downloadPdf() {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .ev-year {
   font-weight: 600;
@@ -1014,6 +1048,8 @@ function downloadPdf() {
   font-family: var(--display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .badge-tag {
   display: inline-flex;
@@ -1026,6 +1062,10 @@ function downloadPdf() {
   color: #38bdf8;
   border: 1px solid rgba(56, 189, 248, 0.25);
   text-transform: capitalize;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 100%;
+  line-height: 1.35;
 }
 .badge-tag.tag-memorial {
   background: rgba(207, 214, 238, 0.12);
@@ -1416,8 +1456,17 @@ function downloadPdf() {
   .ev-card {
     padding: 10px 12px;
   }
+  .ev-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .badge-tag {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 100%;
+  }
   .ev-card-banner {
-    max-height: 115px;
+    max-height: 140px;
   }
 }
 @media (max-height: 540px) and (orientation: landscape) {
@@ -1442,7 +1491,21 @@ function downloadPdf() {
     gap: 8px !important;
   }
   .ev-card-banner {
-    max-height: 90px !important;
+    width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+    max-height: 135px !important;
+    margin-top: 4px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+  }
+  .ev-card-banner img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    display: block !important;
+    background: #070b18 !important;
   }
   .h3 {
     font-size: 15px !important;
@@ -1519,10 +1582,12 @@ function downloadPdf() {
     width: 100% !important;
     font-size: 11.5px !important;
     text-align: left !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
   }
   .ev-header {
     display: flex !important;
-    flex-direction: row !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: space-between !important;
     gap: 6px !important;
@@ -1535,11 +1600,13 @@ function downloadPdf() {
   }
   .badge-tag {
     font-size: 10px !important;
-    padding: 1px 6px !important;
-    white-space: nowrap !important;
-    max-width: 60% !important;
-    text-overflow: ellipsis !important;
-    overflow: hidden !important;
+    padding: 2px 7px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    line-height: 1.3 !important;
   }
   .memo-card {
     padding: 8px 10px !important;
