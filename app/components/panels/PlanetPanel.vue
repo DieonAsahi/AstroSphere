@@ -270,15 +270,30 @@ const stageEyebrow = computed(() => {
               </div>
             </div>
             <div class="sci-source">
-              <UiIcon name="info" :size="12" />
-              <span>Sumber data: {{ planetData?.sumber_referensi || p.sumber_referensi || 'NASA Solar System Exploration' }}</span>
+              <UiIcon name="info" :size="12" class="sci-info-ic" />
+              <div class="sci-source-body">
+                <span class="sci-source-lbl">Sumber data:</span>
+                <UiReferenceSource
+                  :source="planetData?.sumber_referensi || p.sumber_referensi"
+                  fallback="NASA Solar System Exploration"
+                  class="sci-source-val"
+                />
+              </div>
             </div>
           </div>
 
           <!-- 3. KOTAK ARAH ROTASI (PLY-02) -->
           <div v-if="rotationInfo" class="rot-box">
             <div class="rh"><UiIcon name="ulang" :size="15" /><b>{{ rotationInfo.judul }}</b></div>
-            <p>{{ rotationInfo.deskripsi }} <span class="rot-source">— {{ planetData?.sumber_referensi || p.sumber_referensi || 'NASA Solar System Exploration' }}</span></p>
+            <p class="rot-desc">{{ rotationInfo.deskripsi }}</p>
+            <div class="rot-source-row">
+              <span class="rot-dash">—</span>
+              <UiReferenceSource
+                :source="planetData?.sumber_referensi || p.sumber_referensi"
+                fallback="NASA Solar System Exploration"
+                class="rot-source-val"
+              />
+            </div>
           </div>
 
           <!-- 4. KARTU INTERAKTIF FENOMENA -->
@@ -602,15 +617,36 @@ const stageEyebrow = computed(() => {
 }
 .sci-source{
   display:flex;
-  align-items:center;
-  gap:5px;
+  align-items:flex-start;
+  gap:6px;
   font-size:11px;
   color:#64748b;
   margin-top:6px;
   padding:0 2px;
+  min-width:0;
+  max-width:100%;
 }
-.sci-source span{
+.sci-source .sci-info-ic{
+  flex-shrink:0;
+  margin-top:2px;
+  color:#64748b;
+}
+.sci-source-body{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+  flex:1;
+}
+.sci-source-lbl{
+  font-weight:500;
+  color:#64748b;
+  font-size:11px;
   line-height:1.3;
+}
+.sci-source-val{
+  min-width:0;
+  max-width:100%;
 }
 
 /* 3. KOTAK ARAH ROTASI (FIGMA CYAN ACCENT BORDER) */
@@ -632,17 +668,30 @@ const stageEyebrow = computed(() => {
   font-size:13.5px;
   color:#38bdf8;
 }
-.rot-box p{
+.rot-box p,
+.rot-box .rot-desc{
   font-size:12.5px;
   color:#94a3b8;
   line-height:1.45;
   margin:0;
 }
-.rot-source{
-  display:inline;
-  font-size:11px;
+.rot-source-row{
+  display:flex;
+  align-items:flex-start;
+  gap:5px;
+  min-width:0;
+  max-width:100%;
+  margin-top:2px;
+}
+.rot-dash{
   color:#64748b;
-  margin-left:4px;
+  font-size:11px;
+  flex-shrink:0;
+  line-height:1.45;
+}
+.rot-source-val{
+  min-width:0;
+  flex:1;
 }
 
 /* 4. KARTU INTERAKTIF FENOMENA */
@@ -1041,9 +1090,24 @@ const stageEyebrow = computed(() => {
   .rot-box .rh b {
     font-size: 11.5px !important;
   }
-  .rot-box p {
+  .rot-box p,
+  .rot-box .rot-desc {
     font-size: 10.5px !important;
     line-height: 1.35 !important;
+  }
+  .rot-source-row {
+    gap: 4px !important;
+    margin-top: 1px !important;
+  }
+  .rot-dash {
+    font-size: 10px !important;
+  }
+  .sci-source {
+    gap: 4px !important;
+    margin-top: 4px !important;
+  }
+  .sci-source-lbl {
+    font-size: 10px !important;
   }
   .mission-callout {
     padding: 8px 10px !important;

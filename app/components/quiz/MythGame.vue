@@ -176,7 +176,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         </span>
       </div>
       <p class="fb-explanation">{{ cur.why }}</p>
-      <small class="src-text">Referensi: {{ cur.src }}</small>
+      <div class="src-text-wrap">
+        <span class="src-lbl">Referensi:</span>
+        <UiReferenceSource
+          :source="cur.sumber_referensi || cur.src"
+          fallback="NASA"
+          class="src-val"
+        />
+      </div>
       <div class="fb-acts">
         <button class="btn-next-action" @click="next">
           <span>{{ last ? 'Lihat hasil' : 'Berikutnya' }}</span>
@@ -612,6 +619,25 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   font-size:12px;
   color:var(--faint);
 }
+.src-text-wrap{
+  display:flex;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:4px 6px;
+  font-size:12px;
+  color:var(--faint);
+  min-width:0;
+  max-width:100%;
+}
+.src-lbl{
+  font-weight:500;
+  color:var(--faint);
+  flex-shrink:0;
+}
+.src-val{
+  display:inline-flex;
+  min-width:0;
+}
 .fb-acts{
   display:flex;
   justify-content:flex-end;
@@ -763,6 +789,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   .btn-pick-action { height: 34px; min-height: 34px; font-size: 12px; }
   .fb-modern { padding: 8px 10px; gap: 4px; }
   .fb-explanation { font-size: 11.5px; line-height: 1.35; }
+  .src-text-wrap {
+    font-size: 10.5px !important;
+    gap: 3px 5px !important;
+  }
+  .src-lbl {
+    font-size: 10.5px !important;
+  }
   .quiz-title { font-size: 15px; }
   .lead-sub { font-size: 12px; }
   .mast-card { padding: 6px 8px; gap: 3px; }

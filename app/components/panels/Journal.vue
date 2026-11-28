@@ -167,7 +167,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
           <p class="fc-text">{{ cards[k].t }}</p>
 
           <div class="fc-foot">
-            <span class="fc-src">Sumber rujukan: {{ cards[k].src }}</span>
+            <span class="fc-src-lbl">Sumber rujukan:</span>
+            <UiReferenceSource
+              :source="cards[k].sumber_referensi || cards[k].src"
+              fallback="NASA"
+              class="fc-src-val"
+            />
           </div>
         </article>
       </Transition>
@@ -661,12 +666,25 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 }
 .fc-foot{
   display:flex;
-  align-items:center;
-  justify-content:flex-start;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:4px 6px;
   border-top:1px solid rgba(148, 174, 255, 0.10);
   padding-top:12px;
   margin-top:16px;
   width:100%;
+  min-width:0;
+}
+.fc-src-lbl{
+  font-size:12px;
+  font-weight:500;
+  color:#64748b;
+  margin:0;
+  flex-shrink:0;
+}
+.fc-src-val{
+  display:inline-flex;
+  min-width:0;
 }
 .fc-src{
   font-size:12px;
@@ -785,6 +803,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
   }
   .fc-title{font-size:16px;margin:4px 0}
   .fc-text{font-size:12.5px;line-height:1.45;margin-bottom:8px}
+  .fc-foot{
+    margin-top:8px !important;
+    padding-top:8px !important;
+    gap:3px 5px !important;
+  }
+  .fc-src-lbl{
+    font-size:10.5px !important;
+  }
   .jr-grid{
     grid-template-columns:repeat(4, minmax(0, 1fr));
     gap:6px;

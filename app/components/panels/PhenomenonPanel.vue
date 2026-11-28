@@ -188,7 +188,15 @@ const f3 = (v) => (+v).toFixed(3);
         </div>
         <UiToggle v-model="store.lab.labels" label="Label" />
         <UiToggle v-model="store.lab.volume" label="Tampilkan bayangan" />
-        <p class="fine">Sumber: {{ phenoData?.sumber_referensi || 'NASA' }} · Katalog Edukasi AstroSphere.</p>
+        <div class="fine-ref-wrap">
+          <span class="fine-lbl">Sumber:</span>
+          <UiReferenceSource
+            :source="phenoData?.sumber_referensi"
+            fallback="NASA"
+            class="fine-content"
+          />
+          <span class="fine-suffix">· Katalog Edukasi AstroSphere.</span>
+        </div>
       </div>
 
       <div v-if="asking" class="sfoot">
@@ -499,6 +507,30 @@ const f3 = (v) => (+v).toFixed(3);
   box-shadow:0 2px 8px rgba(59, 130, 246, 0.35);
 }
 .fine{font-size:11.5px;color:#64748b;line-height:1.4}
+.fine-ref-wrap{
+  display:flex;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:4px 6px;
+  font-size:11.5px;
+  color:#64748b;
+  line-height:1.4;
+  margin-top:8px;
+  min-width:0;
+  max-width:100%;
+}
+.fine-lbl{
+  font-weight:500;
+  color:#64748b;
+  flex-shrink:0;
+}
+.fine-content{
+  display:inline-flex;
+  min-width:0;
+}
+.fine-suffix{
+  color:#64748b;
+}
 
 /* ---------- FOOTER KANAN (TOMBOL AKSI MODERN) ---------- */
 .sfoot{
@@ -693,6 +725,12 @@ const f3 = (v) => (+v).toFixed(3);
   }
   .legend span{
     font-size:9px !important;
+  }
+  .fine,
+  .fine-ref-wrap {
+    font-size: 10px !important;
+    gap: 3px 5px !important;
+    margin-top: 5px !important;
   }
 }
 </style>

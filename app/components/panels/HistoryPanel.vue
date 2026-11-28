@@ -9,7 +9,7 @@
 import { computed, watch, ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { store, game, showToast } from '~/composables/useGame.js';
 import { useSupabaseContent } from '~/composables/useSupabaseContent.js';
-import { isSafeMediaUrl } from '~/utils/mediaSecurity.js';
+import { isSafeMediaUrl, renderReferenceHtml } from '~/utils/mediaSecurity.js';
 import { LOCATION_LABEL } from '~/data/history.js';
 import { PLANETS, MOONS } from '~/data/solarSystem.js';
 
@@ -427,6 +427,15 @@ function downloadPdf() {
       font-size: 12px;
       color: #334155;
       line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .ref-text a {
+      color: #2563eb;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .footer {
       margin-top: 36px;
@@ -484,7 +493,7 @@ function downloadPdf() {
 
   <div class="ref-box">
     <div class="ref-title">Sumber Referensi:</div>
-    <div class="ref-text">${escapeHtml(refSource)}</div>
+    <div class="ref-text">${renderReferenceHtml(refSource, { linkColor: '#2563eb' })}</div>
   </div>
 
   <div class="footer">
@@ -725,7 +734,11 @@ function downloadPdf() {
             <!-- 5. Kotak Sumber Referensi -->
             <div class="ref-box">
               <span class="ref-label">SUMBER REFERENSI:</span>
-              <p class="ref-val">{{ currentEvent.sumber_referensi || 'NASA / Arsip Eksplorasi Antariksa Internasional' }}</p>
+              <UiReferenceSource
+                :source="currentEvent.sumber_referensi"
+                fallback="NASA / Arsip Eksplorasi Antariksa Internasional"
+                class="ref-val-source"
+              />
             </div>
 
             <!-- 6. Tombol Unduh PDF -->

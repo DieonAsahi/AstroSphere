@@ -72,7 +72,17 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
               <span class="f-sub">{{ f.sub }}</span>
             </div>
           </div>
-          <div class="sci-source"><UiIcon name="info" :size="12" /><span>Sumber data: {{ SUN.sumber_referensi }}</span></div>
+          <div class="sci-source">
+            <UiIcon name="info" :size="12" class="sci-info-ic" />
+            <div class="sci-source-body">
+              <span class="sci-source-lbl">Sumber data:</span>
+              <UiReferenceSource
+                :source="SUN.sumber_referensi"
+                fallback="NASA Solar System Exploration"
+                class="sci-source-val"
+              />
+            </div>
+          </div>
         </div>
 
         <div class="topics">
@@ -161,7 +171,39 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
 .f-lbl{font-family:var(--display);font-size:10.5px;font-weight:600;letter-spacing:.06em;color:#94a3b8;text-transform:uppercase;line-height:1.25}
 .fact b.num{font-family:var(--display);font-size:16px;font-weight:600;color:#f8fafc;font-variant-numeric:tabular-nums;line-height:1.2;margin:2px 0 1px}
 .f-sub{font-size:11.5px;color:#94a3b8;line-height:1.38}
-.sci-source{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b;margin-top:6px;padding:0 2px}
+.sci-source{
+  display:flex;
+  align-items:flex-start;
+  gap:6px;
+  font-size:11px;
+  color:#64748b;
+  margin-top:6px;
+  padding:0 2px;
+  min-width:0;
+  max-width:100%;
+}
+.sci-source .sci-info-ic{
+  flex-shrink:0;
+  margin-top:2px;
+  color:#64748b;
+}
+.sci-source-body{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+  flex:1;
+}
+.sci-source-lbl{
+  font-weight:500;
+  color:#64748b;
+  font-size:11px;
+  line-height:1.3;
+}
+.sci-source-val{
+  min-width:0;
+  max-width:100%;
+}
 
 /* topik yang jarang diketahui (akordeon) */
 .topics{display:flex;flex-direction:column;gap:8px}
@@ -284,6 +326,13 @@ function myths() { store.quiz.kind = 'mitos'; store.quiz.mythStage = 'intro'; ga
   }
   .sci-section {
     gap: 6px !important;
+  }
+  .sci-source {
+    gap: 4px !important;
+    margin-top: 4px !important;
+  }
+  .sci-source-lbl {
+    font-size: 10px !important;
   }
   .facts.grid-sci{
     padding: 0 !important;

@@ -61,3 +61,82 @@ export function isSafeMediaUrl(rawUrl) {
 export function sanitizeMediaUrl(rawUrl, fallback = '') {
   return isSafeMediaUrl(rawUrl) ? rawUrl.trim() : fallback;
 }
+
+const URL_REGEX = /(https?:\/\/[^\s|]+)/gi;
+
+/**
+ * Memecah string sumber_referensi menjadi array item (dipisahkan oleh '|')
+ * dan memecah setiap item menjadi segmen teks biasa atau link URL yang aman.
+ * @param {string} rawText
+ * @returns {Array<{ raw: string, hasLink: boolean, segments: Array<{ type: 'text'|'link', text: string, url?: string }> }>}
+ */
+export function parseReferenceItems(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+  const items = rawText.split('|').map((s) => s.trim()).filter(Boolean);
+  return items.map((item) => {
+    const segments = [];
+    let lastIndex = 0;
+    let match;
+    const regex = new RegExp(URL_REGEX.source, 'gi');
+    while ((match = regex.exec(item)) !== null) {
+      const matchIndex = match.index;
+      if (matchIndex > lastIndex) {
+        segments.push({ type: 'text', text: item.slice(lastIndex, matchIndex) });
+      }
+      let rawUrl = match[0];
+      let trailing = '';
+      while (rawUrl.length > 0 && /[.,;!?:)\]"']/.test(rawUrl[rawUrl.length - 1])) {
+        trailing = rawUrl[rawUrl.length - 1] + trailing;
+        rawUrl = rawUrl.slice(0, -1);
+      }
+      if (isSafeMediaUrl(rawUrl)) {
+        segments.push({ type: 'link', text: rawUrl, url: rawUrl });
+      } else {
+        segments.push({ type: 'text', text: rawUrl });
+      }
+      if (trailing) {
+        segments.push({ type: 'text', text: trailing });
+      }
+      lastIndex = matchIndex + match[0].length;
+    }
+    if (lastIndex < item.length) {
+      segments.push({ type: 'text', text: item.slice(lastIndex) });
+    }
+    return {
+      raw: item,
+      hasLink: segments.some((s) => s.type === 'link'),
+      segments,
+    };
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Merender representasi HTML aman untuk dokumen cetak PDF atau konteks statis
+ * @param {string} rawText
+ * @param {{ linkColor?: string }} options
+ * @returns {string}
+ */
+export function renderReferenceHtml(rawText, { linkColor = '#2563eb' } = {}) {
+  const items = parseReferenceItems(rawText);
+  if (!items.length) return '';
+  return items.map((item) => {
+    return item.segments.map((seg) => {
+      if (seg.type === 'link') {
+        const safeUrl = sanitizeMediaUrl(seg.url);
+        const safeText = escapeHtml(seg.text);
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:${linkColor};text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;word-break:break-word;">${safeText}</a>`;
+      }
+      return escapeHtml(seg.text);
+    }).join('');
+  }).join('<div style="height:4px;"></div>');
+}
