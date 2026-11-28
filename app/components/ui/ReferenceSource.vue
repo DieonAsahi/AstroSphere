@@ -23,11 +23,27 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  itemIndex: {
+    type: [Number, String],
+    default: null,
+  },
 });
 
 const items = computed(() => {
   const text = (props.source || props.fallback || '').trim();
-  return parseReferenceItems(text);
+  const all = parseReferenceItems(text);
+  if (!all.length) return [];
+  if (props.itemIndex === null || props.itemIndex === undefined || props.itemIndex === '') {
+    return all;
+  }
+  const idx = Number(props.itemIndex);
+  if (!Number.isNaN(idx)) {
+    if (all[idx]) {
+      return [all[idx]];
+    }
+    return all[0] ? [all[0]] : [];
+  }
+  return all;
 });
 </script>
 

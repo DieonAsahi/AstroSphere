@@ -276,6 +276,7 @@ const stageEyebrow = computed(() => {
                 <UiReferenceSource
                   :source="planetData?.sumber_referensi || p.sumber_referensi"
                   fallback="NASA Solar System Exploration"
+                  :item-index="0"
                   class="sci-source-val"
                 />
               </div>
@@ -291,6 +292,7 @@ const stageEyebrow = computed(() => {
               <UiReferenceSource
                 :source="planetData?.sumber_referensi || p.sumber_referensi"
                 fallback="NASA Solar System Exploration"
+                :item-index="1"
                 class="rot-source-val"
               />
             </div>
